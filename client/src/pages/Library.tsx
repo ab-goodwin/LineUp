@@ -112,7 +112,7 @@ export default function Library() {
       s.danceName.toLowerCase().includes(search.toLowerCase()) || 
       s.songName.toLowerCase().includes(search.toLowerCase())
     )
-    .sort((a, b) => a.danceName.localeCompare(b.danceName));
+    .sort((a, b) => a.songName.localeCompare(b.songName));
 
   const handleDelete = async (id: number) => {
     if (confirm("Are you sure? This will remove the song and affect stats.")) {
