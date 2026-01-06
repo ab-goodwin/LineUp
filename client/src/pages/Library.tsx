@@ -107,10 +107,12 @@ export default function Library() {
   const [editingSong, setEditingSong] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const filteredSongs = songs.filter(s => 
-    s.danceName.toLowerCase().includes(search.toLowerCase()) || 
-    s.songName.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredSongs = songs
+    .filter(s => 
+      s.danceName.toLowerCase().includes(search.toLowerCase()) || 
+      s.songName.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => a.songName.localeCompare(b.songName));
 
   const handleDelete = async (id: number) => {
     if (confirm("Are you sure? This will remove the song and affect stats.")) {

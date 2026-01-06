@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { User, Terminal } from "lucide-react";
+import { User, Music } from "lucide-react";
 import { useProfile } from "@/hooks/use-profile";
 
 export function Header() {
@@ -10,7 +10,7 @@ export function Header() {
       <div className="flex h-16 items-center justify-between px-4 max-w-7xl mx-auto">
         <Link href="/" className="flex items-center gap-2 cursor-pointer">
           <div className="p-2 bg-primary/10 rounded-full">
-            <User className="w-5 h-5 text-primary" /> {/* Changed Icon to represent BootMetrics if desired, but kept simple */}
+            <Music className="w-5 h-5 text-primary" />
           </div>
           <span className="font-display text-xl font-bold text-foreground">BootMetrics</span>
         </Link>

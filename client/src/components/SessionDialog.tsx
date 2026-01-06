@@ -12,7 +12,7 @@ import { insertSessionSchema } from "@shared/schema";
 import { useCreateSession, useUpdateSession, useDeleteSession } from "@/hooks/use-sessions";
 import { useSongs } from "@/hooks/use-songs";
 import { format } from "date-fns";
-import { Trash2, Plus, X } from "lucide-react";
+import { Trash2, Plus, X, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const formSchema = insertSessionSchema.extend({
@@ -33,6 +33,14 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
   const createSession = useCreateSession();
   const updateSession = useUpdateSession();
   const deleteSession = useDeleteSession();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredSongs = songs
+    .filter(s => 
+      s.danceName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      s.songName.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => a.songName.localeCompare(b.songName));
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -118,8 +126,19 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
               )}
             />
 
-            <div className="flex-1 overflow-hidden flex flex-col min-h-[200px]">
-              <FormLabel className="mb-3 block">Dances Done</FormLabel>
+            <div className="flex-1 overflow-hidden flex flex-col min-h-[300px]">
+              <div className="flex items-center justify-between mb-2">
+                <FormLabel>Dances Done</FormLabel>
+                <div className="relative w-48">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search..." 
+                    className="h-8 pl-8 text-xs rounded-lg"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
               <ScrollArea className="flex-1 border-2 border-border/50 rounded-xl p-4 bg-secondary/20">
                 <FormField
                   control={form.control}
@@ -130,8 +149,12 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                         <div className="text-center text-muted-foreground py-8 text-sm">
                           No songs in library. Go to Library tab to add some!
                         </div>
+                      ) : filteredSongs.length === 0 ? (
+                        <div className="text-center text-muted-foreground py-8 text-sm">
+                          No matching songs found.
+                        </div>
                       ) : (
-                        songs.map((song) => (
+                        filteredSongs.map((song) => (
                           <FormField
                             key={song.id}
                             control={form.control}
