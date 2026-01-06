@@ -40,7 +40,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
       s.danceName.toLowerCase().includes(searchQuery.toLowerCase()) || 
       s.songName.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .sort((a, b) => a.songName.localeCompare(b.songName));
+    .sort((a, b) => a.danceName.localeCompare(b.danceName));
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -126,7 +126,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
               )}
             />
 
-            <div className="flex-1 overflow-hidden flex flex-col min-h-[300px]">
+            <div className="flex-1 overflow-hidden flex flex-col h-[400px]">
               <div className="flex items-center justify-between mb-2">
                 <FormLabel>Dances Done</FormLabel>
                 <div className="relative w-48">
@@ -139,22 +139,23 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                   />
                 </div>
               </div>
-              <ScrollArea className="flex-1 border-2 border-border/50 rounded-xl p-4 bg-secondary/20">
-                <FormField
-                  control={form.control}
-                  name="danceIds"
-                  render={() => (
-                    <div className="space-y-3">
-                      {songs.length === 0 ? (
-                        <div className="text-center text-muted-foreground py-8 text-sm">
-                          No songs in library. Go to Library tab to add some!
-                        </div>
-                      ) : filteredSongs.length === 0 ? (
-                        <div className="text-center text-muted-foreground py-8 text-sm">
-                          No matching songs found.
-                        </div>
-                      ) : (
-                        filteredSongs.map((song) => (
+              <div className="flex-1 min-h-0 border-2 border-border/50 rounded-xl bg-secondary/20">
+                <ScrollArea className="h-full w-full p-4">
+                  <FormField
+                    control={form.control}
+                    name="danceIds"
+                    render={() => (
+                      <div className="space-y-3">
+                        {songs.length === 0 ? (
+                          <div className="text-center text-muted-foreground py-8 text-sm">
+                            No songs in library. Go to Library tab to add some!
+                          </div>
+                        ) : filteredSongs.length === 0 ? (
+                          <div className="text-center text-muted-foreground py-8 text-sm">
+                            No matching songs found.
+                          </div>
+                        ) : (
+                          filteredSongs.map((song) => (
                           <FormField
                             key={song.id}
                             control={form.control}
