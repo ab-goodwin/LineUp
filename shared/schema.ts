@@ -78,5 +78,7 @@ export type StatsResponse = {
   totalDaysDancing: number;
   uniqueLocations: number;
   mostFrequentLocation: string;
+  mostFrequentLocationCount: number;
   mostFrequentDance: string;
+  mostFrequentDanceCount: number;
 };
