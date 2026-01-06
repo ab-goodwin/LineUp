@@ -156,48 +156,49 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                           </div>
                         ) : (
                           filteredSongs.map((song) => (
-                          <FormField
-                            key={song.id}
-                            control={form.control}
-                            name="danceIds"
-                            render={({ field }) => {
-                              return (
-                                <FormItem
-                                  key={song.id}
-                                  className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-3 hover:bg-secondary/50 transition-colors cursor-pointer"
-                                >
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(song.id)}
-                                      onCheckedChange={(checked) => {
-                                        return checked
-                                          ? field.onChange([...field.value, song.id])
-                                          : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== song.id
+                            <FormField
+                              key={song.id}
+                              control={form.control}
+                              name="danceIds"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={song.id}
+                                    className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-3 hover:bg-secondary/50 transition-colors cursor-pointer"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(song.id)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([...field.value, song.id])
+                                            : field.onChange(
+                                                field.value?.filter(
+                                                  (value) => value !== song.id
+                                                )
                                               )
-                                            )
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <div className="space-y-1 leading-none">
-                                    <FormLabel className="font-bold cursor-pointer">
-                                      {song.danceName}
-                                    </FormLabel>
-                                    <p className="text-xs text-muted-foreground">
-                                      {song.songName}
-                                    </p>
-                                  </div>
-                                </FormItem>
-                              )
-                            }}
-                          />
-                        ))
-                      )}
-                    </div>
-                  )}
-                />
-              </ScrollArea>
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                      <FormLabel className="font-bold cursor-pointer">
+                                        {song.danceName}
+                                      </FormLabel>
+                                      <p className="text-xs text-muted-foreground">
+                                        {song.songName}
+                                      </p>
+                                    </div>
+                                  </FormItem>
+                                )
+                              }}
+                            />
+                          ))
+                        )}
+                      </div>
+                    )}
+                  />
+                </ScrollArea>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-4">
