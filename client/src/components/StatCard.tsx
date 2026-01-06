@@ -1,0 +1,30 @@
+import { cn } from "@/lib/utils";
+
+interface StatCardProps {
+  label: string;
+  value: string | number;
+  icon?: React.ElementType;
+  className?: string;
+  delay?: number;
+}
+
+export function StatCard({ label, value, icon: Icon, className, delay = 0 }: StatCardProps) {
+  return (
+    <div 
+      className={cn(
+        "bg-card p-5 rounded-2xl border border-border shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1",
+        "flex flex-col justify-between h-full group",
+        className
+      )}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <span className="text-sm text-muted-foreground font-medium uppercase tracking-wider">{label}</span>
+        {Icon && <Icon className="w-5 h-5 text-primary/50 group-hover:text-primary transition-colors" />}
+      </div>
+      <div className="text-2xl md:text-3xl font-display font-bold text-foreground">
+        {value}
+      </div>
+    </div>
+  );
+}
