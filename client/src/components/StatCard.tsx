@@ -3,12 +3,13 @@ import { cn } from "@/lib/utils";
 interface StatCardProps {
   label: string;
   value: string | number;
+  description?: string;
   icon?: React.ElementType;
   className?: string;
   delay?: number;
 }
 
-export function StatCard({ label, value, icon: Icon, className, delay = 0 }: StatCardProps) {
+export function StatCard({ label, value, description, icon: Icon, className, delay = 0 }: StatCardProps) {
   return (
     <div 
       className={cn(
@@ -22,8 +23,15 @@ export function StatCard({ label, value, icon: Icon, className, delay = 0 }: Sta
         <span className="text-sm text-muted-foreground font-medium uppercase tracking-wider">{label}</span>
         {Icon && <Icon className="w-5 h-5 text-primary/50 group-hover:text-primary transition-colors" />}
       </div>
-      <div className="text-2xl md:text-3xl font-display font-bold text-foreground">
-        {value}
+      <div>
+        <div className="text-2xl md:text-3xl font-display font-bold text-foreground">
+          {value}
+        </div>
+        {description && (
+          <div className="text-xs text-muted-foreground mt-1 font-medium">
+            {description}
+          </div>
+        )}
       </div>
     </div>
   );
