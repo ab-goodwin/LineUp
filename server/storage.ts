@@ -251,7 +251,9 @@ export class DatabaseStorage implements IStorage {
       totalDaysDancing,
       uniqueLocations,
       mostFrequentLocation: mostFreqLoc?.location || "N/A",
+      mostFrequentLocationCount: Number(mostFreqLoc?.count || 0),
       mostFrequentDance: mostFreqDance?.danceName || "N/A",
+      mostFrequentDanceCount: Number(mostFreqDance?.count || 0),
     };
   }
 }

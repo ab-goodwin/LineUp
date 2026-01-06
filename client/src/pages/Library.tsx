@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSongs, useCreateSong, useUpdateSong, useDeleteSong } from "@/hooks/use-songs";
+import { useSessions } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -102,6 +103,7 @@ function SongForm({ initialData, onClose }: { initialData?: any; onClose: () => 
 
 export default function Library() {
   const { data: songs = [], isLoading } = useSongs();
+  const { data: sessions = [] } = useSessions();
   const deleteSong = useDeleteSong();
   const [search, setSearch] = useState("");
   const [editingSong, setEditingSong] = useState<any>(null);
@@ -180,7 +182,22 @@ export default function Library() {
                 className="group bg-card p-4 rounded-xl border border-border shadow-sm hover:shadow-md transition-all flex items-center justify-between"
               >
                 <div className="flex-1 min-w-0 mr-4">
-                  <h3 className="font-bold text-lg truncate font-display text-foreground">{song.danceName}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-lg truncate font-display text-foreground">{song.danceName}</h3>
+                    {(() => {
+                      const count = sessions.filter(session => 
+                        session.dances.some(d => d.id === song.id)
+                      ).length;
+                      if (count > 0) {
+                        return (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                            Done {count}x
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
                   <p className="text-muted-foreground text-sm truncate">{song.songName}</p>
                   <div className="mt-2">
                     <RatingStars rating={song.rating} readonly className="w-4 h-4" />

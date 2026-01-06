@@ -108,6 +108,7 @@ export default function Home() {
             <StatCard 
               label="Top Location" 
               value={stats?.mostFrequentLocation || "—"}
+              description={stats?.mostFrequentLocationCount ? `${stats.mostFrequentLocationCount} visits` : undefined}
               icon={Trophy}
               className="bg-yellow-50/50 border-yellow-100 hover:border-yellow-200"
             />
@@ -117,6 +118,7 @@ export default function Home() {
             <StatCard 
               label="Favorite Dance" 
               value={stats?.mostFrequentDance || "—"}
+              description={stats?.mostFrequentDanceCount ? `${stats.mostFrequentDanceCount} times` : undefined}
               icon={Activity}
               className="bg-purple-50/50 border-purple-100 hover:border-purple-200"
             />
