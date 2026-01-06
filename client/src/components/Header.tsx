@@ -1,6 +1,7 @@
 import { Link } from "wouter";
-import { User, Music } from "lucide-react";
+import { User } from "lucide-react";
 import { useProfile } from "@/hooks/use-profile";
+import logoPng from "@assets/BootMetrics_Transparent_1767707671495.png";
 
 export function Header() {
   const { data: profile } = useProfile();
@@ -9,10 +10,10 @@ export function Header() {
     <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="flex h-16 items-center justify-between px-4 max-w-7xl mx-auto">
         <Link href="/" className="flex items-center gap-2 cursor-pointer">
-          <div className="p-2 bg-primary/10 rounded-full">
-            <Music className="w-5 h-5 text-primary" />
+          <div className="flex items-center gap-2">
+            <img src={logoPng} alt="BootMetrics Logo" className="w-10 h-10 object-contain" />
+            <span className="font-display text-xl font-bold text-foreground">BootMetrics</span>
           </div>
-          <span className="font-display text-xl font-bold text-foreground">BootMetrics</span>
         </Link>
 
         <Link href="/profile" className="cursor-pointer">
