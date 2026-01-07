@@ -12,8 +12,9 @@ import { insertSessionSchema } from "@shared/schema";
 import { useCreateSession, useUpdateSession, useDeleteSession } from "@/hooks/use-sessions";
 import { useSongs } from "@/hooks/use-songs";
 import { format } from "date-fns";
-import { Trash2, Plus, X, Search } from "lucide-react";
+import { Trash2, Plus, X, Search, PlusCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useCreateSong } from "@/hooks/use-songs";
 
 const formSchema = insertSessionSchema.extend({
   danceIds: z.array(z.number()),
@@ -33,14 +34,33 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
   const createSession = useCreateSession();
   const updateSession = useUpdateSession();
   const deleteSession = useDeleteSession();
+  const createSong = useCreateSong();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAddingSong, setIsAddingSong] = useState(false);
+  const [newSong, setNewSong] = useState({ danceName: "", songName: "" });
 
   const filteredSongs = songs
     .filter(s => 
       s.danceName.toLowerCase().includes(searchQuery.toLowerCase()) || 
       s.songName.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .sort((a, b) => a.songName.localeCompare(b.songName));
+    .sort((a, b) => a.danceName.localeCompare(b.danceName));
+
+  const handleQuickAddSong = async () => {
+    if (!newSong.danceName || !newSong.songName) return;
+    try {
+      const created = await createSong.mutateAsync({
+        danceName: newSong.danceName,
+        songName: newSong.songName,
+        rating: 0
+      });
+      form.setValue("danceIds", [...form.getValues("danceIds"), created.id]);
+      setNewSong({ danceName: "", songName: "" });
+      setIsAddingSong(false);
+    } catch (error) {
+      console.error("Failed to add song", error);
+    }
+  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -129,16 +149,67 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
             <div className="flex-1 overflow-hidden flex flex-col min-h-[300px]">
               <div className="flex items-center justify-between mb-2">
                 <FormLabel>Dances Done</FormLabel>
-                <div className="relative w-48">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search..." 
-                    className="h-8 pl-8 text-xs rounded-lg"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+                <div className="flex items-center gap-2">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8"
+                    onClick={() => setIsAddingSong(!isAddingSong)}
+                  >
+                    <PlusCircle className="w-4 h-4 text-primary" />
+                  </Button>
+                  <div className="relative w-32">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <Input 
+                      placeholder="Search..." 
+                      className="h-8 pl-8 text-xs rounded-lg"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
+
+              {isAddingSong && (
+                <div className="mb-4 p-3 border-2 border-primary/20 rounded-xl bg-primary/5 space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input 
+                      placeholder="Dance Name" 
+                      className="h-8 text-xs"
+                      value={newSong.danceName}
+                      onChange={(e) => setNewSong(prev => ({ ...prev, danceName: e.target.value }))}
+                    />
+                    <Input 
+                      placeholder="Song Name" 
+                      className="h-8 text-xs"
+                      value={newSong.songName}
+                      onChange={(e) => setNewSong(prev => ({ ...prev, songName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={() => setIsAddingSong(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="button" 
+                      size="sm" 
+                      className="h-7 text-xs"
+                      onClick={handleQuickAddSong}
+                      disabled={createSong.isPending}
+                    >
+                      Add & Select
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <ScrollArea className="flex-1 border-2 border-border/50 rounded-xl p-4 bg-secondary/20">
                 <FormField
                   control={form.control}
