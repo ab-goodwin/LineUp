@@ -56,73 +56,84 @@ export default function Home() {
       </div>
 
       {statsLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-2xl" />
-          ))}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-32 rounded-2xl" />
+            ))}
+          </div>
+          <div className="space-y-4">
+            {[...Array(2)].map((_, i) => (
+              <Skeleton key={i} className="h-32 rounded-2xl" />
+            ))}
+          </div>
         </div>
       ) : (
         <motion.div 
           variants={container}
           initial="hidden"
           animate="show"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+          className="space-y-4"
         >
-          <motion.div variants={item}>
-            <StatCard 
-              label="Total Dances" 
-              value={stats?.totalDances ?? 0}
-              icon={Music2}
-              className="bg-orange-50/50 border-orange-100 hover:border-orange-200"
-            />
-          </motion.div>
-          
-          <motion.div variants={item}>
-            <StatCard 
-              label="Longest Streak" 
-              value={`${stats?.longestStreak ?? 0} Days`}
-              icon={Flame}
-              className="bg-red-50/50 border-red-100 hover:border-red-200"
-            />
-          </motion.div>
+          <div className="grid grid-cols-2 gap-4">
+            <motion.div variants={item}>
+              <StatCard 
+                label="Total Dances" 
+                value={stats?.totalDances ?? 0}
+                icon={Music2}
+                className="bg-orange-50/50 border-orange-100 hover:border-orange-200"
+              />
+            </motion.div>
+            
+            <motion.div variants={item}>
+              <StatCard 
+                label="Longest Streak" 
+                value={`${stats?.longestStreak ?? 0} Days`}
+                icon={Flame}
+                className="bg-red-50/50 border-red-100 hover:border-red-200"
+              />
+            </motion.div>
 
-          <motion.div variants={item}>
-            <StatCard 
-              label="Days Dancing" 
-              value={stats?.totalDaysDancing ?? 0}
-              icon={CalendarDays}
-              className="bg-blue-50/50 border-blue-100 hover:border-blue-200"
-            />
-          </motion.div>
+            <motion.div variants={item}>
+              <StatCard 
+                label="Days Dancing" 
+                value={stats?.totalDaysDancing ?? 0}
+                icon={CalendarDays}
+                className="bg-blue-50/50 border-blue-100 hover:border-blue-200"
+              />
+            </motion.div>
 
-          <motion.div variants={item}>
-            <StatCard 
-              label="Locations Visited" 
-              value={stats?.uniqueLocations ?? 0}
-              icon={MapPin}
-              className="bg-green-50/50 border-green-100 hover:border-green-200"
-            />
-          </motion.div>
+            <motion.div variants={item}>
+              <StatCard 
+                label="Locations Visited" 
+                value={stats?.uniqueLocations ?? 0}
+                icon={MapPin}
+                className="bg-green-50/50 border-green-100 hover:border-green-200"
+              />
+            </motion.div>
+          </div>
 
-          <motion.div variants={item}>
-            <StatCard 
-              label="Top Location" 
-              value={stats?.mostFrequentLocation || "—"}
-              description={stats?.mostFrequentLocationCount ? `${stats.mostFrequentLocationCount} visits` : undefined}
-              icon={Trophy}
-              className="bg-yellow-50/50 border-yellow-100 hover:border-yellow-200"
-            />
-          </motion.div>
+          <div className="space-y-4">
+            <motion.div variants={item}>
+              <StatCard 
+                label="Top Location" 
+                value={stats?.mostFrequentLocation || "—"}
+                description={stats?.mostFrequentLocationCount ? `${stats.mostFrequentLocationCount} visits` : undefined}
+                icon={Trophy}
+                className="bg-yellow-50/50 border-yellow-100 hover:border-yellow-200"
+              />
+            </motion.div>
 
-          <motion.div variants={item}>
-            <StatCard 
-              label="Favorite Dance" 
-              value={stats?.mostFrequentDance || "—"}
-              description={stats?.mostFrequentDanceCount ? `${stats.mostFrequentDanceCount} times` : undefined}
-              icon={Activity}
-              className="bg-purple-50/50 border-purple-100 hover:border-purple-200"
-            />
-          </motion.div>
+            <motion.div variants={item}>
+              <StatCard 
+                label="Favorite Dance" 
+                value={stats?.mostFrequentDance || "—"}
+                description={stats?.mostFrequentDanceCount ? `${stats.mostFrequentDanceCount} times` : undefined}
+                icon={Activity}
+                className="bg-purple-50/50 border-purple-100 hover:border-purple-200"
+              />
+            </motion.div>
+          </div>
         </motion.div>
       )}
     </div>
