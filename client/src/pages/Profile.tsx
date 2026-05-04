@@ -1,11 +1,12 @@
 import { useProfile, useUpdateProfile, useDeleteData } from "@/hooks/use-profile";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
-import { Loader2, Trash2 } from "lucide-react";
+import { z } from "zod";
+import { Loader2, Trash2, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -19,13 +20,22 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+const profileSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string(),
+  location: z.string(),
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
+
 export default function Profile() {
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
   const deleteData = useDeleteData();
+  const { logout } = useAuth();
 
-  const form = useForm({
-    resolver: zodResolver(insertUserSchema),
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
     values: {
       firstName: profile?.firstName || "",
       lastName: profile?.lastName || "",
@@ -41,7 +51,7 @@ export default function Profile() {
     );
   }
 
-  const onSubmit = async (values: any) => {
+  const onSubmit = async (values: ProfileFormValues) => {
     try {
       await updateProfile.mutateAsync(values);
     } catch (e) {
@@ -59,7 +69,18 @@ export default function Profile() {
 
   return (
     <div className="container px-4 pb-24 pt-8 mx-auto max-w-xl">
-      <h1 className="text-3xl font-display font-bold mb-8">Your Profile</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-display font-bold">Your Profile</h1>
+        <Button
+          variant="ghost"
+          className="text-muted-foreground hover:text-foreground gap-2"
+          onClick={() => logout()}
+          data-testid="button-logout"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </Button>
+      </div>
 
       <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-8">
         <h2 className="text-xl font-bold mb-4 font-display text-foreground">Personal Details</h2>
@@ -73,7 +94,7 @@ export default function Profile() {
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John" className="rounded-xl" {...field} />
+                      <Input placeholder="John" className="rounded-xl" data-testid="input-profile-firstname" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -86,7 +107,7 @@ export default function Profile() {
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Doe" className="rounded-xl" {...field} />
+                      <Input placeholder="Doe" className="rounded-xl" data-testid="input-profile-lastname" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -98,9 +119,9 @@ export default function Profile() {
               name="location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location</FormLabel>
+                  <FormLabel>Default Location</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nashville, TN" className="rounded-xl" {...field} />
+                    <Input placeholder="Nashville, TN" className="rounded-xl" data-testid="input-profile-location" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -110,6 +131,7 @@ export default function Profile() {
               type="submit" 
               className="w-full rounded-xl mt-2 font-semibold"
               disabled={updateProfile.isPending}
+              data-testid="button-save-profile"
             >
               {updateProfile.isPending ? "Saving..." : "Save Changes"}
             </Button>
@@ -138,7 +160,7 @@ export default function Profile() {
           />
           <DeleteDialog 
             title="Delete ALL Data?"
-            description="This will wipe your account completely clean. Are you absolutely sure?"
+            description="This will wipe your account data completely. Are you absolutely sure?"
             onConfirm={() => handleDelete('all')}
             triggerLabel="Delete All Data"
             variant="destructive"
@@ -167,6 +189,7 @@ function DeleteDialog({
               ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-transparent" 
               : "text-destructive hover:bg-red-100 hover:text-destructive border-red-200"
           )}
+          data-testid={`button-delete-${triggerLabel.toLowerCase().replace(/\s+/g, '-')}`}
         >
           <Trash2 className="w-4 h-4 mr-2" />
           {triggerLabel}
