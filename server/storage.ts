@@ -1,10 +1,10 @@
 import { db } from "./db";
 import { 
-  users, songs, sessions, sessionDances,
+  users, songs, sessions, sessionDances, locations,
   type User, type InsertUser,
   type Song, type InsertSong, type CreateSongRequest, type UpdateSongRequest,
   type Session, type InsertSession, type CreateSessionRequest, type UpdateSessionRequest, type SessionResponse,
-  type StatsResponse
+  type StatsResponse, type Location
 } from "@shared/schema";
 import { eq, desc, sql, and, isNull, or } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -19,6 +19,11 @@ export interface IStorage {
   getUser(userId: number): Promise<User>;
   updateUser(userId: number, updates: { firstName?: string; lastName?: string; location?: string }): Promise<User>;
   deleteData(userId: number, type: 'sessions' | 'songs' | 'all'): Promise<void>;
+
+  // Locations (scoped to userId)
+  getLocations(userId: number): Promise<Location[]>;
+  createLocation(userId: number, name: string): Promise<Location>;
+  deleteLocation(id: number, userId: number): Promise<void>;
 
   // Songs (scoped to userId)
   getSongs(userId: number): Promise<Song[]>;
@@ -98,6 +103,20 @@ export class DatabaseStorage implements IStorage {
         await db.delete(songs).where(eq(songs.userId, userId));
       }
     }
+  }
+
+  // --- Locations ---
+  async getLocations(userId: number): Promise<Location[]> {
+    return await db.select().from(locations).where(eq(locations.userId, userId)).orderBy(locations.name);
+  }
+
+  async createLocation(userId: number, name: string): Promise<Location> {
+    const [loc] = await db.insert(locations).values({ userId, name }).returning();
+    return loc;
+  }
+
+  async deleteLocation(id: number, userId: number): Promise<void> {
+    await db.delete(locations).where(and(eq(locations.id, id), eq(locations.userId, userId)));
   }
 
   // --- Songs ---

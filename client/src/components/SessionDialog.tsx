@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { LocationCombobox } from "@/components/LocationCombobox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { insertSessionSchema } from "@shared/schema";
 import { useCreateSession, useUpdateSession, useDeleteSession } from "@/hooks/use-sessions";
@@ -138,11 +139,10 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                 <FormItem>
                   <FormLabel>Location</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="e.g. The Dusty Boot Saloon" 
-                      className="rounded-xl border-2 focus-visible:ring-primary/20"
-                      data-testid="input-session-location"
-                      {...field} 
+                    <LocationCombobox
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select or type a location..."
                     />
                   </FormControl>
                   <FormMessage />

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSongs, useCreateSong, useUpdateSong, useDeleteSong } from "@/hooks/use-songs";
 import { useSessions } from "@/hooks/use-sessions";
+import { useLocations, useCreateLocation, useDeleteLocation } from "@/hooks/use-locations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -11,7 +12,7 @@ import { z } from "zod";
 import { insertSongSchema } from "@shared/schema";
 import { RatingStars } from "@/components/RatingStars";
 import { SpotifySearch } from "@/components/SpotifySearch";
-import { Search, Plus, Music, Edit2, Trash2 } from "lucide-react";
+import { Search, Plus, Music, Edit2, Trash2, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -24,12 +25,7 @@ function SongForm({ initialData, onClose }: { initialData?: any; onClose: () => 
 
   const form = useForm<SongFormValues>({
     resolver: zodResolver(songFormSchema),
-    defaultValues: initialData || {
-      danceName: "",
-      songName: "",
-      artist: "",
-      rating: 0,
-    },
+    defaultValues: initialData || { danceName: "", songName: "", artist: "", rating: 0 },
   });
 
   const onSubmit = async (values: SongFormValues) => {
@@ -61,7 +57,6 @@ function SongForm({ initialData, onClose }: { initialData?: any; onClose: () => 
             </FormItem>
           )}
         />
-
         <div className="space-y-2">
           <FormLabel>Song</FormLabel>
           {!initialData && (
@@ -98,7 +93,6 @@ function SongForm({ initialData, onClose }: { initialData?: any; onClose: () => 
             )}
           />
         </div>
-
         <FormField
           control={form.control}
           name="rating"
@@ -107,19 +101,15 @@ function SongForm({ initialData, onClose }: { initialData?: any; onClose: () => 
               <FormLabel>Rating</FormLabel>
               <FormControl>
                 <div className="py-2">
-                  <RatingStars 
-                    rating={field.value} 
-                    onRate={field.onChange} 
-                    className="gap-2"
-                  />
+                  <RatingStars rating={field.value} onRate={field.onChange} className="gap-2" />
                 </div>
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           className="w-full rounded-xl font-bold mt-4"
           disabled={createSong.isPending || updateSong.isPending}
           data-testid="button-submit-song"
@@ -131,17 +121,96 @@ function SongForm({ initialData, onClose }: { initialData?: any; onClose: () => 
   );
 }
 
+function LocationsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { data: locations = [] } = useLocations();
+  const createLocation = useCreateLocation();
+  const deleteLocation = useDeleteLocation();
+  const [newName, setNewName] = useState("");
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return;
+    await createLocation.mutateAsync(newName.trim());
+    setNewName("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="rounded-2xl bg-card max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl text-primary flex items-center gap-2">
+            <MapPin className="w-5 h-5" />
+            Saved Locations
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+          {locations.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              No saved locations yet. Add one below!
+            </p>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              {locations.map(loc => (
+                <motion.div
+                  key={loc.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex items-center justify-between bg-secondary/30 rounded-xl px-4 py-2.5"
+                  data-testid={`location-item-${loc.id}`}
+                >
+                  <span className="text-sm font-medium">{loc.name}</span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                    onClick={() => deleteLocation.mutateAsync(loc.id)}
+                    data-testid={`button-delete-location-${loc.id}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          )}
+        </div>
+
+        <div className="flex gap-2 pt-2 border-t border-border">
+          <Input
+            placeholder="New location name..."
+            className="rounded-xl flex-1"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleAdd()}
+            data-testid="input-new-location-name"
+          />
+          <Button
+            onClick={handleAdd}
+            disabled={!newName.trim() || createLocation.isPending}
+            className="rounded-xl px-4"
+            data-testid="button-add-location"
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Library() {
   const { data: songs = [], isLoading } = useSongs();
   const { data: sessions = [] } = useSessions();
   const deleteSong = useDeleteSong();
   const [search, setSearch] = useState("");
   const [editingSong, setEditingSong] = useState<any>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSongDialogOpen, setIsSongDialogOpen] = useState(false);
+  const [isLocationsDialogOpen, setIsLocationsDialogOpen] = useState(false);
 
   const filteredSongs = songs
-    .filter(s => 
-      s.danceName.toLowerCase().includes(search.toLowerCase()) || 
+    .filter(s =>
+      s.danceName.toLowerCase().includes(search.toLowerCase()) ||
       s.songName.toLowerCase().includes(search.toLowerCase()) ||
       (s.artist && s.artist.toLowerCase().includes(search.toLowerCase()))
     )
@@ -155,38 +224,47 @@ export default function Library() {
 
   return (
     <div className="container px-4 pb-24 pt-8 mx-auto max-w-4xl">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
         <h1 className="text-3xl font-display font-bold">Song Library</h1>
-        
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              className="rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground"
-              onClick={() => setEditingSong(null)}
-              data-testid="button-add-song"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Add Song
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="rounded-2xl bg-card">
-            <DialogHeader>
-              <DialogTitle className="font-display text-xl text-primary">
-                {editingSong ? "Edit Song" : "Add New Song"}
-              </DialogTitle>
-            </DialogHeader>
-            <SongForm 
-              initialData={editingSong} 
-              onClose={() => setIsDialogOpen(false)} 
-            />
-          </DialogContent>
-        </Dialog>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-xl border-2"
+            onClick={() => setIsLocationsDialogOpen(true)}
+            data-testid="button-manage-locations"
+          >
+            <MapPin className="w-4 h-4 mr-2" />
+            Locations
+          </Button>
+
+          <Dialog open={isSongDialogOpen} onOpenChange={setIsSongDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                className="rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground"
+                onClick={() => setEditingSong(null)}
+                data-testid="button-add-song"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Add Song
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-2xl bg-card">
+              <DialogHeader>
+                <DialogTitle className="font-display text-xl text-primary">
+                  {editingSong ? "Edit Song" : "Add New Song"}
+                </DialogTitle>
+              </DialogHeader>
+              <SongForm initialData={editingSong} onClose={() => setIsSongDialogOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-        <Input 
-          placeholder="Search dances, songs, or artists..." 
+        <Input
+          placeholder="Search dances, songs, or artists..."
           className="pl-10 h-12 rounded-xl bg-card border-border shadow-sm"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -219,7 +297,7 @@ export default function Library() {
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-lg truncate font-display text-foreground">{song.danceName}</h3>
                     {(() => {
-                      const count = sessions.filter(session => 
+                      const count = sessions.filter(session =>
                         session.dances.some(d => d.id === song.id)
                       ).length;
                       if (count > 0) {
@@ -242,21 +320,21 @@ export default function Library() {
                 </div>
 
                 <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
+                  <Button
+                    size="icon"
+                    variant="ghost"
                     className="h-9 w-9 text-muted-foreground hover:text-primary rounded-lg"
                     onClick={() => {
                       setEditingSong(song);
-                      setIsDialogOpen(true);
+                      setIsSongDialogOpen(true);
                     }}
                     data-testid={`button-edit-song-${song.id}`}
                   >
                     <Edit2 className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
+                  <Button
+                    size="icon"
+                    variant="ghost"
                     className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-lg"
                     onClick={() => handleDelete(song.id)}
                     data-testid={`button-delete-song-${song.id}`}
@@ -269,6 +347,8 @@ export default function Library() {
           </AnimatePresence>
         )}
       </div>
+
+      <LocationsDialog open={isLocationsDialogOpen} onOpenChange={setIsLocationsDialogOpen} />
     </div>
   );
 }

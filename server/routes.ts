@@ -175,6 +175,27 @@ export async function registerRoutes(
     }
   });
 
+  // --- Location Routes ---
+  app.get("/api/locations", requireAuth, async (req, res) => {
+    const locs = await storage.getLocations(req.user!.id);
+    res.json(locs);
+  });
+
+  app.post("/api/locations", requireAuth, async (req, res) => {
+    const { name } = req.body;
+    if (!name || typeof name !== "string" || !name.trim()) {
+      res.status(400).json({ message: "Name is required" });
+      return;
+    }
+    const loc = await storage.createLocation(req.user!.id, name.trim());
+    res.status(201).json(loc);
+  });
+
+  app.delete("/api/locations/:id", requireAuth, async (req, res) => {
+    await storage.deleteLocation(Number(req.params.id), req.user!.id);
+    res.status(204).send();
+  });
+
   // --- Profile Routes ---
   app.get(api.profile.get.path, requireAuth, async (req, res) => {
     const user = await storage.getUser(req.user!.id);
