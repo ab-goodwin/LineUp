@@ -32,6 +32,13 @@ export const sessions = pgTable("sessions", {
   location: text("location").notNull(),
 });
 
+// Saved Locations
+export const locations = pgTable("locations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id"),
+  name: text("name").notNull(),
+});
+
 // Many-to-Many link between Sessions and Songs
 export const sessionDances = pgTable("session_dances", {
   id: serial("id").primaryKey(),
@@ -60,6 +67,8 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+export const insertLocationSchema = createInsertSchema(locations).omit({ id: true, userId: true });
+
 export const insertSongSchema = createInsertSchema(songs).omit({ id: true, userId: true });
 export const insertSessionSchema = createInsertSchema(sessions).omit({ id: true, userId: true });
 export const insertSessionDanceSchema = createInsertSchema(sessionDances).omit({ id: true });
@@ -68,6 +77,9 @@ export const insertSessionDanceSchema = createInsertSchema(sessionDances).omit({
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Location = typeof locations.$inferSelect;
+export type InsertLocation = z.infer<typeof insertLocationSchema>;
 
 export type Song = typeof songs.$inferSelect;
 export type InsertSong = z.infer<typeof insertSongSchema>;
