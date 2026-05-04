@@ -20,9 +20,7 @@ export default function Home() {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
+      transition: { staggerChildren: 0.08 }
     }
   };
 
@@ -75,13 +73,14 @@ export default function Home() {
           animate="show"
           className="space-y-4"
         >
+          {/* 2x2 Core Stats Grid */}
           <div className="grid grid-cols-2 gap-4">
             <motion.div variants={item}>
               <StatCard 
                 label="Total Dances" 
                 value={stats?.totalDances ?? 0}
                 icon={Music2}
-                className="bg-orange-50/50 border-orange-100 hover:border-orange-200"
+                className="bg-orange-100/70 border-orange-200 hover:border-orange-300"
               />
             </motion.div>
             
@@ -90,7 +89,7 @@ export default function Home() {
                 label="Longest Streak" 
                 value={`${stats?.longestStreak ?? 0} Days`}
                 icon={Flame}
-                className="bg-red-50/50 border-red-100 hover:border-red-200"
+                className="bg-red-100/70 border-red-200 hover:border-red-300"
               />
             </motion.div>
 
@@ -99,20 +98,21 @@ export default function Home() {
                 label="Days Dancing" 
                 value={stats?.totalDaysDancing ?? 0}
                 icon={CalendarDays}
-                className="bg-blue-50/50 border-blue-100 hover:border-blue-200"
+                className="bg-blue-100/70 border-blue-200 hover:border-blue-300"
               />
             </motion.div>
 
             <motion.div variants={item}>
               <StatCard 
-                label="Locations Visited" 
+                label="Locations" 
                 value={stats?.uniqueLocations ?? 0}
                 icon={MapPin}
-                className="bg-green-50/50 border-green-100 hover:border-green-200"
+                className="bg-green-100/70 border-green-200 hover:border-green-300"
               />
             </motion.div>
           </div>
 
+          {/* Stacked Favorites */}
           <div className="space-y-4">
             <motion.div variants={item}>
               <StatCard 
@@ -120,7 +120,7 @@ export default function Home() {
                 value={stats?.mostFrequentLocation || "—"}
                 description={stats?.mostFrequentLocationCount ? `${stats.mostFrequentLocationCount} visits` : undefined}
                 icon={Trophy}
-                className="bg-yellow-50/50 border-yellow-100 hover:border-yellow-200"
+                className="bg-yellow-100/70 border-yellow-200 hover:border-yellow-300"
               />
             </motion.div>
 
@@ -130,7 +130,7 @@ export default function Home() {
                 value={stats?.mostFrequentDance || "—"}
                 description={stats?.mostFrequentDanceCount ? `${stats.mostFrequentDanceCount} times` : undefined}
                 icon={Activity}
-                className="bg-purple-50/50 border-purple-100 hover:border-purple-200"
+                className="bg-purple-100/70 border-purple-200 hover:border-purple-300"
               />
             </motion.div>
           </div>

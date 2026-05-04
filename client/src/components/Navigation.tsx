@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Calendar, Music } from "lucide-react";
+import { Home, Calendar, Music, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Navigation() {
@@ -9,6 +9,7 @@ export function Navigation() {
     { href: "/", label: "Home", icon: Home },
     { href: "/calendar", label: "Calendar", icon: Calendar },
     { href: "/library", label: "Library", icon: Music },
+    { href: "/buddies", label: "Buddies", icon: Users },
   ];
 
   return (
@@ -17,10 +18,10 @@ export function Navigation() {
         {links.map((link) => {
           const Icon = link.icon;
           const isActive = location === link.href;
-          
+
           return (
             <Link key={link.href} href={link.href} className="w-full">
-              <div 
+              <div
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 w-full h-full p-2 transition-all duration-300 cursor-pointer",
                   isActive ? "text-primary scale-110" : "text-muted-foreground hover:text-foreground"
