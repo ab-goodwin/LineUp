@@ -329,5 +329,64 @@ export async function registerRoutes(
     res.json(stats);
   });
 
+  // --- Buddy Routes ---
+  app.get("/api/users/search", requireAuth, async (req, res) => {
+    const q = String(req.query.q || "").trim();
+    if (!q) { res.json([]); return; }
+    const results = await storage.searchUsers(q, req.user!.id);
+    res.json(results);
+  });
+
+  app.get("/api/buddies", requireAuth, async (req, res) => {
+    const list = await storage.getBuddies(req.user!.id);
+    res.json(list);
+  });
+
+  app.get("/api/buddies/requests", requireAuth, async (req, res) => {
+    const pending = await storage.getPendingRequests(req.user!.id);
+    res.json(pending);
+  });
+
+  app.post("/api/buddies/request", requireAuth, async (req, res) => {
+    const { recipientId } = req.body;
+    if (!recipientId || typeof recipientId !== "number") {
+      res.status(400).json({ message: "recipientId required" }); return;
+    }
+    try {
+      await storage.sendBuddyRequest(req.user!.id, recipientId);
+      res.status(201).json({ ok: true });
+    } catch (err: any) {
+      res.status(409).json({ message: err.message || "Already requested" });
+    }
+  });
+
+  app.put("/api/buddies/request/:id", requireAuth, async (req, res) => {
+    const { action } = req.body;
+    if (action !== "accept" && action !== "decline") {
+      res.status(400).json({ message: "action must be accept or decline" }); return;
+    }
+    await storage.respondToBuddyRequest(Number(req.params.id), req.user!.id, action);
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/buddies/:userId", requireAuth, async (req, res) => {
+    await storage.removeBuddy(req.user!.id, Number(req.params.userId));
+    res.status(204).send();
+  });
+
+  app.get("/api/buddies/challenges", requireAuth, async (req, res) => {
+    const list = await storage.getChallenges(req.user!.id);
+    res.json(list);
+  });
+
+  app.post("/api/buddies/challenge", requireAuth, async (req, res) => {
+    const { challengedId, durationDays } = req.body;
+    if (!challengedId || !durationDays) {
+      res.status(400).json({ message: "challengedId and durationDays required" }); return;
+    }
+    await storage.sendChallenge(req.user!.id, challengedId, durationDays);
+    res.status(201).json({ ok: true });
+  });
+
   return httpServer;
 }

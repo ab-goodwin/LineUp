@@ -1,12 +1,12 @@
 import { db } from "./db";
 import { 
-  users, songs, sessions, sessionDances, locations,
+  users, songs, sessions, sessionDances, locations, buddies, streakChallenges,
   type User, type InsertUser,
   type Song, type InsertSong, type CreateSongRequest, type UpdateSongRequest,
   type Session, type InsertSession, type CreateSessionRequest, type UpdateSessionRequest, type SessionResponse,
   type StatsResponse, type Location
 } from "@shared/schema";
-import { eq, desc, sql, and, isNull, or } from "drizzle-orm";
+import { eq, desc, sql, and, or, ilike, ne } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export interface IStorage {
@@ -41,6 +41,20 @@ export interface IStorage {
 
   // Stats (scoped to userId)
   getStats(userId: number): Promise<StatsResponse>;
+
+  // Buddies
+  searchUsers(query: string, excludeId: number): Promise<{ id: number; username: string; firstName: string }[]>;
+  getBuddies(userId: number): Promise<any[]>;
+  getPendingRequests(userId: number): Promise<any[]>;
+  sendBuddyRequest(requesterId: number, recipientId: number): Promise<void>;
+  respondToBuddyRequest(id: number, userId: number, action: "accept" | "decline"): Promise<void>;
+  removeBuddy(userId: number, buddyUserId: number): Promise<void>;
+  getBuddyPublicStats(buddyUserId: number): Promise<any>;
+  getCurrentStreak(userId: number): Promise<number>;
+
+  // Challenges
+  getChallenges(userId: number): Promise<any[]>;
+  sendChallenge(challengerId: number, challengedId: number, durationDays: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -321,6 +335,169 @@ export class DatabaseStorage implements IStorage {
       mostFrequentDance: mostFreqDance?.danceName || "N/A",
       mostFrequentDanceCount: mostFreqDance?.count || 0,
     };
+  }
+  // --- Buddies ---
+  async searchUsers(query: string, excludeId: number): Promise<{ id: number; username: string; firstName: string }[]> {
+    const results = await db
+      .select({ id: users.id, username: users.username, firstName: users.firstName })
+      .from(users)
+      .where(and(
+        ilike(users.username, `%${query}%`),
+        ne(users.id, excludeId)
+      ))
+      .limit(10);
+    return results.map(r => ({ id: r.id, username: r.username || "", firstName: r.firstName }));
+  }
+
+  async getCurrentStreak(userId: number): Promise<number> {
+    const allDates = await db
+      .select({ date: sessions.date })
+      .from(sessions)
+      .where(eq(sessions.userId, userId))
+      .orderBy(desc(sessions.date));
+    if (allDates.length === 0) return 0;
+    const dates = Array.from(new Set(allDates.map(s => s.date.toISOString().split('T')[0]))).sort().reverse();
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    if (dates[0] !== today && dates[0] !== yesterday) return 0;
+    let streak = 1;
+    for (let i = 1; i < dates.length; i++) {
+      const prev = new Date(dates[i - 1]);
+      const curr = new Date(dates[i]);
+      const diff = (prev.getTime() - curr.getTime()) / (1000 * 3600 * 24);
+      if (diff === 1) streak++;
+      else break;
+    }
+    return streak;
+  }
+
+  async getBuddyPublicStats(buddyUserId: number): Promise<any> {
+    const user = await this.getUserById(buddyUserId);
+    if (!user) return null;
+    const stats = await this.getStats(buddyUserId);
+    const currentStreak = await this.getCurrentStreak(buddyUserId);
+    return {
+      userId: user.id,
+      username: user.username || "",
+      firstName: user.firstName,
+      totalDances: stats.totalDances,
+      longestStreak: stats.longestStreak,
+      totalDaysDancing: stats.totalDaysDancing,
+      currentStreak,
+      favoriteDance: stats.mostFrequentDance,
+    };
+  }
+
+  async getBuddies(userId: number): Promise<any[]> {
+    const accepted = await db
+      .select()
+      .from(buddies)
+      .where(and(
+        or(eq(buddies.requesterId, userId), eq(buddies.recipientId, userId)),
+        eq(buddies.status, "accepted")
+      ));
+    const buddyStats = await Promise.all(
+      accepted.map(b => {
+        const buddyId = b.requesterId === userId ? b.recipientId : b.requesterId;
+        return this.getBuddyPublicStats(buddyId);
+      })
+    );
+    return buddyStats.filter(Boolean);
+  }
+
+  async getPendingRequests(userId: number): Promise<any[]> {
+    const pending = await db
+      .select()
+      .from(buddies)
+      .where(and(eq(buddies.recipientId, userId), eq(buddies.status, "pending")));
+    const results = await Promise.all(
+      pending.map(async b => {
+        const requester = await this.getUserById(b.requesterId);
+        if (!requester) return null;
+        return {
+          id: b.id,
+          requesterId: b.requesterId,
+          recipientId: b.recipientId,
+          status: b.status,
+          requesterUsername: requester.username || "",
+          requesterFirstName: requester.firstName,
+        };
+      })
+    );
+    return results.filter(Boolean);
+  }
+
+  async sendBuddyRequest(requesterId: number, recipientId: number): Promise<void> {
+    // Check if any relationship already exists
+    const existing = await db
+      .select()
+      .from(buddies)
+      .where(or(
+        and(eq(buddies.requesterId, requesterId), eq(buddies.recipientId, recipientId)),
+        and(eq(buddies.requesterId, recipientId), eq(buddies.recipientId, requesterId))
+      ));
+    if (existing.length > 0) throw new Error("Request already exists");
+    await db.insert(buddies).values({ requesterId, recipientId, status: "pending" });
+  }
+
+  async respondToBuddyRequest(id: number, userId: number, action: "accept" | "decline"): Promise<void> {
+    const newStatus = action === "accept" ? "accepted" : "declined";
+    await db.update(buddies)
+      .set({ status: newStatus })
+      .where(and(eq(buddies.id, id), eq(buddies.recipientId, userId)));
+  }
+
+  async removeBuddy(userId: number, buddyUserId: number): Promise<void> {
+    await db.delete(buddies).where(or(
+      and(eq(buddies.requesterId, userId), eq(buddies.recipientId, buddyUserId)),
+      and(eq(buddies.requesterId, buddyUserId), eq(buddies.recipientId, userId))
+    ));
+  }
+
+  // --- Challenges ---
+  async getChallenges(userId: number): Promise<any[]> {
+    const challenges = await db
+      .select()
+      .from(streakChallenges)
+      .where(or(
+        eq(streakChallenges.challengerId, userId),
+        eq(streakChallenges.challengedId, userId)
+      ))
+      .orderBy(desc(streakChallenges.createdAt));
+
+    const results = await Promise.all(
+      challenges.map(async c => {
+        const challenger = await this.getUserById(c.challengerId);
+        const challenged = await this.getUserById(c.challengedId);
+        const challengerStreak = await this.getCurrentStreak(c.challengerId);
+        const challengedStreak = await this.getCurrentStreak(c.challengedId);
+        return {
+          id: c.id,
+          challengerId: c.challengerId,
+          challengedId: c.challengedId,
+          startDate: c.startDate,
+          durationDays: c.durationDays,
+          status: c.status,
+          challengerUsername: challenger?.username || "",
+          challengerFirstName: challenger?.firstName || "",
+          challengedUsername: challenged?.username || "",
+          challengedFirstName: challenged?.firstName || "",
+          challengerStreak,
+          challengedStreak,
+        };
+      })
+    );
+    return results;
+  }
+
+  async sendChallenge(challengerId: number, challengedId: number, durationDays: number): Promise<void> {
+    await db.insert(streakChallenges).values({
+      challengerId,
+      challengedId,
+      durationDays,
+      status: "active",
+      startDate: new Date(),
+    });
   }
 }
 

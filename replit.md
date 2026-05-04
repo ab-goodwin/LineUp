@@ -2,7 +2,7 @@
 
 ## Overview
 
-BootMetrics is a personal line dancing tracking application that helps dancers log their dance sessions, maintain a song library, and view statistics about their dancing activity. The app features a calendar-based session tracking system, a song library with ratings, and a dashboard displaying dance statistics.
+BootMetrics is a personal line dancing tracking application that helps dancers log their dance sessions, maintain a song library, and view statistics about their dancing activity. The app features a calendar-based session tracking system, a song library with ratings, a dashboard displaying dance statistics, and a Dancing Buddies social feature.
 
 ## User Preferences
 
@@ -15,7 +15,7 @@ Preferred communication style: Simple, everyday language.
 - **Routing**: Wouter for lightweight client-side routing
 - **State Management**: TanStack React Query for server state management and caching
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
-- **Styling**: Tailwind CSS with custom CSS variables for theming (cowboy/western theme with warm terracotta colors)
+- **Styling**: Tailwind CSS with custom CSS variables for theming (cowboy/western theme with warm terracotta colors, higher saturation)
 - **Animations**: Framer Motion for page transitions and UI animations
 - **Calendar**: react-day-picker for interactive calendar functionality
 - **Forms**: React Hook Form with Zod validation via @hookform/resolvers
@@ -38,7 +38,7 @@ Preferred communication style: Simple, everyday language.
 │   └── src/
 │       ├── components/   # UI components including shadcn/ui
 │       ├── hooks/        # Custom React hooks for data fetching
-│       ├── pages/        # Page components (Home, Calendar, Library, Profile)
+│       ├── pages/        # Page components (Home, Calendar, Library, Profile, Buddies)
 │       └── lib/          # Utilities and query client setup
 ├── server/           # Express backend
 │   ├── routes.ts     # API route definitions
@@ -52,12 +52,35 @@ Preferred communication style: Simple, everyday language.
 
 ### Key Data Models
 - **Users**: User profile with first name, last name, and default location
-- **Songs**: Dance library entries with dance name, song name, public ID, and rating (1-5 stars)
+- **Songs**: Dance library entries with dance name, song name, artist, public ID, and rating (1-5 stars)
 - **Sessions**: Dance session records with date and location
 - **SessionDances**: Many-to-many relationship linking sessions to songs danced
+- **Locations**: Saved locations per user for quick session entry
+- **Buddies**: Friend connections between users (pending/accepted/declined)
+- **StreakChallenges**: Timed streak contests between two buddies
 
 ### API Pattern
 The API uses a typed contract pattern where routes are defined in shared/routes.ts with Zod schemas for input validation and response types. This enables type-safe API calls on both client and server.
+
+### Auth
+- passport-local strategy with bcryptjs password hashing
+- express-session stored in PostgreSQL via connect-pg-simple (`user_sessions` table)
+- SESSION_SECRET env var required
+- All data routes protected with `requireAuth` middleware using `req.user.id`
+
+### Spotify Integration
+- Backend proxy at `/api/spotify/search` using client credentials flow
+- In-memory token cache on server
+- SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET secrets required
+- SpotifySearch component used in Library song form and SessionDialog quick-add
+
+### Dancing Buddies Feature
+- Search users by username (`/api/users/search`)
+- Send/accept/decline buddy requests (`/api/buddies/request`)
+- View buddy public stats (total dances, streaks, favorite dance)
+- Challenge buddies to streak contests with configurable duration
+- Buddies page at `/buddies` with Buddies / Challenges / Find tabs
+- Navigation tab added to bottom nav
 
 ## External Dependencies
 

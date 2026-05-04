@@ -11,6 +11,7 @@ import Home from "@/pages/Home";
 import CalendarPage from "@/pages/Calendar";
 import Library from "@/pages/Library";
 import Profile from "@/pages/Profile";
+import Buddies from "@/pages/Buddies";
 import AuthPage from "@/pages/AuthPage";
 import { Loader2 } from "lucide-react";
 
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/library" component={Library} />
       <Route path="/profile" component={Profile} />
+      <Route path="/buddies" component={Buddies} />
       <Route component={NotFound} />
     </Switch>
   );

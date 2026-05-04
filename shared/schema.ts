@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, varchar, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -37,6 +37,26 @@ export const locations = pgTable("locations", {
   id: serial("id").primaryKey(),
   userId: integer("user_id"),
   name: text("name").notNull(),
+});
+
+// Buddy connections (friend requests)
+export const buddies = pgTable("buddies", {
+  id: serial("id").primaryKey(),
+  requesterId: integer("requester_id").notNull(),
+  recipientId: integer("recipient_id").notNull(),
+  status: text("status").notNull().default("pending"), // pending | accepted | declined
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Streak challenges between buddies
+export const streakChallenges = pgTable("streak_challenges", {
+  id: serial("id").primaryKey(),
+  challengerId: integer("challenger_id").notNull(),
+  challengedId: integer("challenged_id").notNull(),
+  startDate: timestamp("start_date").notNull().defaultNow(),
+  durationDays: integer("duration_days").notNull().default(7),
+  status: text("status").notNull().default("active"), // active | completed
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Many-to-Many link between Sessions and Songs
