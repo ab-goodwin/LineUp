@@ -5,7 +5,8 @@ import {
   songs, 
   sessions,
   insertSongSchema,
-  insertSessionSchema 
+  insertSessionSchema,
+  updateProfileSchema,
 } from './schema';
 
 // ============================================
@@ -40,7 +41,7 @@ export const api = {
     update: {
       method: 'PUT' as const,
       path: '/api/profile',
-      input: insertUserSchema.partial(),
+      input: updateProfileSchema,
       responses: {
         200: z.custom<typeof users.$inferSelect>(),
         400: errorSchemas.validation,
@@ -70,7 +71,6 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/songs',
-      // We omit publicId because backend generates it
       input: insertSongSchema.omit({ publicId: true }),
       responses: {
         201: z.custom<typeof songs.$inferSelect>(),
@@ -118,8 +118,6 @@ export const api = {
       path: '/api/sessions',
       input: insertSessionSchema.extend({
         danceIds: z.array(z.number()),
-        // Allow creating new songs inline if needed, but primary flow is select existing.
-        // For simplicity, we assume songs are created in library or valid IDs are passed.
       }),
       responses: {
         201: z.custom<typeof sessions.$inferSelect & { dances: typeof songs.$inferSelect[] }>(),
@@ -167,6 +165,8 @@ export const api = {
     },
   },
 };
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {
   let url = path;

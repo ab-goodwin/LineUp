@@ -5,11 +5,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navigation } from "@/components/Navigation";
 import { Header } from "@/components/Header";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import CalendarPage from "@/pages/Calendar";
 import Library from "@/pages/Library";
 import Profile from "@/pages/Profile";
+import AuthPage from "@/pages/AuthPage";
+import { Loader2 } from "lucide-react";
 
 function Router() {
   return (
@@ -23,22 +26,43 @@ function Router() {
   );
 }
 
-function App() {
+function AppInner() {
   const [location] = useLocation();
+  const { user, isLoading } = useAuth();
   const showHeader = location === "/";
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  return (
+    <div className="min-h-screen bg-background font-sans">
+      {showHeader && <Header />}
+      <main>
+        <Router />
+      </main>
+      <Navigation />
+      <Toaster />
+    </div>
+  );
+}
+
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <div className="min-h-screen bg-background font-sans">
-          {showHeader && <Header />}
-          <main>
-            <Router />
-          </main>
-          <Navigation />
-          <Toaster />
-        </div>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <AppInner />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

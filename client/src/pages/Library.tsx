@@ -10,25 +10,29 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { insertSongSchema } from "@shared/schema";
 import { RatingStars } from "@/components/RatingStars";
+import { SpotifySearch } from "@/components/SpotifySearch";
 import { Search, Plus, Music, Edit2, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-// Song Form Component
+const songFormSchema = insertSongSchema.omit({ publicId: true });
+type SongFormValues = z.infer<typeof songFormSchema>;
+
 function SongForm({ initialData, onClose }: { initialData?: any; onClose: () => void }) {
   const createSong = useCreateSong();
   const updateSong = useUpdateSong();
 
-  const form = useForm({
-    resolver: zodResolver(insertSongSchema.omit({ publicId: true })),
+  const form = useForm<SongFormValues>({
+    resolver: zodResolver(songFormSchema),
     defaultValues: initialData || {
       danceName: "",
       songName: "",
+      artist: "",
       rating: 0,
     },
   });
 
-  const onSubmit = async (values: any) => {
+  const onSubmit = async (values: SongFormValues) => {
     try {
       if (initialData) {
         await updateSong.mutateAsync({ id: initialData.id, ...values });
@@ -51,25 +55,50 @@ function SongForm({ initialData, onClose }: { initialData?: any; onClose: () => 
             <FormItem>
               <FormLabel>Dance Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Tush Push" className="rounded-xl" {...field} />
+                <Input placeholder="e.g. Tush Push" className="rounded-xl" data-testid="input-dance-name" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="songName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Song Name</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g. Chattahoochee" className="rounded-xl" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+
+        <div className="space-y-2">
+          <FormLabel>Song</FormLabel>
+          {!initialData && (
+            <SpotifySearch
+              placeholder="Search Spotify for a song..."
+              onSelect={(track) => {
+                form.setValue("songName", track.name);
+                form.setValue("artist", track.artist);
+              }}
+            />
           )}
-        />
+          <FormField
+            control={form.control}
+            name="songName"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input placeholder="Song title" className="rounded-xl" data-testid="input-song-name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="artist"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input placeholder="Artist (optional)" className="rounded-xl" data-testid="input-artist" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
         <FormField
           control={form.control}
           name="rating"
@@ -93,6 +122,7 @@ function SongForm({ initialData, onClose }: { initialData?: any; onClose: () => 
           type="submit" 
           className="w-full rounded-xl font-bold mt-4"
           disabled={createSong.isPending || updateSong.isPending}
+          data-testid="button-submit-song"
         >
           {initialData ? "Update Song" : "Add to Library"}
         </Button>
@@ -112,7 +142,8 @@ export default function Library() {
   const filteredSongs = songs
     .filter(s => 
       s.danceName.toLowerCase().includes(search.toLowerCase()) || 
-      s.songName.toLowerCase().includes(search.toLowerCase())
+      s.songName.toLowerCase().includes(search.toLowerCase()) ||
+      (s.artist && s.artist.toLowerCase().includes(search.toLowerCase()))
     )
     .sort((a, b) => a.danceName.localeCompare(b.danceName));
 
@@ -132,6 +163,7 @@ export default function Library() {
             <Button 
               className="rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={() => setEditingSong(null)}
+              data-testid="button-add-song"
             >
               <Plus className="w-5 h-5 mr-2" />
               Add Song
@@ -154,10 +186,11 @@ export default function Library() {
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
         <Input 
-          placeholder="Search dances or songs..." 
+          placeholder="Search dances, songs, or artists..." 
           className="pl-10 h-12 rounded-xl bg-card border-border shadow-sm"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          data-testid="input-library-search"
         />
       </div>
 
@@ -180,6 +213,7 @@ export default function Library() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="group bg-card p-4 rounded-xl border border-border shadow-sm hover:shadow-md transition-all flex items-center justify-between"
+                data-testid={`card-song-${song.id}`}
               >
                 <div className="flex-1 min-w-0 mr-4">
                   <div className="flex items-center gap-2">
@@ -198,7 +232,10 @@ export default function Library() {
                       return null;
                     })()}
                   </div>
-                  <p className="text-muted-foreground text-sm truncate">{song.songName}</p>
+                  <p className="text-muted-foreground text-sm truncate">
+                    {song.songName}
+                    {song.artist ? <span className="text-muted-foreground/70"> · {song.artist}</span> : null}
+                  </p>
                   <div className="mt-2">
                     <RatingStars rating={song.rating} readonly className="w-4 h-4" />
                   </div>
@@ -213,6 +250,7 @@ export default function Library() {
                       setEditingSong(song);
                       setIsDialogOpen(true);
                     }}
+                    data-testid={`button-edit-song-${song.id}`}
                   >
                     <Edit2 className="w-4 h-4" />
                   </Button>
@@ -221,6 +259,7 @@ export default function Library() {
                     variant="ghost" 
                     className="h-9 w-9 text-muted-foreground hover:text-destructive rounded-lg"
                     onClick={() => handleDelete(song.id)}
+                    data-testid={`button-delete-song-${song.id}`}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

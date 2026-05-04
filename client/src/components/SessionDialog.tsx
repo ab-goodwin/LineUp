@@ -2,19 +2,19 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { insertSessionSchema } from "@shared/schema";
 import { useCreateSession, useUpdateSession, useDeleteSession } from "@/hooks/use-sessions";
 import { useSongs } from "@/hooks/use-songs";
 import { format } from "date-fns";
-import { Trash2, Plus, X, Search, PlusCircle } from "lucide-react";
+import { Trash2, Search, PlusCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCreateSong } from "@/hooks/use-songs";
+import { SpotifySearch } from "@/components/SpotifySearch";
 
 const formSchema = insertSessionSchema.extend({
   danceIds: z.array(z.number()),
@@ -37,12 +37,13 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
   const createSong = useCreateSong();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddingSong, setIsAddingSong] = useState(false);
-  const [newSong, setNewSong] = useState({ danceName: "", songName: "" });
+  const [newSong, setNewSong] = useState({ danceName: "", songName: "", artist: "" });
 
   const filteredSongs = songs
     .filter(s => 
       s.danceName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      s.songName.toLowerCase().includes(searchQuery.toLowerCase())
+      s.songName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.artist && s.artist.toLowerCase().includes(searchQuery.toLowerCase()))
     )
     .sort((a, b) => a.danceName.localeCompare(b.danceName));
 
@@ -52,10 +53,11 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
       const created = await createSong.mutateAsync({
         danceName: newSong.danceName,
         songName: newSong.songName,
+        artist: newSong.artist,
         rating: 0
       });
       form.setValue("danceIds", [...form.getValues("danceIds"), created.id]);
-      setNewSong({ danceName: "", songName: "" });
+      setNewSong({ danceName: "", songName: "", artist: "" });
       setIsAddingSong(false);
     } catch (error) {
       console.error("Failed to add song", error);
@@ -71,7 +73,6 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
     },
   });
 
-  // Reset form when opening/changing session
   useEffect(() => {
     if (existingSession) {
       form.reset({
@@ -86,6 +87,8 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
         danceIds: [],
       });
     }
+    setIsAddingSong(false);
+    setNewSong({ danceName: "", songName: "", artist: "" });
   }, [existingSession, date, isOpen, form]);
 
   const onSubmit = async (values: FormValues) => {
@@ -138,6 +141,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                     <Input 
                       placeholder="e.g. The Dusty Boot Saloon" 
                       className="rounded-xl border-2 focus-visible:ring-primary/20"
+                      data-testid="input-session-location"
                       {...field} 
                     />
                   </FormControl>
@@ -156,6 +160,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                     size="icon" 
                     className="h-8 w-8"
                     onClick={() => setIsAddingSong(!isAddingSong)}
+                    data-testid="button-toggle-add-song"
                   >
                     <PlusCircle className="w-4 h-4 text-primary" />
                   </Button>
@@ -166,6 +171,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                       className="h-8 pl-8 text-xs rounded-lg"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      data-testid="input-session-song-search"
                     />
                   </div>
                 </div>
@@ -173,20 +179,33 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
               {isAddingSong && (
                 <div className="mb-4 p-3 border-2 border-primary/20 rounded-xl bg-primary/5 space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input 
-                      placeholder="Dance Name" 
-                      className="h-8 text-xs"
-                      value={newSong.danceName}
-                      onChange={(e) => setNewSong(prev => ({ ...prev, danceName: e.target.value }))}
-                    />
-                    <Input 
-                      placeholder="Song Name" 
-                      className="h-8 text-xs"
-                      value={newSong.songName}
-                      onChange={(e) => setNewSong(prev => ({ ...prev, songName: e.target.value }))}
-                    />
-                  </div>
+                  <SpotifySearch
+                    placeholder="Search Spotify for a song..."
+                    onSelect={(track) => {
+                      setNewSong(prev => ({ ...prev, songName: track.name, artist: track.artist }));
+                    }}
+                  />
+                  <Input 
+                    placeholder="Dance Name *" 
+                    className="h-8 text-xs"
+                    value={newSong.danceName}
+                    onChange={(e) => setNewSong(prev => ({ ...prev, danceName: e.target.value }))}
+                    data-testid="input-new-dance-name"
+                  />
+                  <Input 
+                    placeholder="Song Name *" 
+                    className="h-8 text-xs"
+                    value={newSong.songName}
+                    onChange={(e) => setNewSong(prev => ({ ...prev, songName: e.target.value }))}
+                    data-testid="input-new-song-name"
+                  />
+                  <Input 
+                    placeholder="Artist (auto-filled from Spotify)" 
+                    className="h-8 text-xs"
+                    value={newSong.artist}
+                    onChange={(e) => setNewSong(prev => ({ ...prev, artist: e.target.value }))}
+                    data-testid="input-new-artist"
+                  />
                   <div className="flex justify-end gap-2">
                     <Button 
                       type="button" 
@@ -202,7 +221,8 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                       size="sm" 
                       className="h-7 text-xs"
                       onClick={handleQuickAddSong}
-                      disabled={createSong.isPending}
+                      disabled={createSong.isPending || !newSong.danceName || !newSong.songName}
+                      data-testid="button-add-and-select"
                     >
                       Add & Select
                     </Button>
@@ -235,6 +255,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                                 <FormItem
                                   key={song.id}
                                   className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-3 hover:bg-secondary/50 transition-colors cursor-pointer"
+                                  data-testid={`session-song-item-${song.id}`}
                                 >
                                   <FormControl>
                                     <Checkbox
@@ -256,6 +277,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                                     </FormLabel>
                                     <p className="text-xs text-muted-foreground">
                                       {song.songName}
+                                      {song.artist ? <span className="text-muted-foreground/70"> · {song.artist}</span> : null}
                                     </p>
                                   </div>
                                 </FormItem>
@@ -278,6 +300,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                   className="rounded-xl"
                   onClick={handleDelete}
                   disabled={deleteSession.isPending}
+                  data-testid="button-delete-session"
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>
@@ -286,6 +309,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                 type="submit" 
                 className="flex-1 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25"
                 disabled={isSubmitting}
+                data-testid="button-save-session"
               >
                 {isSubmitting ? "Saving..." : existingSession ? "Update Session" : "Create Session"}
               </Button>
