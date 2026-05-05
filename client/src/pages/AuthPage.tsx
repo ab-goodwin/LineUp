@@ -4,26 +4,40 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2, Music } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import logoPath from "@assets/BootMetrics_Transparent_1767707671495.png";
 
 export default function AuthPage() {
   const { login, register } = useAuth();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("login");
 
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
-  const [registerForm, setRegisterForm] = useState({ username: "", password: "", firstName: "" });
+  const [loginError, setLoginError] = useState("");
+
+  const [registerForm, setRegisterForm] = useState({
+    firstName: "",
+    lastName: "",
+    username: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [registerError, setRegisterError] = useState("");
+  const [registerSuccess, setRegisterSuccess] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginForm.username || !loginForm.password) return;
+    setLoginError("");
+    if (!loginForm.username || !loginForm.password) {
+      setLoginError("Please enter your username and password.");
+      return;
+    }
     setIsLoading(true);
     try {
       await login(loginForm.username, loginForm.password);
+      // On success, AuthContext sets user → App.tsx renders main app (home page)
     } catch (err: any) {
-      toast({ title: "Login failed", description: err.message, variant: "destructive" });
+      setLoginError(err.message || "Incorrect username or password. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -31,16 +45,51 @@ export default function AuthPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!registerForm.username || !registerForm.password) return;
-    if (registerForm.password.length < 6) {
-      toast({ title: "Password too short", description: "Password must be at least 6 characters.", variant: "destructive" });
+    setRegisterError("");
+    setRegisterSuccess(false);
+
+    if (!registerForm.firstName.trim()) {
+      setRegisterError("First name is required.");
       return;
     }
+    if (!registerForm.username.trim()) {
+      setRegisterError("Username is required.");
+      return;
+    }
+    if (registerForm.username.trim().length < 3) {
+      setRegisterError("Username must be at least 3 characters.");
+      return;
+    }
+    if (!registerForm.password) {
+      setRegisterError("Password is required.");
+      return;
+    }
+    if (registerForm.password.length < 6) {
+      setRegisterError("Password must be at least 6 characters.");
+      return;
+    }
+    if (registerForm.password !== registerForm.confirmPassword) {
+      setRegisterError("Passwords do not match. Please try again.");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await register(registerForm.username, registerForm.password, registerForm.firstName || undefined);
+      await register(
+        registerForm.username.trim(),
+        registerForm.password,
+        registerForm.firstName.trim(),
+        registerForm.lastName.trim() || undefined,
+      );
+      setRegisterSuccess(true);
+      setRegisterForm({ firstName: "", lastName: "", username: "", password: "", confirmPassword: "" });
+      // Switch to login tab after a short delay
+      setTimeout(() => {
+        setActiveTab("login");
+        setRegisterSuccess(false);
+      }, 1800);
     } catch (err: any) {
-      toast({ title: "Registration failed", description: err.message, variant: "destructive" });
+      setRegisterError(err.message || "Registration failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -55,7 +104,7 @@ export default function AuthPage() {
         </div>
 
         <div className="bg-card rounded-2xl border border-border shadow-lg p-6">
-          <Tabs defaultValue="login">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full mb-6 bg-secondary/40 rounded-xl">
               <TabsTrigger value="login" className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm">
                 Sign In
@@ -65,8 +114,15 @@ export default function AuthPage() {
               </TabsTrigger>
             </TabsList>
 
+            {/* --- SIGN IN --- */}
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
+                {loginError && (
+                  <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5" data-testid="login-error">
+                    <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-destructive">{loginError}</p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="login-username">Username</Label>
                   <Input
@@ -74,7 +130,7 @@ export default function AuthPage() {
                     data-testid="input-login-username"
                     placeholder="your_username"
                     value={loginForm.username}
-                    onChange={e => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
+                    onChange={e => { setLoginForm(prev => ({ ...prev, username: e.target.value })); setLoginError(""); }}
                     className="rounded-xl"
                     autoComplete="username"
                   />
@@ -87,7 +143,7 @@ export default function AuthPage() {
                     type="password"
                     placeholder="••••••••"
                     value={loginForm.password}
-                    onChange={e => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                    onChange={e => { setLoginForm(prev => ({ ...prev, password: e.target.value })); setLoginError(""); }}
                     className="rounded-xl"
                     autoComplete="current-password"
                   />
@@ -103,40 +159,79 @@ export default function AuthPage() {
               </form>
             </TabsContent>
 
+            {/* --- CREATE ACCOUNT --- */}
             <TabsContent value="register">
-              <form onSubmit={handleRegister} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="register-firstname">First Name</Label>
-                  <Input
-                    id="register-firstname"
-                    data-testid="input-register-firstname"
-                    placeholder="e.g. Jessie"
-                    value={registerForm.firstName}
-                    onChange={e => setRegisterForm(prev => ({ ...prev, firstName: e.target.value }))}
-                    className="rounded-xl"
-                  />
+              <form onSubmit={handleRegister} className="space-y-3">
+                {registerError && (
+                  <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5" data-testid="register-error">
+                    <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-destructive">{registerError}</p>
+                  </div>
+                )}
+                {registerSuccess && (
+                  <div className="flex items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2.5" data-testid="register-success">
+                    <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    <p className="text-sm text-green-700 font-medium">Account created! Redirecting to sign in…</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="register-firstname">First Name <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="register-firstname"
+                      data-testid="input-register-firstname"
+                      placeholder="Jessie"
+                      value={registerForm.firstName}
+                      onChange={e => { setRegisterForm(prev => ({ ...prev, firstName: e.target.value })); setRegisterError(""); }}
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="register-lastname">Last Name</Label>
+                    <Input
+                      id="register-lastname"
+                      data-testid="input-register-lastname"
+                      placeholder="Smith"
+                      value={registerForm.lastName}
+                      onChange={e => setRegisterForm(prev => ({ ...prev, lastName: e.target.value }))}
+                      className="rounded-xl"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-username">Username</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="register-username">Username <span className="text-destructive">*</span></Label>
                   <Input
                     id="register-username"
                     data-testid="input-register-username"
                     placeholder="your_username"
                     value={registerForm.username}
-                    onChange={e => setRegisterForm(prev => ({ ...prev, username: e.target.value }))}
+                    onChange={e => { setRegisterForm(prev => ({ ...prev, username: e.target.value })); setRegisterError(""); }}
                     className="rounded-xl"
                     autoComplete="username"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Password</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="register-password">Password <span className="text-destructive">*</span></Label>
                   <Input
                     id="register-password"
                     data-testid="input-register-password"
                     type="password"
                     placeholder="Min. 6 characters"
                     value={registerForm.password}
-                    onChange={e => setRegisterForm(prev => ({ ...prev, password: e.target.value }))}
+                    onChange={e => { setRegisterForm(prev => ({ ...prev, password: e.target.value })); setRegisterError(""); }}
+                    className="rounded-xl"
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="register-confirm">Re-enter Password <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="register-confirm"
+                    data-testid="input-register-confirm"
+                    type="password"
+                    placeholder="Must match above"
+                    value={registerForm.confirmPassword}
+                    onChange={e => { setRegisterForm(prev => ({ ...prev, confirmPassword: e.target.value })); setRegisterError(""); }}
                     className="rounded-xl"
                     autoComplete="new-password"
                   />
@@ -144,8 +239,8 @@ export default function AuthPage() {
                 <Button
                   type="submit"
                   data-testid="button-register"
-                  className="w-full rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25 mt-2"
-                  disabled={isLoading}
+                  className="w-full rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25 mt-1"
+                  disabled={isLoading || registerSuccess}
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create Account"}
                 </Button>

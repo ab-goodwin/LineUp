@@ -70,7 +70,7 @@ export async function registerRoutes(
         return;
       }
       const passwordHash = await bcrypt.hash(input.password, 12);
-      const user = await storage.createAuthUser(input.username, passwordHash, input.firstName);
+      const user = await storage.createAuthUser(input.username, passwordHash, input.firstName, input.lastName);
       
       req.login(user, (err) => {
         if (err) {
