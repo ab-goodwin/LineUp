@@ -7,6 +7,8 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   location: string;
+  phoneNumber?: string;
+  avatar?: string;
 }
 
 interface AuthContextType {

@@ -1,3 +1,5 @@
+import { useState, useRef } from "react";
+import { useLocation } from "wouter";
 import { useProfile, useUpdateProfile, useDeleteData } from "@/hooks/use-profile";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -6,18 +8,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Trash2, LogOut } from "lucide-react";
+import { Loader2, Trash2, LogOut, ArrowLeft, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 const profileSchema = z.object({
@@ -28,11 +26,37 @@ const profileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
+function resizeImageToBase64(file: File, maxSize = 200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.onerror = reject;
+      img.src = e.target!.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function Profile() {
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
   const deleteData = useDeleteData();
   const { logout } = useAuth();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -54,16 +78,61 @@ export default function Profile() {
   const onSubmit = async (values: ProfileFormValues) => {
     try {
       await updateProfile.mutateAsync(values);
+      toast({ title: "Profile saved!" });
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleDelete = async (type: 'sessions' | 'songs' | 'all') => {
+  const handleDelete = async (type: "sessions" | "songs" | "all") => {
     try {
       await deleteData.mutateAsync(type);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Please choose an image under 5MB.", variant: "destructive" });
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      const base64 = await resizeImageToBase64(file, 200);
+      const res = await fetch("/api/profile/avatar", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar: base64 }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/buddies"] });
+      toast({ title: "Profile photo updated!" });
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setAvatarUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setAvatarUploading(true);
+    try {
+      await fetch("/api/profile/avatar", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatar: null }),
+        credentials: "include",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/buddies"] });
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
@@ -74,122 +143,145 @@ export default function Profile() {
         <Button
           variant="ghost"
           className="text-muted-foreground hover:text-foreground gap-2"
-          onClick={() => logout()}
-          data-testid="button-logout"
+          onClick={() => setLocation("/")}
+          data-testid="button-back-home"
         >
-          <LogOut className="w-4 h-4" />
-          Sign Out
+          <ArrowLeft className="w-4 h-4" />
+          Home
         </Button>
       </div>
 
-      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-8">
+      {/* Avatar Section */}
+      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
+        <h2 className="text-xl font-bold mb-4 font-display text-foreground">Profile Photo</h2>
+        <div className="flex items-center gap-5">
+          <div className="relative flex-shrink-0">
+            <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center overflow-hidden border-2 border-border">
+              {profile?.avatar ? (
+                <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="font-display font-bold text-primary text-3xl">
+                  {profile?.firstName?.charAt(0) || "D"}
+                </span>
+              )}
+            </div>
+            {avatarUploading && (
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                <Loader2 className="w-5 h-5 animate-spin text-white" />
+              </div>
+            )}
+          </div>
+          <div className="space-y-2 flex-1">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+              data-testid="input-avatar-file"
+            />
+            <Button
+              variant="outline"
+              className="w-full rounded-xl border-2 gap-2"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarUploading}
+              data-testid="button-upload-avatar"
+            >
+              <Camera className="w-4 h-4" />
+              {profile?.avatar ? "Change Photo" : "Upload Photo"}
+            </Button>
+            {profile?.avatar && (
+              <Button
+                variant="ghost"
+                className="w-full rounded-xl text-muted-foreground hover:text-destructive text-sm"
+                onClick={handleRemoveAvatar}
+                disabled={avatarUploading}
+                data-testid="button-remove-avatar"
+              >
+                Remove Photo
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground">Resized automatically. Max 5MB.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Personal Details */}
+      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
         <h2 className="text-xl font-bold mb-4 font-display text-foreground">Personal Details</h2>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>First Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="John" className="rounded-xl" data-testid="input-profile-firstname" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Last Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Doe" className="rounded-xl" data-testid="input-profile-lastname" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
+              <FormField control={form.control} name="firstName" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Default Location</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nashville, TN" className="rounded-xl" data-testid="input-profile-location" {...field} />
-                  </FormControl>
+                  <FormLabel>First Name</FormLabel>
+                  <FormControl><Input placeholder="John" className="rounded-xl" data-testid="input-profile-firstname" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
-              )}
-            />
-            <Button 
-              type="submit" 
-              className="w-full rounded-xl mt-2 font-semibold"
-              disabled={updateProfile.isPending}
-              data-testid="button-save-profile"
-            >
+              )} />
+              <FormField control={form.control} name="lastName" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last Name</FormLabel>
+                  <FormControl><Input placeholder="Doe" className="rounded-xl" data-testid="input-profile-lastname" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+            <FormField control={form.control} name="location" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Default Location</FormLabel>
+                <FormControl><Input placeholder="Nashville, TN" className="rounded-xl" data-testid="input-profile-location" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <Button type="submit" className="w-full rounded-xl mt-2 font-semibold" disabled={updateProfile.isPending} data-testid="button-save-profile">
               {updateProfile.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </form>
         </Form>
       </section>
 
-      <section className="bg-red-50/50 rounded-2xl p-6 border border-red-100">
+      {/* Danger Zone */}
+      <section className="bg-red-50/50 rounded-2xl p-6 border border-red-100 mb-6">
         <h2 className="text-xl font-bold mb-2 font-display text-destructive">Danger Zone</h2>
-        <p className="text-sm text-muted-foreground mb-6">
-          Permanently delete your data. This action cannot be undone.
-        </p>
-
+        <p className="text-sm text-muted-foreground mb-6">Permanently delete your data. This cannot be undone.</p>
         <div className="space-y-3">
-          <DeleteDialog 
-            title="Delete Session Data?"
-            description="This will remove all your tracked dance sessions."
-            onConfirm={() => handleDelete('sessions')}
-            triggerLabel="Delete Session Data"
-          />
-          <DeleteDialog 
-            title="Delete Song Library?"
-            description="This will empty your song library."
-            onConfirm={() => handleDelete('songs')}
-            triggerLabel="Delete Song Library"
-          />
-          <DeleteDialog 
-            title="Delete ALL Data?"
-            description="This will wipe your account data completely. Are you absolutely sure?"
-            onConfirm={() => handleDelete('all')}
-            triggerLabel="Delete All Data"
-            variant="destructive"
-          />
+          <DeleteDialog title="Delete Session Data?" description="This will remove all your tracked dance sessions." onConfirm={() => handleDelete("sessions")} triggerLabel="Delete Session Data" />
+          <DeleteDialog title="Delete Song Library?" description="This will empty your song library." onConfirm={() => handleDelete("songs")} triggerLabel="Delete Song Library" />
+          <DeleteDialog title="Delete ALL Data?" description="This will wipe your account data completely. Are you absolutely sure?" onConfirm={() => handleDelete("all")} triggerLabel="Delete All Data" variant="destructive" />
         </div>
+      </section>
+
+      {/* Sign Out */}
+      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm">
+        <h2 className="text-xl font-bold mb-3 font-display text-foreground">Account</h2>
+        <Button
+          variant="outline"
+          className="w-full rounded-xl border-2 gap-2 text-muted-foreground hover:text-destructive hover:border-destructive/40"
+          onClick={() => logout()}
+          data-testid="button-logout"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </Button>
       </section>
     </div>
   );
 }
 
-function DeleteDialog({ 
-  title, 
-  description, 
-  onConfirm, 
-  triggerLabel, 
-  variant = "outline" 
-}: any) {
+function DeleteDialog({ title, description, onConfirm, triggerLabel, variant = "outline" }: any) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className={cn(
             "w-full justify-start rounded-xl",
-            variant === "destructive" 
-              ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-transparent" 
+            variant === "destructive"
+              ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-transparent"
               : "text-destructive hover:bg-red-100 hover:text-destructive border-red-200"
           )}
-          data-testid={`button-delete-${triggerLabel.toLowerCase().replace(/\s+/g, '-')}`}
+          data-testid={`button-delete-${triggerLabel.toLowerCase().replace(/\s+/g, "-")}`}
         >
           <Trash2 className="w-4 h-4 mr-2" />
           {triggerLabel}
@@ -198,16 +290,11 @@ function DeleteDialog({
       <AlertDialogContent className="rounded-2xl bg-card">
         <AlertDialogHeader>
           <AlertDialogTitle className="font-display text-xl">{title}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {description}
-          </AlertDialogDescription>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-          <AlertDialogAction 
-            onClick={onConfirm}
-            className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
+          <AlertDialogAction onClick={onConfirm} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90">
             Yes, Delete
           </AlertDialogAction>
         </AlertDialogFooter>

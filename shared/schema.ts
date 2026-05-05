@@ -11,6 +11,18 @@ export const users = pgTable("users", {
   firstName: text("first_name").default("Dancer").notNull(),
   lastName: text("last_name").default("").notNull(),
   location: text("location").default("").notNull(),
+  phoneNumber: text("phone_number"),
+  avatar: text("avatar"),
+});
+
+export const verificationCodes = pgTable("verification_codes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  code: text("code").notNull(),
+  type: text("type").notNull().default("reset_password"),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Song Library

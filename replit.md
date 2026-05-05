@@ -1,8 +1,10 @@
-# BootMetrics - Line Dancing Tracking App
+# LineUp - Line Dancing Tracking App
 
 ## Overview
 
-BootMetrics is a personal line dancing tracking application that helps dancers log their dance sessions, maintain a song library, and view statistics about their dancing activity. The app features a calendar-based session tracking system, a song library with ratings, a dashboard displaying dance statistics, and a Dancing Buddies social feature.
+LineUp is a personal line dancing tracking application that helps dancers log their dance sessions, maintain a song library, and view statistics about their dancing activity. The app features a calendar-based session tracking system, a song library with ratings, a dashboard displaying dance statistics, and a Dancing Buddies social feature.
+
+**Slogan:** "Your Dances. Your Stats." | "Every Dance Counts"
 
 ## User Preferences
 
@@ -51,7 +53,7 @@ Preferred communication style: Simple, everyday language.
 ```
 
 ### Key Data Models
-- **Users**: User profile with first name, last name, and default location
+- **Users**: User profile with first name, last name, default location, phone number, and avatar (base64)
 - **Songs**: Dance library entries with dance name, song name, artist, public ID, and rating (1-5 stars)
 - **Sessions**: Dance session records with date and location
 - **SessionDances**: Many-to-many relationship linking sessions to songs danced
@@ -68,11 +70,30 @@ The API uses a typed contract pattern where routes are defined in shared/routes.
 - SESSION_SECRET env var required
 - All data routes protected with `requireAuth` middleware using `req.user.id`
 
+### Branding
+- App name: **LineUp**
+- Primary color: #D85C31 (HSL: 16 68% 52%)
+- Accent/gold color: #D7A259 (HSL: 35 61% 60%) — used for subtitles/slogans
+- Logo: `LineUp_Short_1777958974669.png` (auth page) and `LineUp_Long_1777958974669.png` (header)
+- Global headings (h1-h6) use `text-foreground` (black/dark) — not primary colored
+
 ### Spotify Integration
 - Backend proxy at `/api/spotify/search` using client credentials flow
 - In-memory token cache on server
 - SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET secrets required
 - SpotifySearch component used in Library song form and SessionDialog quick-add
+
+### SMS / Account Recovery (Twilio)
+- Forgot password/username flow via phone number
+- Routes: POST /api/auth/forgot-send, POST /api/auth/forgot-reset
+- Requires: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER secrets
+- Verification codes stored in `verification_codes` table (10-minute expiry, single-use)
+
+### Profile Photo
+- Stored as base64 JPEG in `users.avatar` TEXT column
+- Client resizes to max 200×200 before upload (JPEG quality 0.75)
+- Server enforces 200KB base64 size limit
+- Displayed in: Header avatar, Profile page, Buddy cards, Pending requests
 
 ### Dancing Buddies Feature
 - Search users by username (`/api/users/search`)
