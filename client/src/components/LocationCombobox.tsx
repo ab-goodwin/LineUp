@@ -76,7 +76,7 @@ export function LocationCombobox({ value, onChange, placeholder = "Select or typ
               </CommandEmpty>
             )}
             {filtered.length > 0 && (
-              <CommandGroup>
+              <CommandGroup className="bg-[#ffffff]">
                 {filtered.map(loc => (
                   <CommandItem
                     key={loc.id}
