@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  users, songs, sessions, sessionDances, locations, buddies, streakChallenges,
+  users, songs, sessions, sessionDances, locations, buddies, streakChallenges, verificationCodes,
   type User, type InsertUser,
   type Song, type InsertSong, type CreateSongRequest, type UpdateSongRequest,
   type Session, type InsertSession, type CreateSessionRequest, type UpdateSessionRequest, type SessionResponse,
@@ -42,8 +42,15 @@ export interface IStorage {
   // Stats (scoped to userId)
   getStats(userId: number): Promise<StatsResponse>;
 
+  // Avatar & Phone
+  updateAvatar(userId: number, avatar: string | null): Promise<void>;
+  updatePhone(userId: number, phoneNumber: string): Promise<void>;
+  getUserByPhone(phone: string): Promise<User | undefined>;
+  createVerificationCode(userId: number, type: string): Promise<string>;
+  verifyAndReset(phone: string, code: string, resetType: string, newValue: string): Promise<boolean>;
+
   // Buddies
-  searchUsers(query: string, excludeId: number): Promise<{ id: number; username: string; firstName: string }[]>;
+  searchUsers(query: string, excludeId: number): Promise<{ id: number; username: string; firstName: string; avatar?: string }[]>;
   getBuddies(userId: number): Promise<any[]>;
   getPendingRequests(userId: number): Promise<any[]>;
   sendBuddyRequest(requesterId: number, recipientId: number): Promise<void>;
@@ -337,16 +344,65 @@ export class DatabaseStorage implements IStorage {
     };
   }
   // --- Buddies ---
-  async searchUsers(query: string, excludeId: number): Promise<{ id: number; username: string; firstName: string }[]> {
+  async searchUsers(query: string, excludeId: number): Promise<{ id: number; username: string; firstName: string; avatar?: string }[]> {
     const results = await db
-      .select({ id: users.id, username: users.username, firstName: users.firstName })
+      .select({ id: users.id, username: users.username, firstName: users.firstName, avatar: users.avatar })
       .from(users)
       .where(and(
         ilike(users.username, `%${query}%`),
         ne(users.id, excludeId)
       ))
       .limit(10);
-    return results.map(r => ({ id: r.id, username: r.username || "", firstName: r.firstName }));
+    return results.map(r => ({ id: r.id, username: r.username || "", firstName: r.firstName, avatar: r.avatar ?? undefined }));
+  }
+
+  async updateAvatar(userId: number, avatar: string | null): Promise<void> {
+    await db.update(users).set({ avatar }).where(eq(users.id, userId));
+  }
+
+  async updatePhone(userId: number, phoneNumber: string): Promise<void> {
+    await db.update(users).set({ phoneNumber }).where(eq(users.id, userId));
+  }
+
+  async getUserByPhone(phone: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.phoneNumber, phone));
+    return user;
+  }
+
+  async createVerificationCode(userId: number, type: string): Promise<string> {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    // Invalidate old codes for this user/type
+    await db.update(verificationCodes)
+      .set({ used: true })
+      .where(and(eq(verificationCodes.userId, userId), eq(verificationCodes.type, type)));
+    await db.insert(verificationCodes).values({ userId, code, type, expiresAt, used: false });
+    return code;
+  }
+
+  async verifyAndReset(phone: string, code: string, resetType: string, newValue: string): Promise<boolean> {
+    const user = await this.getUserByPhone(phone);
+    if (!user) return false;
+    const [record] = await db.select().from(verificationCodes).where(
+      and(
+        eq(verificationCodes.userId, user.id),
+        eq(verificationCodes.code, code),
+        eq(verificationCodes.type, resetType),
+        eq(verificationCodes.used, false)
+      )
+    );
+    if (!record || record.expiresAt < new Date()) return false;
+    // Mark used
+    await db.update(verificationCodes).set({ used: true }).where(eq(verificationCodes.id, record.id));
+    if (resetType === "password") {
+      const hash = await bcrypt.hash(newValue, 12);
+      await db.update(users).set({ passwordHash: hash }).where(eq(users.id, user.id));
+    } else if (resetType === "username") {
+      const existing = await this.getUserByUsername(newValue);
+      if (existing && existing.id !== user.id) throw new Error("Username already taken");
+      await db.update(users).set({ username: newValue }).where(eq(users.id, user.id));
+    }
+    return true;
   }
 
   async getCurrentStreak(userId: number): Promise<number> {
@@ -380,6 +436,7 @@ export class DatabaseStorage implements IStorage {
       userId: user.id,
       username: user.username || "",
       firstName: user.firstName,
+      avatar: user.avatar ?? undefined,
       totalDances: stats.totalDances,
       longestStreak: stats.longestStreak,
       totalDaysDancing: stats.totalDaysDancing,
@@ -421,6 +478,7 @@ export class DatabaseStorage implements IStorage {
           status: b.status,
           requesterUsername: requester.username || "",
           requesterFirstName: requester.firstName,
+          requesterAvatar: requester.avatar ?? undefined,
         };
       })
     );

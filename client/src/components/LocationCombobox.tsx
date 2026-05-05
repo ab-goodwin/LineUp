@@ -41,7 +41,7 @@ export function LocationCombobox({ value, onChange, placeholder = "Select or typ
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -57,7 +57,11 @@ export function LocationCombobox({ value, onChange, placeholder = "Select or typ
           <ChevronsUpDown className="w-4 h-4 flex-shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl" align="start">
+      <PopoverContent
+        className="w-[--radix-popover-trigger-width] p-0 rounded-xl !z-[9999]"
+        align="start"
+        sideOffset={4}
+      >
         <Command>
           <CommandInput
             placeholder="Search or type new location..."

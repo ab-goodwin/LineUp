@@ -131,18 +131,99 @@ export async function registerRoutes(
     });
   });
 
-  app.get("/api/me", (req, res) => {
+  app.get("/api/me", async (req, res) => {
     if (!req.isAuthenticated() || !req.user) {
       res.status(401).json({ message: "Not authenticated" });
       return;
     }
+    const user = await storage.getUser(req.user.id);
     res.json({
-      id: req.user.id,
-      username: req.user.username,
-      firstName: req.user.firstName,
-      lastName: req.user.lastName,
-      location: req.user.location,
+      id: user.id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      location: user.location,
+      phoneNumber: user.phoneNumber ?? undefined,
+      avatar: user.avatar ?? undefined,
     });
+  });
+
+  // --- Phone & Avatar ---
+  app.put("/api/profile/avatar", requireAuth, async (req, res) => {
+    const { avatar } = req.body;
+    if (avatar !== null && typeof avatar !== "string") {
+      res.status(400).json({ message: "Invalid avatar" }); return;
+    }
+    if (avatar && avatar.length > 200000) {
+      res.status(413).json({ message: "Image too large. Please use a smaller image." }); return;
+    }
+    await storage.updateAvatar(req.user!.id, avatar);
+    res.json({ ok: true });
+  });
+
+  app.put("/api/profile/phone", requireAuth, async (req, res) => {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber || typeof phoneNumber !== "string") {
+      res.status(400).json({ message: "phoneNumber required" }); return;
+    }
+    await storage.updatePhone(req.user!.id, phoneNumber.trim());
+    res.json({ ok: true });
+  });
+
+  // --- Forgot Password / Username (SMS) ---
+  app.post("/api/auth/forgot-send", async (req, res) => {
+    const { phoneNumber, resetType } = req.body;
+    if (!phoneNumber || !resetType) {
+      res.status(400).json({ message: "phoneNumber and resetType required" }); return;
+    }
+    const user = await storage.getUserByPhone(phoneNumber.trim());
+    if (!user) {
+      res.status(404).json({ message: "No account found with that phone number." }); return;
+    }
+    const code = await storage.createVerificationCode(user.id, resetType);
+    // Send SMS via Twilio
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromPhone = process.env.TWILIO_PHONE_NUMBER;
+    if (!accountSid || !authToken || !fromPhone) {
+      res.status(503).json({ message: "SMS service not configured. Contact the app owner." }); return;
+    }
+    try {
+      const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+      const smsRes = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+        {
+          method: "POST",
+          headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ From: fromPhone, To: phoneNumber.trim(), Body: `Your LineUp verification code is: ${code}. It expires in 10 minutes.` }).toString(),
+        }
+      );
+      if (!smsRes.ok) {
+        const err = await smsRes.json().catch(() => ({}));
+        console.error("Twilio error:", err);
+        res.status(502).json({ message: "Failed to send SMS. Please try again." }); return;
+      }
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("SMS send error:", err);
+      res.status(500).json({ message: "Failed to send SMS." });
+    }
+  });
+
+  app.post("/api/auth/forgot-reset", async (req, res) => {
+    const { phoneNumber, code, resetType, newValue } = req.body;
+    if (!phoneNumber || !code || !resetType || !newValue) {
+      res.status(400).json({ message: "All fields required" }); return;
+    }
+    try {
+      const success = await storage.verifyAndReset(phoneNumber.trim(), code.trim(), resetType, newValue.trim());
+      if (!success) {
+        res.status(400).json({ message: "Invalid or expired code. Please try again." }); return;
+      }
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(409).json({ message: err.message || "Reset failed" });
+    }
   });
 
   // --- Spotify Search ---

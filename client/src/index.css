@@ -5,14 +5,14 @@
 @tailwind utilities;
 
 :root {
-  /* Cowboy/BootMetrics Theme - Warm, earthy but modern */
-  --font-display: 'Rye', serif; /* A bit of western flair */
-  --font-body: 'Outfit', sans-serif; /* Clean modern sans */
+  /* LineUp Theme - Warm western with rich terracotta */
+  --font-display: 'Rye', serif;
+  --font-body: 'Outfit', sans-serif;
 
   --background: 30 35% 97%;
-  --foreground: 20 25% 15%;
+  --foreground: 20 25% 10%;
 
-  --primary: 15 85% 50%; /* Richer Terracotta Orange */
+  --primary: 16 68% 52%; /* #D85C31 */
   --primary-foreground: 30 20% 98%;
 
   --secondary: 35 55% 88%;
@@ -21,7 +21,7 @@
   --muted: 30 30% 90%;
   --muted-foreground: 25 20% 45%;
 
-  --accent: 40 90% 52%; /* Vivid Gold/Leather accent */
+  --accent: 35 61% 60%; /* #D7A259 gold */
   --accent-foreground: 20 25% 15%;
 
   --destructive: 0 84% 55%;
@@ -29,10 +29,10 @@
 
   --border: 30 30% 82%;
   --input: 30 30% 82%;
-  --ring: 15 85% 50%;
+  --ring: 16 68% 52%;
 
   --card: 30 40% 99%;
-  --card-foreground: 20 25% 15%;
+  --card-foreground: 20 25% 10%;
 
   --radius: 1rem;
 }
@@ -45,11 +45,11 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    @apply tracking-wide text-primary;
+    @apply tracking-wide text-foreground;
   }
 }
 
-/* Custom Calendar Styles overrides for react-day-picker if needed */
+/* Custom Calendar Styles */
 .rdp {
   --rdp-cell-size: 40px;
   --rdp-accent-color: hsl(var(--primary));
@@ -57,6 +57,6 @@
   margin: 0;
 }
 
-.rdp-day_selected { 
-  background-color: hsl(var(--primary)) !important; 
+.rdp-day_selected {
+  background-color: hsl(var(--primary)) !important;
 }

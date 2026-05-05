@@ -6,6 +6,7 @@ export interface BuddyPublicStats {
   userId: number;
   username: string;
   firstName: string;
+  avatar?: string;
   totalDances: number;
   longestStreak: number;
   totalDaysDancing: number;
@@ -20,6 +21,7 @@ export interface BuddyRequest {
   status: string;
   requesterUsername: string;
   requesterFirstName: string;
+  requesterAvatar?: string;
 }
 
 export interface Challenge {
