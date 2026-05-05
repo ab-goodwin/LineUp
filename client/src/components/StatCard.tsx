@@ -16,7 +16,7 @@ export function StatCard({ label, value, description, icon: Icon, className, del
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-start justify-between mb-2">
-        <span className="text-sm text-muted-foreground font-medium uppercase tracking-wider">{label}</span>
+        <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">{label}</span>
         {Icon && <Icon className="w-5 h-5 text-primary/50 group-hover:text-primary transition-colors" />}
       </div>
       <div>
