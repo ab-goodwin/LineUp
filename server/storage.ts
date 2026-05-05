@@ -13,7 +13,7 @@ export interface IStorage {
   // Auth
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
-  createAuthUser(username: string, passwordHash: string, firstName?: string): Promise<User>;
+  createAuthUser(username: string, passwordHash: string, firstName?: string, lastName?: string): Promise<User>;
 
   // User Profile (scoped to userId)
   getUser(userId: number): Promise<User>;
@@ -69,12 +69,12 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createAuthUser(username: string, passwordHash: string, firstName?: string): Promise<User> {
+  async createAuthUser(username: string, passwordHash: string, firstName?: string, lastName?: string): Promise<User> {
     const [user] = await db.insert(users).values({
       username,
       passwordHash,
       firstName: firstName || "Dancer",
-      lastName: "",
+      lastName: lastName || "",
       location: "",
     }).returning();
     return user;

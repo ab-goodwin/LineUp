@@ -80,6 +80,7 @@ export const registerSchema = z.object({
   username: z.string().min(3).max(50),
   password: z.string().min(6),
   firstName: z.string().min(1).optional(),
+  lastName: z.string().optional(),
 });
 
 export const loginSchema = z.object({
