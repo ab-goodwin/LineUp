@@ -238,8 +238,8 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <img src={logoShort} alt="LineUp" className="h-20 mx-auto mb-3 object-contain" />
+        <div className="mb-8">
+          <img src={logoShort} alt="LineUp" className="h-20 mb-2 object-contain" />
           <p className="text-base font-semibold" style={{ color: "#D7A259" }}>Your Dances. Your Stats.</p>
         </div>
 

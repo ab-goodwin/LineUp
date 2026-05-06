@@ -295,14 +295,17 @@ export default function Library() {
               >
                 <div className="flex-1 min-w-0 mr-4">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-lg truncate font-display text-foreground">{song.danceName}</h3>
+                    <h3 className="font-bold text-lg truncate font-display text-foreground">
+                      {song.songName || song.danceName}
+                      {song.artist ? <span className="font-normal text-muted-foreground"> · {song.artist}</span> : null}
+                    </h3>
                     {(() => {
                       const count = sessions.filter(session =>
                         session.dances.some(d => d.id === song.id)
                       ).length;
                       if (count > 0) {
                         return (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary flex-shrink-0">
                             Done {count}x
                           </span>
                         );
@@ -310,10 +313,7 @@ export default function Library() {
                       return null;
                     })()}
                   </div>
-                  <p className="text-muted-foreground text-sm truncate">
-                    {song.songName}
-                    {song.artist ? <span className="text-muted-foreground/70"> · {song.artist}</span> : null}
-                  </p>
+                  <p className="text-muted-foreground text-sm truncate">{song.danceName}</p>
                   <div className="mt-2">
                     <RatingStars rating={song.rating} readonly className="w-4 h-4" />
                   </div>

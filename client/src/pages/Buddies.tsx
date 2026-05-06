@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Search, UserPlus, UserCheck, UserX, Flame, X } from "lucide-react";
+import { Loader2, Search, UserPlus, UserCheck, UserX, Flame, X, RefreshCw, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 function AvatarCircle({ firstName, avatar, size = "md" }: { firstName: string; avatar?: string; size?: "sm" | "md" }) {
@@ -34,12 +34,20 @@ function StatPill({ label, value, highlight }: { label: string; value: string | 
   );
 }
 
-function BuddyCard({ buddy, onRemove }: { buddy: BuddyPublicStats; onRemove: (userId: number) => void }) {
+function RankBadge({ rank }: { rank: number }) {
+  if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-500 flex-shrink-0" />;
+  if (rank === 2) return <Trophy className="w-5 h-5 text-slate-400 flex-shrink-0" />;
+  if (rank === 3) return <Trophy className="w-5 h-5 text-amber-600 flex-shrink-0" />;
+  return <span className="text-sm font-bold text-muted-foreground w-5 text-center flex-shrink-0">{rank}</span>;
+}
+
+function BuddyCard({ buddy, rank, onRemove }: { buddy: BuddyPublicStats & { songCount?: number }; rank: number; onRemove: (userId: number) => void }) {
   return (
     <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
       className="bg-card rounded-2xl border border-border p-4 shadow-sm" data-testid={`buddy-card-${buddy.userId}`}>
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
+          <RankBadge rank={rank} />
           <AvatarCircle firstName={buddy.firstName} avatar={buddy.avatar} />
           <div>
             <p className="font-bold text-base">{buddy.firstName}</p>
@@ -52,7 +60,7 @@ function BuddyCard({ buddy, onRemove }: { buddy: BuddyPublicStats; onRemove: (us
         </Button>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
-        <StatPill label="Dances" value={buddy.totalDances} />
+        <StatPill label="In Library" value={(buddy as any).songCount ?? buddy.totalDances} />
         <StatPill label="Best Streak" value={`${buddy.longestStreak}d`} highlight />
         <StatPill label="Days Active" value={buddy.totalDaysDancing} />
       </div>
@@ -115,12 +123,28 @@ export default function Buddies() {
     await removeBuddy.mutateAsync(buddyUserId);
   };
 
+  // Sort buddies by song library count (desc) for leaderboard
+  const rankedBuddies = [...buddyList].sort((a, b) =>
+    ((b as any).songCount ?? 0) - ((a as any).songCount ?? 0)
+  );
+
   const buddyUserIds = new Set(buddyList.map(b => b.userId));
   const pendingIds = new Set(pendingRequests.map(r => r.requesterId));
 
   return (
     <div className="container px-4 pb-24 pt-8 mx-auto max-w-2xl">
-      <h1 className="text-3xl font-display font-bold mb-6 text-foreground">Dancing Buddies</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-display font-bold text-foreground">Dancing Buddies</h1>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 text-muted-foreground hover:text-primary rounded-xl"
+          onClick={() => window.location.reload()}
+          data-testid="button-refresh-buddies"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </Button>
+      </div>
 
       {pendingRequests.length > 0 && (
         <div className="mb-6 bg-primary/5 border-2 border-primary/20 rounded-2xl p-4 space-y-3">
@@ -160,7 +184,7 @@ export default function Buddies() {
         <TabsContent value="buddies" className="space-y-3 mt-2">
           {buddiesLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-          ) : buddyList.length === 0 ? (
+          ) : rankedBuddies.length === 0 ? (
             <div className="text-center py-16 bg-secondary/20 rounded-2xl border-2 border-dashed border-border">
               <UserPlus className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
               <p className="font-medium text-foreground">No buddies yet</p>
@@ -168,7 +192,9 @@ export default function Buddies() {
             </div>
           ) : (
             <AnimatePresence mode="popLayout">
-              {buddyList.map(buddy => <BuddyCard key={buddy.userId} buddy={buddy} onRemove={handleRemove} />)}
+              {rankedBuddies.map((buddy, idx) => (
+                <BuddyCard key={buddy.userId} buddy={buddy} rank={idx + 1} onRemove={handleRemove} />
+              ))}
             </AnimatePresence>
           )}
         </TabsContent>
