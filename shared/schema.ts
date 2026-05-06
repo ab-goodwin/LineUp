@@ -148,4 +148,9 @@ export type StatsResponse = {
   mostFrequentLocationCount: number;
   mostFrequentDance: string;
   mostFrequentDanceCount: number;
+  dancesThisMonth: number;
+  mostRecentDance: string;
+  mostDancedDay: { date: string; count: number } | null;
+  avgDancesPerSession: number;
+  top3Dances: { danceName: string; count: number }[];
 };

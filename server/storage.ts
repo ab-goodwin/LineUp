@@ -332,6 +332,71 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    // Additional stats
+    let dancesThisMonth = 0;
+    let mostRecentDance = "N/A";
+    let mostDancedDay: { date: string; count: number } | null = null;
+    let avgDancesPerSession = 0;
+    let top3Dances: { danceName: string; count: number }[] = [];
+
+    // Most recently added song
+    const [recentSong] = await db.select({ danceName: songs.danceName })
+      .from(songs).where(eq(songs.userId, userId))
+      .orderBy(desc(songs.id)).limit(1);
+    if (recentSong) mostRecentDance = recentSong.danceName;
+
+    if (sessionIds.length > 0) {
+      // Dances this month
+      const now = new Date();
+      const [thisMonthResult] = await db.select({ count: sql<number>`count(*)` })
+        .from(sessionDances)
+        .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+        .where(and(
+          eq(sessions.userId, userId),
+          sql`EXTRACT(MONTH FROM ${sessions.date}) = ${now.getMonth() + 1}`,
+          sql`EXTRACT(YEAR FROM ${sessions.date}) = ${now.getFullYear()}`
+        ));
+      dancesThisMonth = Number(thisMonthResult?.count || 0);
+
+      // Most danced day
+      const [topDayResult] = await db.select({
+        date: sessions.date,
+        count: sql<number>`count(*)`
+      })
+      .from(sessionDances)
+      .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+      .where(eq(sessions.userId, userId))
+      .groupBy(sessions.date)
+      .orderBy(desc(sql`count(*)`))
+      .limit(1);
+      if (topDayResult) {
+        mostDancedDay = {
+          date: topDayResult.date.toISOString().split('T')[0],
+          count: Number(topDayResult.count),
+        };
+      }
+
+      // Avg dances per session
+      const sessionCount = sessionIds.length;
+      avgDancesPerSession = sessionCount > 0
+        ? Math.round((totalDances / sessionCount) * 10) / 10
+        : 0;
+
+      // Top 3 dances
+      const top3 = await db.select({
+        danceName: songs.danceName,
+        count: sql<number>`count(*)`
+      })
+      .from(sessionDances)
+      .innerJoin(songs, eq(sessionDances.songId, songs.id))
+      .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+      .where(eq(sessions.userId, userId))
+      .groupBy(songs.danceName)
+      .orderBy(desc(sql`count(*)`))
+      .limit(3);
+      top3Dances = top3.map(r => ({ danceName: r.danceName, count: Number(r.count) }));
+    }
+
     return {
       totalDances,
       longestStreak,
@@ -341,6 +406,11 @@ export class DatabaseStorage implements IStorage {
       mostFrequentLocationCount: mostFreqLoc?.count || 0,
       mostFrequentDance: mostFreqDance?.danceName || "N/A",
       mostFrequentDanceCount: mostFreqDance?.count || 0,
+      dancesThisMonth,
+      mostRecentDance,
+      mostDancedDay,
+      avgDancesPerSession,
+      top3Dances,
     };
   }
   // --- Buddies ---
@@ -432,6 +502,9 @@ export class DatabaseStorage implements IStorage {
     if (!user) return null;
     const stats = await this.getStats(buddyUserId);
     const currentStreak = await this.getCurrentStreak(buddyUserId);
+    const [songCountResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(songs).where(eq(songs.userId, buddyUserId));
+    const songCount = Number(songCountResult?.count || 0);
     return {
       userId: user.id,
       username: user.username || "",
@@ -442,6 +515,7 @@ export class DatabaseStorage implements IStorage {
       totalDaysDancing: stats.totalDaysDancing,
       currentStreak,
       favoriteDance: stats.mostFrequentDance,
+      songCount,
     };
   }
 

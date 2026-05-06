@@ -211,6 +211,17 @@ export default function Profile() {
         <h2 className="text-xl font-bold mb-4 font-display text-foreground">Personal Details</h2>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Username — read only */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">Username</label>
+              <Input
+                value={profile?.username || ""}
+                readOnly
+                disabled
+                className="rounded-xl bg-muted/50 text-muted-foreground cursor-not-allowed opacity-80"
+                data-testid="input-profile-username"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="firstName" render={({ field }) => (
                 <FormItem>
@@ -229,7 +240,7 @@ export default function Profile() {
             </div>
             <FormField control={form.control} name="location" render={({ field }) => (
               <FormItem>
-                <FormLabel>Default Location</FormLabel>
+                <FormLabel>Location</FormLabel>
                 <FormControl><Input placeholder="Nashville, TN" className="rounded-xl" data-testid="input-profile-location" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
@@ -241,8 +252,22 @@ export default function Profile() {
         </Form>
       </section>
 
+      {/* Sign Out — above Danger Zone, red styling */}
+      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
+        <h2 className="text-xl font-bold mb-3 font-display text-foreground">Account</h2>
+        <Button
+          variant="outline"
+          className="w-full rounded-xl border-2 justify-start gap-2 text-destructive hover:text-destructive hover:bg-red-50 border-red-200 hover:border-red-300"
+          onClick={() => logout()}
+          data-testid="button-logout"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </Button>
+      </section>
+
       {/* Danger Zone */}
-      <section className="bg-red-50/50 rounded-2xl p-6 border border-red-100 mb-6">
+      <section className="bg-red-50/50 rounded-2xl p-6 border border-red-100">
         <h2 className="text-xl font-bold mb-2 font-display text-destructive">Danger Zone</h2>
         <p className="text-sm text-muted-foreground mb-6">Permanently delete your data. This cannot be undone.</p>
         <div className="space-y-3">
@@ -250,20 +275,6 @@ export default function Profile() {
           <DeleteDialog title="Delete Song Library?" description="This will empty your song library." onConfirm={() => handleDelete("songs")} triggerLabel="Delete Song Library" />
           <DeleteDialog title="Delete ALL Data?" description="This will wipe your account data completely. Are you absolutely sure?" onConfirm={() => handleDelete("all")} triggerLabel="Delete All Data" variant="destructive" />
         </div>
-      </section>
-
-      {/* Sign Out */}
-      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm">
-        <h2 className="text-xl font-bold mb-3 font-display text-foreground">Account</h2>
-        <Button
-          variant="outline"
-          className="w-full rounded-xl border-2 gap-2 text-muted-foreground hover:text-destructive hover:border-destructive/40"
-          onClick={() => logout()}
-          data-testid="button-logout"
-        >
-          <LogOut className="w-4 h-4" />
-          Sign Out
-        </Button>
       </section>
     </div>
   );
