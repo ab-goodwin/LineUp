@@ -11,8 +11,11 @@ interface StatCardProps {
 
 export function StatCard({ label, value, description, icon: Icon, className, delay = 0 }: StatCardProps) {
   return (
-    <div 
-      className="p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-full group border-yellow-200 hover:border-yellow-300 bg-[#ff87006b]"
+    <div
+      className={cn(
+        "p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between h-full group",
+        className
+      )}
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-start justify-between mb-2">

@@ -374,7 +374,7 @@ export default function Library() {
             <div className="text-center py-16 bg-secondary/20 rounded-2xl border-2 border-dashed border-border">
               <Music className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
               <p className="font-medium text-lg">No swing songs yet</p>
-              <p className="text-muted-foreground text-sm">Add WCS, ECS, country swing, two-step, and more!</p>
+              <p className="text-muted-foreground text-sm">Add WCS, ECS, Country Swing, Two-Step, and more!</p>
             </div>
           ) : (
             <AnimatePresence mode="popLayout">

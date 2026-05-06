@@ -8,21 +8,22 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { LocationCombobox } from "@/components/LocationCombobox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { insertSessionSchema } from "@shared/schema";
+import { insertSessionSchema, STYLE_INFO, STYLE_OPTIONS, type StyleOption } from "@shared/schema";
 import { useCreateSession, useUpdateSession, useDeleteSession } from "@/hooks/use-sessions";
-import { useSongs } from "@/hooks/use-songs";
+import { useSongs, useCreateSong } from "@/hooks/use-songs";
 import { format } from "date-fns";
 import { Trash2, Search, PlusCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useCreateSong } from "@/hooks/use-songs";
 import { SpotifySearch } from "@/components/SpotifySearch";
 import { StyleTag } from "@/lib/style-tags";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = insertSessionSchema.extend({
   danceIds: z.array(z.number()),
 });
-
 type FormValues = z.infer<typeof formSchema>;
+
+const SWING_STYLES = STYLE_OPTIONS.filter(s => s !== 'LINE');
 
 interface SessionDialogProps {
   date: Date;
@@ -37,51 +38,34 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
   const updateSession = useUpdateSession();
   const deleteSession = useDeleteSession();
   const createSong = useCreateSong();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddingSong, setIsAddingSong] = useState(false);
-  const [newSong, setNewSong] = useState({ danceName: "", songName: "", artist: "" });
   const [danceType, setDanceType] = useState<"line" | "swing">("line");
 
-  const SWING_STYLES = new Set(["WCS", "ECS", "CSW", "TWO", "OTHER"]);
+  // Line quick-add state
+  const [newLine, setNewLine] = useState({ danceName: "", songName: "", artist: "" });
+
+  // Swing quick-add state
+  const [newSwing, setNewSwing] = useState({ songName: "", artist: "", style: "WCS" as StyleOption, styleCustom: "" });
+
+  const SWING_STYLES_SET = new Set(["WCS", "ECS", "CSW", "TWO", "OTHER"]);
 
   const filteredSongs = songs
     .filter(s => {
       const style = (s as any).style || "LINE";
-      if (danceType === "line") return style === "LINE";
-      return SWING_STYLES.has(style);
+      return danceType === "line" ? style === "LINE" : SWING_STYLES_SET.has(style);
     })
     .filter(s =>
-      s.danceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.songName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.danceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (s.artist && s.artist.toLowerCase().includes(searchQuery.toLowerCase()))
     )
     .sort((a, b) => a.songName.localeCompare(b.songName));
 
-  const handleQuickAddSong = async () => {
-    if (!newSong.danceName || !newSong.songName) return;
-    try {
-      const created = await createSong.mutateAsync({
-        danceName: newSong.danceName,
-        songName: newSong.songName,
-        artist: newSong.artist,
-        rating: 0,
-        style: "LINE",
-      });
-      form.setValue("danceIds", [...form.getValues("danceIds"), created.id]);
-      setNewSong({ danceName: "", songName: "", artist: "" });
-      setIsAddingSong(false);
-    } catch (error) {
-      console.error("Failed to add song", error);
-    }
-  };
-
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      location: "",
-      date: date,
-      danceIds: [],
-    },
+    defaultValues: { location: "", date: date, danceIds: [] },
   });
 
   useEffect(() => {
@@ -95,9 +79,41 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
       form.reset({ location: "", date: date, danceIds: [] });
     }
     setIsAddingSong(false);
-    setNewSong({ danceName: "", songName: "", artist: "" });
+    setNewLine({ danceName: "", songName: "", artist: "" });
+    setNewSwing({ songName: "", artist: "", style: "WCS", styleCustom: "" });
     setDanceType("line");
-  }, [existingSession, date, isOpen, form]);
+    setSearchQuery("");
+  }, [existingSession, date, isOpen]);
+
+  const handleQuickAddLine = async () => {
+    if (!newLine.danceName || !newLine.songName) return;
+    try {
+      const created = await createSong.mutateAsync({
+        danceName: newLine.danceName, songName: newLine.songName,
+        artist: newLine.artist, rating: 0, style: "LINE",
+      });
+      form.setValue("danceIds", [...form.getValues("danceIds"), created.id]);
+      setNewLine({ danceName: "", songName: "", artist: "" });
+      setIsAddingSong(false);
+    } catch (e) { console.error(e); }
+  };
+
+  const handleQuickAddSwing = async () => {
+    if (!newSwing.songName) return;
+    const styleName = newSwing.style === 'OTHER' && newSwing.styleCustom
+      ? newSwing.styleCustom
+      : STYLE_INFO[newSwing.style].label;
+    try {
+      const created = await createSong.mutateAsync({
+        danceName: styleName, songName: newSwing.songName,
+        artist: newSwing.artist, rating: 0, style: newSwing.style,
+        styleCustom: newSwing.style === 'OTHER' ? newSwing.styleCustom || null : null,
+      });
+      form.setValue("danceIds", [...form.getValues("danceIds"), created.id]);
+      setNewSwing({ songName: "", artist: "", style: "WCS", styleCustom: "" });
+      setIsAddingSong(false);
+    } catch (e) { console.error(e); }
+  };
 
   const onSubmit = async (values: FormValues) => {
     try {
@@ -107,17 +123,13 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
         await createSession.mutateAsync(values);
       }
       onOpenChange(false);
-    } catch (error) {
-      console.error("Failed to save session", error);
-    }
+    } catch (e) { console.error(e); }
   };
 
   const handleDelete = async () => {
-    if (!existingSession) return;
-    if (confirm("Are you sure you want to delete this session?")) {
-      await deleteSession.mutateAsync(existingSession.id);
-      onOpenChange(false);
-    }
+    if (!existingSession || !confirm("Delete this session?")) return;
+    await deleteSession.mutateAsync(existingSession.id);
+    onOpenChange(false);
   };
 
   const isSubmitting = createSession.isPending || updateSession.isPending;
@@ -145,97 +157,128 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
             )} />
 
             <div className="flex-1 overflow-hidden flex flex-col min-h-[300px]">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <FormLabel>Dances Done</FormLabel>
-                  {/* Line / Swing toggle */}
+              {/* Header row: label + Line/Swing toggle + add button + search */}
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <FormLabel className="mb-0">Dances</FormLabel>
                   <div className="flex rounded-lg overflow-hidden border border-border text-xs">
                     <button type="button"
                       className={`px-2.5 py-1 font-medium transition-colors ${danceType === "line" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-secondary"}`}
-                      onClick={() => setDanceType("line")}>Line</button>
+                      onClick={() => { setDanceType("line"); setIsAddingSong(false); }}>Line</button>
                     <button type="button"
                       className={`px-2.5 py-1 font-medium transition-colors ${danceType === "swing" ? "bg-blue-500 text-white" : "bg-background text-muted-foreground hover:bg-secondary"}`}
-                      onClick={() => setDanceType("swing")}>Swing</button>
+                      onClick={() => { setDanceType("swing"); setIsAddingSong(false); }}>Swing</button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {danceType === "line" && (
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8"
-                      onClick={() => setIsAddingSong(!isAddingSong)} data-testid="button-toggle-add-song">
-                      <PlusCircle className="w-4 h-4 text-primary" />
-                    </Button>
-                  )}
-                  <div className="relative w-32">
+                <div className="flex items-center gap-1.5">
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8"
+                    onClick={() => setIsAddingSong(v => !v)} data-testid="button-toggle-add-song">
+                    <PlusCircle className={`w-4 h-4 ${danceType === "swing" ? "text-blue-500" : "text-primary"}`} />
+                  </Button>
+                  <div className="relative w-28">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                    <Input placeholder="Search..." className="h-8 pl-8 text-xs rounded-lg"
-                      value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} data-testid="input-session-song-search" />
+                    <Input placeholder="Search…" className="h-8 pl-7 text-xs rounded-lg"
+                      value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                   </div>
                 </div>
               </div>
 
+              {/* Line dance quick-add */}
               {isAddingSong && danceType === "line" && (
-                <div className="mb-4 p-3 border-2 border-primary/20 rounded-xl bg-primary/5 space-y-3">
-                  <SpotifySearch placeholder="Search Spotify for a song..."
-                    onSelect={(track) => { setNewSong(prev => ({ ...prev, songName: track.name, artist: track.artist })); }} />
-                  <Input placeholder="Dance Name *" className="h-8 text-xs" value={newSong.danceName}
-                    onChange={(e) => setNewSong(prev => ({ ...prev, danceName: e.target.value }))} data-testid="input-new-dance-name" />
-                  <Input placeholder="Song Name *" className="h-8 text-xs" value={newSong.songName}
-                    onChange={(e) => setNewSong(prev => ({ ...prev, songName: e.target.value }))} data-testid="input-new-song-name" />
-                  <Input placeholder="Artist (auto-filled from Spotify)" className="h-8 text-xs" value={newSong.artist}
-                    onChange={(e) => setNewSong(prev => ({ ...prev, artist: e.target.value }))} data-testid="input-new-artist" />
+                <div className="mb-3 p-3 border-2 border-primary/20 rounded-xl bg-primary/5 space-y-2">
+                  <SpotifySearch placeholder="Search Spotify…"
+                    onSelect={t => setNewLine(p => ({ ...p, songName: t.name, artist: t.artist }))} />
+                  <Input placeholder="Dance Name *" className="h-8 text-xs" value={newLine.danceName}
+                    onChange={e => setNewLine(p => ({ ...p, danceName: e.target.value }))} />
+                  <Input placeholder="Song Name *" className="h-8 text-xs" value={newLine.songName}
+                    onChange={e => setNewLine(p => ({ ...p, songName: e.target.value }))} />
+                  <Input placeholder="Artist (Optional)" className="h-8 text-xs" value={newLine.artist}
+                    onChange={e => setNewLine(p => ({ ...p, artist: e.target.value }))} />
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setIsAddingSong(false)}>Cancel</Button>
-                    <Button type="button" size="sm" className="h-7 text-xs" onClick={handleQuickAddSong}
-                      disabled={createSong.isPending || !newSong.danceName || !newSong.songName} data-testid="button-add-and-select">
-                      Add & Select
-                    </Button>
+                    <Button type="button" size="sm" className="h-7 text-xs" onClick={handleQuickAddLine}
+                      disabled={createSong.isPending || !newLine.danceName || !newLine.songName}>Add & Select</Button>
                   </div>
                 </div>
               )}
 
-              <ScrollArea className="flex-1 border-2 border-border/50 rounded-xl p-4 bg-secondary/20">
+              {/* Swing quick-add */}
+              {isAddingSong && danceType === "swing" && (
+                <div className="mb-3 p-3 border-2 border-blue-200 rounded-xl bg-blue-50/50 space-y-2">
+                  <SpotifySearch placeholder="Search Spotify…"
+                    onSelect={t => setNewSwing(p => ({ ...p, songName: t.name, artist: t.artist }))} />
+                  <Input placeholder="Song Name *" className="h-8 text-xs" value={newSwing.songName}
+                    onChange={e => setNewSwing(p => ({ ...p, songName: e.target.value }))} />
+                  <Input placeholder="Artist (Optional)" className="h-8 text-xs" value={newSwing.artist}
+                    onChange={e => setNewSwing(p => ({ ...p, artist: e.target.value }))} />
+                  <Select value={newSwing.style} onValueChange={v => setNewSwing(p => ({ ...p, style: v as StyleOption }))}>
+                    <SelectTrigger className="h-8 text-xs rounded-lg">
+                      <SelectValue placeholder="Style" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SWING_STYLES.map(s => (
+                        <SelectItem key={s} value={s}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold px-1 rounded" style={{ color: STYLE_INFO[s].color }}>{STYLE_INFO[s].short}</span>
+                            {STYLE_INFO[s].label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {newSwing.style === 'OTHER' && (
+                    <Input placeholder="Custom style name" className="h-8 text-xs" value={newSwing.styleCustom}
+                      onChange={e => setNewSwing(p => ({ ...p, styleCustom: e.target.value }))} />
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setIsAddingSong(false)}>Cancel</Button>
+                    <Button type="button" size="sm" className="h-7 text-xs bg-blue-500 hover:bg-blue-600 text-white" onClick={handleQuickAddSwing}
+                      disabled={createSong.isPending || !newSwing.songName}>Add & Select</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Song list */}
+              <ScrollArea className="flex-1 border-2 border-border/50 rounded-xl p-3 bg-secondary/20">
                 <FormField control={form.control} name="danceIds" render={() => (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {filteredSongs.length === 0 ? (
                       <div className="text-center text-muted-foreground py-8 text-sm">
-                        {songs.filter(s => danceType === "line" ? ((s as any).style || "LINE") === "LINE" : new Set(["WCS","ECS","CSW","TWO","OTHER"]).has((s as any).style)).length === 0
-                          ? `No ${danceType === "line" ? "line dances" : "swing songs"} in library. Go to Library to add some!`
+                        {songs.filter(s => danceType === "line"
+                          ? ((s as any).style || "LINE") === "LINE"
+                          : SWING_STYLES_SET.has((s as any).style)).length === 0
+                          ? `No ${danceType === "line" ? "line dances" : "swing songs"} in library yet.`
                           : "No matching songs found."}
                       </div>
-                    ) : (
-                      filteredSongs.map((song) => (
-                        <FormField key={song.id} control={form.control} name="danceIds" render={({ field }) => (
-                          <FormItem key={song.id}
-                            className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-3 hover:bg-secondary/50 transition-colors cursor-pointer"
-                            data-testid={`session-song-item-${song.id}`}>
-                            <FormControl>
-                              <Checkbox checked={field.value?.includes(song.id)}
-                                onCheckedChange={(checked) => checked
-                                  ? field.onChange([...field.value, song.id])
-                                  : field.onChange(field.value?.filter(v => v !== song.id))} />
-                            </FormControl>
-                            <div className="space-y-0.5 leading-none flex-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <FormLabel className="font-bold cursor-pointer text-sm">
-                                  {song.songName || song.danceName}
-                                </FormLabel>
-                                <StyleTag style={(song as any).style || "LINE"} styleCustom={(song as any).styleCustom} />
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                {song.danceName}
-                                {song.artist ? <span className="text-muted-foreground/70"> · {song.artist}</span> : null}
-                              </p>
-                            </div>
-                          </FormItem>
-                        )} />
-                      ))
-                    )}
+                    ) : filteredSongs.map(song => (
+                      <FormField key={song.id} control={form.control} name="danceIds" render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-2.5 hover:bg-secondary/50 transition-colors cursor-pointer"
+                          data-testid={`session-song-item-${song.id}`}>
+                          <FormControl>
+                            <Checkbox checked={field.value?.includes(song.id)}
+                              onCheckedChange={checked => checked
+                                ? field.onChange([...field.value, song.id])
+                                : field.onChange(field.value?.filter(v => v !== song.id))} />
+                          </FormControl>
+                          <div className="leading-none flex-1 min-w-0">
+                            {/* Song name + artist on top line */}
+                            <FormLabel className="font-bold cursor-pointer text-sm flex items-center gap-1.5 flex-wrap">
+                              {song.songName || song.danceName}
+                              {song.artist && <span className="font-normal text-muted-foreground">· {song.artist}</span>}
+                              <StyleTag style={(song as any).style || "LINE"} styleCustom={(song as any).styleCustom} />
+                            </FormLabel>
+                            {/* Dance name below */}
+                            <p className="text-xs text-muted-foreground mt-0.5">{song.danceName}</p>
+                          </div>
+                        </FormItem>
+                      )} />
+                    ))}
                   </div>
                 )} />
               </ScrollArea>
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-2">
               {existingSession && (
                 <Button type="button" variant="destructive" className="rounded-xl" onClick={handleDelete}
                   disabled={deleteSession.isPending} data-testid="button-delete-session">
@@ -244,7 +287,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
               )}
               <Button type="submit" className="flex-1 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25"
                 disabled={isSubmitting} data-testid="button-save-session">
-                {isSubmitting ? "Saving..." : existingSession ? "Update Session" : "Create Session"}
+                {isSubmitting ? "Saving…" : existingSession ? "Update Session" : "Create Session"}
               </Button>
             </div>
           </form>
