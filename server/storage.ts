@@ -1,12 +1,13 @@
 import { db } from "./db";
 import { 
   users, songs, sessions, sessionDances, locations, buddies, streakChallenges, verificationCodes,
+  danceOffs, danceOffParticipants,
   type User, type InsertUser,
   type Song, type InsertSong, type CreateSongRequest, type UpdateSongRequest,
   type Session, type InsertSession, type CreateSessionRequest, type UpdateSessionRequest, type SessionResponse,
   type StatsResponse, type Location
 } from "@shared/schema";
-import { eq, desc, sql, and, or, ilike, ne } from "drizzle-orm";
+import { eq, desc, sql, and, or, ilike, ne, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export interface IStorage {
@@ -185,7 +186,9 @@ export class DatabaseStorage implements IStorage {
           danceName: songs.danceName,
           songName: songs.songName,
           artist: songs.artist,
-          rating: songs.rating
+          rating: songs.rating,
+          style: songs.style,
+          styleCustom: songs.styleCustom,
         })
         .from(sessionDances)
         .innerJoin(songs, eq(sessionDances.songId, songs.id))
@@ -209,7 +212,9 @@ export class DatabaseStorage implements IStorage {
         danceName: songs.danceName,
         songName: songs.songName,
         artist: songs.artist,
-        rating: songs.rating
+        rating: songs.rating,
+        style: songs.style,
+        styleCustom: songs.styleCustom,
       })
       .from(sessionDances)
       .innerJoin(songs, eq(sessionDances.songId, songs.id))
@@ -630,6 +635,129 @@ export class DatabaseStorage implements IStorage {
       status: "active",
       startDate: new Date(),
     });
+  }
+
+  // --- Homepage Stats Preferences ---
+  async getHomepageStats(userId: number): Promise<string[] | null> {
+    const user = await this.getUserById(userId);
+    if (!user || !user.homepageStats) return null;
+    try { return JSON.parse(user.homepageStats); } catch { return null; }
+  }
+
+  async setHomepageStats(userId: number, stats: string[]): Promise<void> {
+    await db.update(users).set({ homepageStats: JSON.stringify(stats) }).where(eq(users.id, userId));
+  }
+
+  // --- Dance-Off Challenges ---
+  private generateJoinCode(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  }
+
+  async createDanceOff(creatorId: number, type: 'h2h' | 'showdown', title: string, durationHours: number, challengedId?: number): Promise<{ id: number; joinCode: string | null }> {
+    const joinCode = type === 'showdown' ? this.generateJoinCode() : null;
+    const [danceOff] = await db.insert(danceOffs).values({
+      creatorId, type, title, durationHours, joinCode,
+      status: 'active',
+      challengedId: challengedId ?? null,
+      startedAt: new Date(),
+    }).returning();
+
+    await db.insert(danceOffParticipants).values({ danceOffId: danceOff.id, userId: creatorId });
+    if (type === 'h2h' && challengedId) {
+      await db.insert(danceOffParticipants).values({ danceOffId: danceOff.id, userId: challengedId });
+    }
+
+    return { id: danceOff.id, joinCode };
+  }
+
+  async joinDanceOff(userId: number, joinCode: string): Promise<void> {
+    const [danceOff] = await db.select().from(danceOffs)
+      .where(and(eq(danceOffs.joinCode, joinCode.toUpperCase()), eq(danceOffs.type, 'showdown'), eq(danceOffs.status, 'active')));
+    if (!danceOff) throw new Error("Invalid or expired join code");
+    if (danceOff.creatorId === userId) throw new Error("You can't join your own showdown");
+    const [existing] = await db.select().from(danceOffParticipants)
+      .where(and(eq(danceOffParticipants.danceOffId, danceOff.id), eq(danceOffParticipants.userId, userId)));
+    if (existing) throw new Error("You've already joined this challenge");
+    await db.insert(danceOffParticipants).values({ danceOffId: danceOff.id, userId });
+  }
+
+  async finalizeDanceOff(id: number): Promise<void> {
+    const [danceOff] = await db.select().from(danceOffs).where(eq(danceOffs.id, id));
+    if (!danceOff) return;
+    const parts = await db.select().from(danceOffParticipants).where(eq(danceOffParticipants.danceOffId, id));
+    const startDate = danceOff.startedAt.toISOString().split('T')[0];
+    for (const p of parts) {
+      const userSessions = await db.select({ id: sessions.id }).from(sessions)
+        .where(and(eq(sessions.userId, p.userId), sql`${sessions.date}::date = ${startDate}::date`));
+      let finalCount = 0;
+      if (userSessions.length > 0) {
+        const ids = userSessions.map(s => s.id);
+        const [r] = await db.select({ count: sql<number>`count(*)` })
+          .from(sessionDances).where(inArray(sessionDances.sessionId, ids));
+        finalCount = Number(r?.count || 0);
+      }
+      await db.update(danceOffParticipants).set({ finalDanceCount: finalCount }).where(eq(danceOffParticipants.id, p.id));
+    }
+    await db.update(danceOffs).set({ status: 'completed' }).where(eq(danceOffs.id, id));
+  }
+
+  async getDanceOffs(userId: number): Promise<any[]> {
+    const created = await db.select({ id: danceOffs.id }).from(danceOffs).where(eq(danceOffs.creatorId, userId));
+    const joined = await db.select({ id: danceOffParticipants.danceOffId }).from(danceOffParticipants).where(eq(danceOffParticipants.userId, userId));
+    const allIds = [...new Set([...created.map(d => d.id), ...joined.map(p => p.id)])];
+    const results = await Promise.all(allIds.map(id => this.getDanceOffDetail(id)));
+    return results.filter(Boolean).sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+  }
+
+  async getDanceOffDetail(id: number): Promise<any | null> {
+    const [danceOff] = await db.select().from(danceOffs).where(eq(danceOffs.id, id));
+    if (!danceOff) return null;
+    const now = new Date();
+    const endTime = new Date(danceOff.startedAt.getTime() + danceOff.durationHours * 3600 * 1000);
+    if (now >= endTime && danceOff.status === 'active') {
+      await this.finalizeDanceOff(id);
+      const [updated] = await db.select().from(danceOffs).where(eq(danceOffs.id, id));
+      if (updated) Object.assign(danceOff, updated);
+    }
+    const parts = await db.select().from(danceOffParticipants).where(eq(danceOffParticipants.danceOffId, id));
+    const startDate = danceOff.startedAt.toISOString().split('T')[0];
+    const participantResults = await Promise.all(parts.map(async p => {
+      const user = await this.getUserById(p.userId);
+      let liveDanceCount: number | undefined;
+      if (danceOff.status === 'active') {
+        const userSessions = await db.select({ id: sessions.id }).from(sessions)
+          .where(and(eq(sessions.userId, p.userId), sql`${sessions.date}::date = ${startDate}::date`));
+        if (userSessions.length > 0) {
+          const ids = userSessions.map(s => s.id);
+          const [r] = await db.select({ count: sql<number>`count(*)` }).from(sessionDances).where(inArray(sessionDances.sessionId, ids));
+          liveDanceCount = Number(r?.count || 0);
+        } else {
+          liveDanceCount = 0;
+        }
+      }
+      return {
+        userId: p.userId,
+        username: user?.username || "",
+        firstName: user?.firstName || "",
+        avatar: user?.avatar ?? undefined,
+        finalDanceCount: p.finalDanceCount,
+        liveDanceCount,
+      };
+    }));
+    return {
+      id: danceOff.id,
+      type: danceOff.type,
+      title: danceOff.title,
+      durationHours: danceOff.durationHours,
+      startedAt: danceOff.startedAt.toISOString(),
+      joinCode: danceOff.joinCode,
+      status: danceOff.status,
+      creatorId: danceOff.creatorId,
+      challengedId: danceOff.challengedId,
+      participants: participantResults,
+      msRemaining: Math.max(0, endTime.getTime() - now.getTime()),
+    };
   }
 }
 

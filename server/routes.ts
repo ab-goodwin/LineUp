@@ -469,5 +469,48 @@ export async function registerRoutes(
     res.status(201).json({ ok: true });
   });
 
+  // --- Homepage Stats Preferences ---
+  app.get("/api/profile/homepage-stats", requireAuth, async (req, res) => {
+    const stats = await storage.getHomepageStats(req.user!.id);
+    res.json({ stats });
+  });
+
+  app.put("/api/profile/homepage-stats", requireAuth, async (req, res) => {
+    const { stats } = req.body;
+    if (!Array.isArray(stats)) { res.status(400).json({ message: "stats must be an array" }); return; }
+    await storage.setHomepageStats(req.user!.id, stats);
+    res.json({ ok: true });
+  });
+
+  // --- Dance-Off Routes ---
+  app.get("/api/danceoffs", requireAuth, async (req, res) => {
+    const list = await storage.getDanceOffs(req.user!.id);
+    res.json(list);
+  });
+
+  app.post("/api/danceoffs", requireAuth, async (req, res) => {
+    const { type, title, durationHours, challengedId } = req.body;
+    if (!type || !durationHours) { res.status(400).json({ message: "type and durationHours required" }); return; }
+    if (durationHours < 1 || durationHours > 12) { res.status(400).json({ message: "durationHours must be 1-12" }); return; }
+    if (type === 'h2h' && !challengedId) { res.status(400).json({ message: "challengedId required for h2h" }); return; }
+    try {
+      const result = await storage.createDanceOff(req.user!.id, type, title || '', durationHours, challengedId);
+      res.status(201).json(result);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.post("/api/danceoffs/join", requireAuth, async (req, res) => {
+    const { joinCode } = req.body;
+    if (!joinCode) { res.status(400).json({ message: "joinCode required" }); return; }
+    try {
+      await storage.joinDanceOff(req.user!.id, joinCode);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

@@ -13,6 +13,7 @@ export const users = pgTable("users", {
   location: text("location").default("").notNull(),
   phoneNumber: text("phone_number"),
   avatar: text("avatar"),
+  homepageStats: text("homepage_stats"),
 });
 
 export const verificationCodes = pgTable("verification_codes", {
@@ -34,6 +35,8 @@ export const songs = pgTable("songs", {
   songName: text("song_name").notNull(),
   artist: text("artist").default("").notNull(),
   rating: integer("rating").notNull().default(0),
+  style: text("style").notNull().default("LINE"),
+  styleCustom: text("style_custom"),
 });
 
 // Dance Sessions
@@ -56,19 +59,42 @@ export const buddies = pgTable("buddies", {
   id: serial("id").primaryKey(),
   requesterId: integer("requester_id").notNull(),
   recipientId: integer("recipient_id").notNull(),
-  status: text("status").notNull().default("pending"), // pending | accepted | declined
+  status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Streak challenges between buddies
+// Streak challenges between buddies (legacy)
 export const streakChallenges = pgTable("streak_challenges", {
   id: serial("id").primaryKey(),
   challengerId: integer("challenger_id").notNull(),
   challengedId: integer("challenged_id").notNull(),
   startDate: timestamp("start_date").notNull().defaultNow(),
   durationDays: integer("duration_days").notNull().default(7),
-  status: text("status").notNull().default("active"), // active | completed
+  status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Dance-Off Challenges (h2h or showdown)
+export const danceOffs = pgTable("dance_offs", {
+  id: serial("id").primaryKey(),
+  creatorId: integer("creator_id").notNull(),
+  type: text("type").notNull().default("h2h"),
+  title: text("title").notNull().default(""),
+  durationHours: integer("duration_hours").notNull().default(1),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  joinCode: text("join_code"),
+  status: text("status").notNull().default("active"),
+  challengedId: integer("challenged_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Dance-Off Participants
+export const danceOffParticipants = pgTable("dance_off_participants", {
+  id: serial("id").primaryKey(),
+  danceOffId: integer("dance_off_id").notNull(),
+  userId: integer("user_id").notNull(),
+  finalDanceCount: integer("final_dance_count"),
+  joinedAt: timestamp("joined_at").defaultNow(),
 });
 
 // Many-to-Many link between Sessions and Songs
@@ -123,6 +149,9 @@ export type InsertSession = z.infer<typeof insertSessionSchema>;
 export type SessionDance = typeof sessionDances.$inferSelect;
 export type InsertSessionDance = z.infer<typeof insertSessionDanceSchema>;
 
+export type DanceOff = typeof danceOffs.$inferSelect;
+export type DanceOffParticipant = typeof danceOffParticipants.$inferSelect;
+
 // Request Types
 export type CreateSongRequest = Omit<InsertSong, 'publicId'>;
 export type UpdateSongRequest = Partial<Omit<InsertSong, 'publicId'>>;
@@ -153,4 +182,16 @@ export type StatsResponse = {
   mostDancedDay: { date: string; count: number } | null;
   avgDancesPerSession: number;
   top3Dances: { danceName: string; count: number }[];
+};
+
+export const STYLE_OPTIONS = ['LINE', 'WCS', 'ECS', 'CSW', 'TWO', 'OTHER'] as const;
+export type StyleOption = typeof STYLE_OPTIONS[number];
+
+export const STYLE_INFO: Record<StyleOption, { label: string; short: string; color: string }> = {
+  LINE: { label: 'Line Dance', short: 'LINE', color: '#55311C' },
+  WCS:  { label: 'West Coast Swing', short: 'WCS',  color: '#3B82F6' },
+  ECS:  { label: 'East Coast Swing', short: 'ECS',  color: '#EC4899' },
+  CSW:  { label: 'Country Swing',    short: 'CSW',  color: '#D85C31' },
+  TWO:  { label: 'Two-Step',         short: 'TWO',  color: '#9512C9' },
+  OTHER:{ label: 'Other',            short: 'OTHER',color: '#22C55E' },
 };
