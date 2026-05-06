@@ -1,0 +1,17 @@
+Bigger Implementations:
+Implement a Buddy page challenges tab:
+Add the ability to challenge friends to a “dance-off” (head-to-head for a direct challenge against one other user, or a showdown for a group challenge) where a user can challenge a friend, (or friends) to see who can complete the most dances over a set amount of hours, with a max of 12 hours. (determined by a slider). The timer starts when the sender sends out the challenge. Group battles should be able to be joined by a 6 digit alphanumeric code. You should not be able to join a showdown after the timer expires. 
+For the showdowns, when the time is over, the results should post somewhere in the buddy tab, on an interactive button that opens to display  the total dances for each challenger, in a leaderboard, with a gold trophy icon for first place, a silver trophy icon for second place, and a bronze trophy icon for 3rd place. All other places should just have their respective number (4th, 5th, etc.).
+For head-to-head challenges, After the designated time is over, the results should post similarly to the showdown results, in the same location, with first place getting a gold trophy icon and second getting a silver trophy icon in the leaderboard.
+Only dances that are marked as completed during that period of time should count for the total. Dances must be added to sessions of the same day that the challenge was started for them to be added. Any dances added to after the challenge period should not be counted in the results. 
+All Results and total dance values for competitions should be separate so they cannot be modified after challenge completion.  
+
+Implement a secondary library specifically for swing + categories:   
+I want a toggle switch added to new session / edit season tab. You should be able to toggle between Swing songs and Line Dance songs. When adding a swing song, all you need is the following: song name, artist, search by Spotify bar (which fills in the song name and artist), and a selectable style category; West Coast Swing, East Coast Swing, Country Swing, Two-Step, or Other (which prompts a text entry). All dances made in the line dance tab should be added to a hidden line style category.
+I want the style category of each dance to appear in the library on it’s respective song, and in session creation / edits library. (this should be displayed in the following shorthand, small text color coded: 
+(Line Dance)LINE: hex 55311C (brown)
+(West Coast Swing)WCS: hex 3B82F6 (blue)
+(East Coast Swing)ECS: hex EC4899 (pink)
+(Country Swing)CSW: hex D85C31 (orange)
+(Two-Step)TWO: hex 9512C9 (purple)
+(Other)OTHER: hex 22C55E (green))
