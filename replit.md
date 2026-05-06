@@ -1,131 +1,61 @@
 # LineUp - Line Dancing Tracking App
 
-## Overview
-
-LineUp is a personal line dancing tracking application that helps dancers log their dance sessions, maintain a song library, and view statistics about their dancing activity. The app features a calendar-based session tracking system, a song library with ratings, a dashboard displaying dance statistics, and a Dancing Buddies social feature.
+LineUp is a personal line dancing tracking app where dancers log sessions, maintain a song library, and view stats.
 
 **Slogan:** "Your Dances. Your Stats." | "Every Dance Counts"
 
-## User Preferences
+## Run & Operate
+- `npm run dev` — starts Express + Vite dev server on port 5000
+- Schema changes: run `psql "$DATABASE_URL" -c "ALTER TABLE ..."` (do NOT use `drizzle-kit push` — it will try to drop `user_sessions`)
+- Required env vars: `SESSION_SECRET`, `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`
+- Optional (SMS recovery): `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
 
-Preferred communication style: Simple, everyday language.
+## Stack
+- **Frontend**: React 18 + TypeScript, Vite, Wouter, TanStack Query v5, shadcn/ui, Tailwind CSS, Framer Motion
+- **Backend**: Node.js, Express, TypeScript ESM
+- **Database**: PostgreSQL, Drizzle ORM, drizzle-zod
+- **Auth**: passport-local, bcryptjs, express-session via connect-pg-simple (`user_sessions` table)
 
-## System Architecture
-
-### Frontend Architecture
-- **Framework**: React 18 with TypeScript, using Vite as the build tool
-- **Routing**: Wouter for lightweight client-side routing
-- **State Management**: TanStack React Query for server state management and caching
-- **UI Components**: shadcn/ui component library built on Radix UI primitives
-- **Styling**: Tailwind CSS with custom CSS variables for theming (cowboy/western theme with warm terracotta colors, higher saturation)
-- **Animations**: Framer Motion for page transitions and UI animations
-- **Calendar**: react-day-picker for interactive calendar functionality
-- **Forms**: React Hook Form with Zod validation via @hookform/resolvers
-
-### Backend Architecture
-- **Runtime**: Node.js with Express.js
-- **Language**: TypeScript with ESM modules
-- **API Design**: RESTful API with typed contracts defined in shared/routes.ts
-- **Build Process**: Custom build script using esbuild for server bundling and Vite for client
-
-### Data Layer
-- **Database**: PostgreSQL
-- **ORM**: Drizzle ORM with drizzle-zod for schema validation
-- **Schema Location**: shared/schema.ts contains all table definitions and types
-- **Migrations**: Drizzle Kit for database migrations (output to /migrations)
-
-### Project Structure
+## Where Things Live
 ```
-├── client/           # React frontend application
-│   └── src/
-│       ├── components/   # UI components including shadcn/ui
-│       ├── hooks/        # Custom React hooks for data fetching
-│       ├── pages/        # Page components (Home, Calendar, Library, Profile, Buddies)
-│       └── lib/          # Utilities and query client setup
-├── server/           # Express backend
-│   ├── routes.ts     # API route definitions
-│   ├── storage.ts    # Database operations layer
-│   └── db.ts         # Database connection
-├── shared/           # Shared code between client and server
-│   ├── schema.ts     # Drizzle schema and types
-│   └── routes.ts     # API contract definitions with Zod
-└── migrations/       # Database migrations
+client/src/
+  pages/        Home, Calendar, Library, Profile, Buddies, AuthPage
+  components/   SessionDialog, Header, Navigation, StatCard, SpotifySearch, StyleTag…
+  hooks/        use-songs, use-sessions, use-stats, use-buddies, use-danceoffs, use-profile…
+  lib/          style-tags.tsx (StyleTag component), queryClient.ts
+server/
+  routes.ts     All API routes
+  storage.ts    All DB operations (DatabaseStorage class)
+  db.ts         Drizzle DB connection
+shared/
+  schema.ts     All table defs, insert schemas, types, STYLE_INFO, STYLE_OPTIONS
 ```
 
-### Key Data Models
-- **Users**: User profile with first name, last name, default location, phone number, and avatar (base64)
-- **Songs**: Dance library entries with dance name, song name, artist, public ID, and rating (1-5 stars)
-- **Sessions**: Dance session records with date and location
-- **SessionDances**: Many-to-many relationship linking sessions to songs danced
-- **Locations**: Saved locations per user for quick session entry
-- **Buddies**: Friend connections between users (pending/accepted/declined)
-- **StreakChallenges**: Timed streak contests between two buddies
+## Architecture Decisions
+- `user_sessions` table is managed by connect-pg-simple, NOT in Drizzle schema — never let drizzle-kit push drop it
+- Song `style` column defaults to `'LINE'`; swing songs have style in `['WCS','ECS','CSW','TWO','OTHER']`; `style_custom` holds free-text for OTHER
+- `homepage_stats` stored as JSON string in `users.homepage_stats`; null = all stats enabled
+- Dance-offs count session_dances on the same calendar day as `started_at::date`; auto-finalize on fetch when expired
+- Avatar stored as base64 JPEG in `users.avatar` TEXT; client resizes to 200×200 before upload; server enforces 200KB limit
 
-### API Pattern
-The API uses a typed contract pattern where routes are defined in shared/routes.ts with Zod schemas for input validation and response types. This enables type-safe API calls on both client and server.
+## Product
+- **Home**: Stats dashboard (2×2 grid + stacked), customizable via "Edit Homepage" toggle dialog
+- **Calendar**: Log sessions by date, add dances to each session, view history
+- **Library**: Two tabs — Line Dance (style=LINE) and Swing (WCS/ECS/CSW/TWO/OTHER) with color-coded style tags
+- **Profile**: Edit name/location, avatar upload, saved locations, danger zone, sign out
+- **Buddies**: Three tabs — Buddies leaderboard (ranked by song count), Challenges (h2h + showdown dance-offs with live countdown), Find (search by username)
+- **Session Dialog**: Line/Swing toggle to filter songs; inline quick-add for new line dance songs
 
-### Auth
-- passport-local strategy with bcryptjs password hashing
-- express-session stored in PostgreSQL via connect-pg-simple (`user_sessions` table)
-- SESSION_SECRET env var required
-- All data routes protected with `requireAuth` middleware using `req.user.id`
+## Branding
+- Primary: `#D85C31` (HSL 16 72% 50%) — terracotta
+- Accent/gold: `#D7A259` (HSL 35 70% 57%) — subtitles/slogans
+- Style tag colors: LINE #55311C · WCS #3B82F6 · ECS #EC4899 · CSW #D85C31 · TWO #9512C9 · OTHER #22C55E
+- Fonts: Rye (display/headings), Outfit (body)
+- Logo: `LineUp_Short_*.png` (auth), `LineUp_Long_*.png` (header)
+- Header only shown on dashboard (`/`) route
 
-### Branding
-- App name: **LineUp**
-- Primary color: #D85C31 (HSL: 16 68% 52%)
-- Accent/gold color: #D7A259 (HSL: 35 61% 60%) — used for subtitles/slogans
-- Logo: `LineUp_Short_1777958974669.png` (auth page) and `LineUp_Long_1777958974669.png` (header)
-- Global headings (h1-h6) use `text-foreground` (black/dark) — not primary colored
-
-### Spotify Integration
-- Backend proxy at `/api/spotify/search` using client credentials flow
-- In-memory token cache on server
-- SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET secrets required
-- SpotifySearch component used in Library song form and SessionDialog quick-add
-
-### SMS / Account Recovery (Twilio)
-- Forgot password/username flow via phone number
-- Routes: POST /api/auth/forgot-send, POST /api/auth/forgot-reset
-- Requires: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER secrets
-- Verification codes stored in `verification_codes` table (10-minute expiry, single-use)
-
-### Profile Photo
-- Stored as base64 JPEG in `users.avatar` TEXT column
-- Client resizes to max 200×200 before upload (JPEG quality 0.75)
-- Server enforces 200KB base64 size limit
-- Displayed in: Header avatar, Profile page, Buddy cards, Pending requests
-
-### Dancing Buddies Feature
-- Search users by username (`/api/users/search`)
-- Send/accept/decline buddy requests (`/api/buddies/request`)
-- View buddy public stats (total dances, streaks, favorite dance)
-- Challenge buddies to streak contests with configurable duration
-- Buddies page at `/buddies` with Buddies / Challenges / Find tabs
-- Navigation tab added to bottom nav
-
-## External Dependencies
-
-### Database
-- PostgreSQL database (connection via DATABASE_URL environment variable)
-- connect-pg-simple for session storage
-
-### Core Libraries
-- Drizzle ORM for database operations
-- Zod for runtime type validation
-- Express.js for HTTP server
-- TanStack React Query for data fetching and caching
-
-### UI Framework
-- Radix UI primitives (comprehensive set including dialogs, dropdowns, tooltips, etc.)
-- Tailwind CSS for styling
-- class-variance-authority for component variants
-- Lucide React for icons
-
-### Date Handling
-- date-fns for date manipulation
-- react-day-picker for calendar component
-
-### Development Tools
-- Vite with React plugin
-- Replit-specific plugins for development (runtime error overlay, cartographer)
-- TypeScript for type checking
+## Gotchas
+- Never run `drizzle-kit push` without checking for `user_sessions` drop warning
+- TanStack Query v5: object form only — `useQuery({ queryKey, queryFn })`
+- `style` and `styleCustom` fields must be included in `getSessions`/`getSession` song selects in storage.ts
+- Dance-off join codes are 6-char uppercase alphanumeric; stored uppercase; compared case-insensitively

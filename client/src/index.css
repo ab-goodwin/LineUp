@@ -9,30 +9,30 @@
   --font-display: 'Rye', serif;
   --font-body: 'Outfit', sans-serif;
 
-  --background: 30 35% 97%;
-  --foreground: 20 25% 10%;
+  --background: 30 52% 96%;
+  --foreground: 20 38% 9%;
 
-  --primary: 16 68% 52%; /* #D85C31 */
+  --primary: 16 72% 50%; /* #D85C31 */
   --primary-foreground: 30 20% 98%;
 
-  --secondary: 35 55% 88%;
-  --secondary-foreground: 20 25% 15%;
+  --secondary: 35 72% 86%;
+  --secondary-foreground: 20 38% 13%;
 
-  --muted: 30 30% 90%;
-  --muted-foreground: 25 20% 45%;
+  --muted: 30 48% 89%;
+  --muted-foreground: 25 30% 42%;
 
-  --accent: 35 61% 60%; /* #D7A259 gold */
-  --accent-foreground: 20 25% 15%;
+  --accent: 35 70% 57%; /* #D7A259 gold */
+  --accent-foreground: 20 38% 13%;
 
   --destructive: 0 84% 55%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 30 30% 82%;
-  --input: 30 30% 82%;
-  --ring: 16 68% 52%;
+  --border: 30 48% 78%;
+  --input: 30 48% 78%;
+  --ring: 16 72% 50%;
 
-  --card: 30 40% 99%;
-  --card-foreground: 20 25% 10%;
+  --card: 30 55% 98%;
+  --card-foreground: 20 38% 9%;
 
   --radius: 1rem;
 }
