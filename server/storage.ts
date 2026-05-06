@@ -565,7 +565,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async sendBuddyRequest(requesterId: number, recipientId: number): Promise<void> {
-    // Check if any relationship already exists
     const existing = await db
       .select()
       .from(buddies)
@@ -573,8 +572,27 @@ export class DatabaseStorage implements IStorage {
         and(eq(buddies.requesterId, requesterId), eq(buddies.recipientId, recipientId)),
         and(eq(buddies.requesterId, recipientId), eq(buddies.recipientId, requesterId))
       ));
-    if (existing.length > 0) throw new Error("Request already exists");
+    if (existing.length > 0) {
+      if (existing[0].status === "declined") {
+        await db.delete(buddies).where(eq(buddies.id, existing[0].id));
+      } else {
+        throw new Error("Request already exists");
+      }
+    }
     await db.insert(buddies).values({ requesterId, recipientId, status: "pending" });
+  }
+
+  async getStyleDistribution(userId: number): Promise<{ style: string; count: number }[]> {
+    const userSessions = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, userId));
+    if (userSessions.length === 0) return [];
+    const ids = userSessions.map(s => s.id);
+    const rows = await db
+      .select({ style: songs.style, count: sql<number>`count(*)` })
+      .from(sessionDances)
+      .innerJoin(songs, eq(sessionDances.songId, songs.id))
+      .where(inArray(sessionDances.sessionId, ids))
+      .groupBy(songs.style);
+    return rows.map(r => ({ style: r.style, count: Number(r.count) }));
   }
 
   async respondToBuddyRequest(id: number, userId: number, action: "accept" | "decline"): Promise<void> {

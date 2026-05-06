@@ -469,6 +469,12 @@ export async function registerRoutes(
     res.status(201).json({ ok: true });
   });
 
+  // --- Style Distribution ---
+  app.get("/api/stats/style-distribution", requireAuth, async (req, res) => {
+    const dist = await storage.getStyleDistribution(req.user!.id);
+    res.json(dist);
+  });
+
   // --- Homepage Stats Preferences ---
   app.get("/api/profile/homepage-stats", requireAuth, async (req, res) => {
     const stats = await storage.getHomepageStats(req.user!.id);

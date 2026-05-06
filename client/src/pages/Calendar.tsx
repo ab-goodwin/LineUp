@@ -5,9 +5,8 @@ import { useSessions } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
 import { SessionDialog } from "@/components/SessionDialog";
 import { Plus, MapPin, Music } from "lucide-react";
-import { motion } from "framer-motion";
 import "react-day-picker/dist/style.css";
-import { cn } from "@/lib/utils";
+import { StyleTag } from "@/lib/style-tags";
 
 export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -15,12 +14,10 @@ export default function CalendarPage() {
   
   const { data: sessions = [], isLoading } = useSessions();
 
-  // Find session for selected date
   const selectedSession = sessions.find(s => 
     isSameDay(parseISO(s.date as any), selectedDate)
   );
 
-  // Dates with sessions for calendar modifiers
   const sessionDates = sessions.map(s => parseISO(s.date as any));
 
   return (
@@ -34,9 +31,7 @@ export default function CalendarPage() {
             mode="single"
             selected={selectedDate}
             onSelect={(date) => date && setSelectedDate(date)}
-            modifiers={{
-              hasSession: sessionDates,
-            }}
+            modifiers={{ hasSession: sessionDates }}
             modifiersStyles={{
               hasSession: {
                 fontWeight: "bold",
@@ -77,8 +72,9 @@ export default function CalendarPage() {
                   <ul className="space-y-2">
                     {selectedSession.dances.map((dance) => (
                       <li key={dance.id} className="text-sm font-medium flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                        {dance.danceName}
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+                        <span className="flex-1">{(dance as any).songName || dance.danceName}</span>
+                        <StyleTag style={(dance as any).style || 'LINE'} styleCustom={(dance as any).styleCustom} />
                       </li>
                     ))}
                   </ul>

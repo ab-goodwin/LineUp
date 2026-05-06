@@ -34,6 +34,9 @@
   --card: 30 55% 98%;
   --card-foreground: 20 38% 9%;
 
+  --popover: 30 55% 97%;
+  --popover-foreground: 20 38% 9%;
+
   --radius: 1rem;
 }
 
