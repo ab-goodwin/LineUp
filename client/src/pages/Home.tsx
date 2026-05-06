@@ -15,7 +15,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 const ALL_STAT_KEYS = [
   { key: "totalDances",         label: "Total Dances" },
@@ -127,17 +126,41 @@ function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => v
   );
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
-  if (!active || !payload?.length) return null;
-  const { style, count, pct } = payload[0].payload;
-  const info = STYLE_INFO[style as StyleOption];
+// Custom SVG donut chart — avoids recharts React 18 incompatibility
+function DonutChart({ data }: { data: { style: string; count: number; pct: number }[] }) {
+  const size = 144;
+  const r = 52;
+  const gap = 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circumference = 2 * Math.PI * r;
+
+  let offset = 0;
+  const slices = data.map(d => {
+    const dash = (d.pct / 100) * circumference - gap;
+    const slice = { ...d, dash, offset };
+    offset += (d.pct / 100) * circumference;
+    return slice;
+  });
+
   return (
-    <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-md text-sm">
-      <p className="font-bold" style={{ color: info?.color }}>{info?.label ?? style}</p>
-      <p className="text-muted-foreground">{count} dance{count !== 1 ? "s" : ""} · {pct}%</p>
-    </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {slices.map(s => {
+        const info = STYLE_INFO[s.style as StyleOption];
+        return (
+          <circle key={s.style} cx={cx} cy={cy} r={r}
+            fill="none"
+            stroke={info?.color ?? "#888"}
+            strokeWidth={22}
+            strokeDasharray={`${s.dash} ${circumference - s.dash}`}
+            strokeDashoffset={-(s.offset) + circumference / 4}
+            style={{ transition: "stroke-dasharray 0.5s" }} />
+        );
+      })}
+      <circle cx={cx} cy={cy} r={r - 14} fill="none" />
+    </svg>
   );
-};
+}
 
 export default function Home() {
   const { data: profile, isLoading: profileLoading } = useProfile();
@@ -304,17 +327,7 @@ export default function Home() {
                   ) : (
                     <div className="flex items-center gap-6">
                       <div className="w-36 h-36 flex-shrink-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie data={pieData} dataKey="count" nameKey="style" cx="50%" cy="50%"
-                              innerRadius={32} outerRadius={60} paddingAngle={2}>
-                              {pieData.map(entry => (
-                                <Cell key={entry.style} fill={STYLE_INFO[entry.style as StyleOption]?.color ?? "#888"} />
-                              ))}
-                            </Pie>
-                            <Tooltip content={<CustomTooltip />} />
-                          </PieChart>
-                        </ResponsiveContainer>
+                        <DonutChart data={pieData} />
                       </div>
                       <div className="space-y-1.5 flex-1 min-w-0">
                         {pieData.sort((a, b) => b.count - a.count).map(entry => {
