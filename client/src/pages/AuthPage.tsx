@@ -236,12 +236,12 @@ export default function AuthPage() {
   // ---- NORMAL LOGIN / REGISTER ----
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <div className="mb-8">
-          <img src={logoShort} alt="LineUp" className="h-28 object-contain" />
+      <div className="w-full max-w-sm flex flex-col items-center">
+        <div className="mb-8 flex justify-center w-full">
+          <img src={logoShort} alt="LineUp" className="h-56 object-contain" />
         </div>
 
-        <div className="bg-card rounded-2xl border border-border shadow-lg p-6">
+        <div className="bg-card rounded-2xl border border-border shadow-lg p-6 w-full">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full mb-6 bg-secondary/40 rounded-xl">
               <TabsTrigger value="login" className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm">Sign In</TabsTrigger>

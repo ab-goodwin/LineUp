@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import honkyTonkLogo from "@assets/HonkyTonk_Cropped_(Black)_1778181896344.png";
 import { useLocation } from "wouter";
 import { useProfile, useUpdateProfile, useDeleteData } from "@/hooks/use-profile";
 import { useAuth } from "@/context/AuthContext";
@@ -283,7 +284,7 @@ export default function Profile() {
         <p className="text-xs text-muted-foreground/40">Created for dancers, by dancers</p>
         <p className="text-xs text-muted-foreground/40 font-display tracking-wide mt-1">Honky Tonk Heat</p>
         <div className="flex justify-center mt-2">
-          <img src="/honky_tonk_black.png" alt="Honky Tonk Heat" className="h-32 w-auto opacity-60" />
+          <img src={honkyTonkLogo} alt="Honky Tonk Heat" className="h-44 w-auto opacity-75" />
         </div>
       </div>
     </div>

@@ -33,8 +33,6 @@ const ALL_STAT_KEYS = [
   { key: "favoriteDanceStyle",  label: "Favorite Dance Style" },
 ];
 
-// These cards are always full-width
-const LARGE_KEYS = new Set(["top3Dances", "top3SwingSongs", "danceMix"]);
 
 const CARD_COLORS: Record<string, string> = {
   totalDances:         "bg-[#FDEBD5] border-[#ECC9A8] hover:border-[#D9A87A]",
@@ -200,10 +198,10 @@ function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => v
 }
 
 // Custom SVG donut chart — avoids recharts React 18 incompatibility
-function DonutChart({ data }: { data: { style: string; count: number; pct: number }[] }) {
-  const size = 144;
-  const r = 52;
-  const gap = 2;
+function DonutChart({ data, size = 88 }: { data: { style: string; count: number; pct: number }[]; size?: number }) {
+  const r = size * 0.36;
+  const strokeW = size * 0.15;
+  const gap = 1.5;
   const cx = size / 2;
   const cy = size / 2;
   const circumference = 2 * Math.PI * r;
@@ -224,13 +222,12 @@ function DonutChart({ data }: { data: { style: string; count: number; pct: numbe
           <circle key={s.style} cx={cx} cy={cy} r={r}
             fill="none"
             stroke={info?.color ?? "#888"}
-            strokeWidth={22}
+            strokeWidth={strokeW}
             strokeDasharray={`${s.dash} ${circumference - s.dash}`}
             strokeDashoffset={-(s.offset) + circumference / 4}
             style={{ transition: "stroke-dasharray 0.5s" }} />
         );
       })}
-      <circle cx={cx} cy={cy} r={r - 14} fill="none" />
     </svg>
   );
 }
@@ -264,8 +261,8 @@ export default function Home() {
 
   const cardColor = (key: string) => CARD_COLORS[key] ?? "bg-secondary/40 border-border";
 
-  // --- Card renderers ---
-  const renderSmallCard = (key: string) => {
+  // --- Unified card renderer (all cards go in the 2-col grid) ---
+  const renderCard = (key: string) => {
     switch (key) {
       case "totalDances":
         return <StatCard label="Total Dances" value={stats?.totalDances ?? 0} icon={Music2} className={cardColor(key)} />;
@@ -278,13 +275,13 @@ export default function Home() {
       case "dancesThisMonth":
         return <StatCard label="Dances This Month" value={stats?.dancesThisMonth ?? 0} icon={TrendingUp} className={cardColor(key)} />;
       case "avgDancesPerSession":
-        return <StatCard label="Avg Dances per Session" value={stats?.avgDancesPerSession ?? 0} icon={Zap} className={cardColor(key)} />;
+        return <StatCard label="Avg / Session" value={stats?.avgDancesPerSession ?? 0} icon={Zap} className={cardColor(key)} />;
       case "mostDancedDay":
         return <StatCard label="Most Danced Day" value={mostDancedDayLabel} icon={BarChart2} className={cardColor(key)} />;
       case "mostRecentDance":
         return (
           <StatCard
-            label="Most Recently Added"
+            label="Most Recent"
             value={stats?.mostRecentDance || "—"}
             description={stats?.mostRecentStyle && stats.mostRecentStyle !== "LINE"
               ? STYLE_INFO[stats.mostRecentStyle as StyleOption]?.short
@@ -293,7 +290,7 @@ export default function Home() {
         );
       case "topLocation":
         return (
-          <StatCard label="Favorite Location" value={stats?.mostFrequentLocation || "—"}
+          <StatCard label="Top Location" value={stats?.mostFrequentLocation || "—"}
             description={stats?.mostFrequentLocationCount ? `${stats.mostFrequentLocationCount} visits` : undefined}
             icon={Trophy} className={cardColor(key)} />
         );
@@ -309,18 +306,18 @@ export default function Home() {
         );
       case "favoriteDanceStyle":
         return (
-          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col justify-between ${cardColor(key)}`}>
+          <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col justify-between ${cardColor(key)}`}>
             <div className="flex items-start justify-between mb-2">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Favorite Dance Style</span>
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Fav Style</span>
             </div>
             {favStyle ? (() => {
               const info = STYLE_INFO[favStyle.style as StyleOption];
               return (
                 <div>
-                  <p className="text-2xl md:text-3xl font-display font-bold" style={{ color: info?.color }}>
-                    {info?.label ?? favStyle.style}
+                  <p className="text-2xl font-display font-bold" style={{ color: info?.color }}>
+                    {info?.short ?? favStyle.style}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">{favStyle.pct}% of your dances</p>
+                  <p className="text-xs text-muted-foreground mt-1">{favStyle.pct}% of dances</p>
                 </div>
               );
             })() : (
@@ -328,99 +325,80 @@ export default function Home() {
             )}
           </div>
         );
-      default:
-        return null;
-    }
-  };
 
-  const renderLargeCard = (key: string) => {
-    switch (key) {
+      // List cards — compact for half-width
       case "top3Dances":
         return (
-          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${cardColor(key)}`}>
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Top 3 Line Dances</span>
-              <Activity className="w-5 h-5 text-primary/50" />
+          <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col ${cardColor(key)}`}>
+            <div className="flex items-start justify-between mb-2">
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Top 3 Line</span>
+              <Activity className="w-4 h-4 text-primary/50" />
             </div>
             {stats?.top3Dances?.length ? (
-              <div className="space-y-2">
+              <div className="space-y-1.5 flex-1">
                 {stats.top3Dances.map((dance, idx) => (
-                  <div key={`${dance.danceName}-${dance.songName}`} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {idx === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
-                      {idx === 1 && <Trophy className="w-4 h-4 text-slate-400" />}
-                      {idx === 2 && <Trophy className="w-4 h-4 text-amber-600" />}
-                      <div>
-                        <span className="font-semibold text-foreground font-display block leading-tight">{dance.danceName}</span>
-                        {dance.songName && dance.songName !== dance.danceName && (
-                          <span className="text-xs text-muted-foreground">{dance.songName}</span>
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{dance.count}x</span>
+                  <div key={`${dance.danceName}-${idx}`} className="flex items-center gap-1.5">
+                    {idx === 0 && <Trophy className="w-3 h-3 text-yellow-500 flex-shrink-0" />}
+                    {idx === 1 && <Trophy className="w-3 h-3 text-slate-400 flex-shrink-0" />}
+                    {idx === 2 && <Trophy className="w-3 h-3 text-amber-600 flex-shrink-0" />}
+                    <span className="font-semibold text-foreground font-display text-sm leading-tight truncate flex-1">{dance.danceName}</span>
+                    <span className="text-xs text-muted-foreground flex-shrink-0">{dance.count}x</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-foreground font-bold font-display text-2xl">—</p>
+              <p className="text-2xl font-display font-bold text-foreground">—</p>
             )}
           </div>
         );
       case "top3SwingSongs":
         return (
-          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${cardColor(key)}`}>
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Top 3 Swing Songs</span>
-              <Activity className="w-5 h-5 text-primary/50" />
+          <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col ${cardColor(key)}`}>
+            <div className="flex items-start justify-between mb-2">
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Top 3 Swing</span>
+              <Activity className="w-4 h-4 text-primary/50" />
             </div>
             {stats?.top3SwingSongs?.length ? (
-              <div className="space-y-2">
+              <div className="space-y-1.5 flex-1">
                 {stats.top3SwingSongs.map((song, idx) => {
                   const info = STYLE_INFO[song.style as StyleOption];
                   return (
-                    <div key={`${song.songName}-${song.style}`} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {idx === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
-                        {idx === 1 && <Trophy className="w-4 h-4 text-slate-400" />}
-                        {idx === 2 && <Trophy className="w-4 h-4 text-amber-600" />}
-                        <div>
-                          <span className="font-semibold text-foreground font-display block leading-tight">{song.songName}</span>
-                          <span className="text-xs font-medium" style={{ color: info?.color }}>{info?.short ?? song.style}</span>
-                        </div>
-                      </div>
-                      <span className="text-sm text-muted-foreground">{song.count}x</span>
+                    <div key={`${song.songName}-${idx}`} className="flex items-center gap-1.5">
+                      {idx === 0 && <Trophy className="w-3 h-3 text-yellow-500 flex-shrink-0" />}
+                      {idx === 1 && <Trophy className="w-3 h-3 text-slate-400 flex-shrink-0" />}
+                      {idx === 2 && <Trophy className="w-3 h-3 text-amber-600 flex-shrink-0" />}
+                      <span className="font-semibold text-foreground font-display text-sm leading-tight truncate flex-1">{song.songName}</span>
+                      <span className="text-xs font-medium flex-shrink-0" style={{ color: info?.color }}>{info?.short ?? song.style}</span>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-foreground font-bold font-display text-2xl">—</p>
+              <p className="text-2xl font-display font-bold text-foreground">—</p>
             )}
           </div>
         );
       case "danceMix":
         return (
-          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md ${cardColor(key)}`}>
-            <div className="flex items-start justify-between mb-4">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Your Dance Mix</span>
-              <PieIcon className="w-5 h-5 text-primary/50" />
+          <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md h-full flex flex-col ${cardColor(key)}`}>
+            <div className="flex items-start justify-between mb-2">
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Dance Mix</span>
+              <PieIcon className="w-4 h-4 text-primary/50" />
             </div>
             {pieData.length === 0 ? (
-              <p className="text-foreground font-bold font-display text-2xl">—</p>
+              <p className="text-2xl font-display font-bold text-foreground">—</p>
             ) : (
-              <div className="flex items-center gap-6">
-                <div className="w-36 h-36 flex-shrink-0">
-                  <DonutChart data={pieData} />
-                </div>
-                <div className="space-y-1.5 flex-1 min-w-0">
-                  {pieData.sort((a, b) => b.count - a.count).map(entry => {
+              <div className="flex flex-col items-center gap-2 flex-1">
+                <DonutChart data={pieData} size={88} />
+                <div className="space-y-1 w-full">
+                  {[...pieData].sort((a, b) => b.count - a.count).map(entry => {
                     const info = STYLE_INFO[entry.style as StyleOption];
                     return (
-                      <div key={entry.style} className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      <div key={entry.style} className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0"
                           style={{ backgroundColor: info?.color ?? "#888" }} />
-                        <span className="text-sm font-medium truncate">{info?.short ?? entry.style}</span>
-                        <span className="text-xs text-muted-foreground ml-auto">{entry.pct}%</span>
+                        <span className="text-xs font-medium truncate flex-1">{info?.short ?? entry.style}</span>
+                        <span className="text-xs text-muted-foreground">{entry.pct}%</span>
                       </div>
                     );
                   })}
@@ -434,23 +412,14 @@ export default function Home() {
     }
   };
 
-  // Build layout rows from enabledStats order
-  type LayoutRow =
-    | { type: "large"; key: string }
-    | { type: "row"; keys: string[] };
-
-  const layoutRows: LayoutRow[] = [];
-  let smallBuf: string[] = [];
+  // Build 2-col rows from ordered enabledStats — all cards pair up, lone card is centered
+  const layoutRows: { keys: string[] }[] = [];
+  let buf: string[] = [];
   for (const key of enabledStats) {
-    if (LARGE_KEYS.has(key)) {
-      if (smallBuf.length) { layoutRows.push({ type: "row", keys: [...smallBuf] }); smallBuf = []; }
-      layoutRows.push({ type: "large", key });
-    } else {
-      smallBuf.push(key);
-      if (smallBuf.length === 2) { layoutRows.push({ type: "row", keys: [...smallBuf] }); smallBuf = []; }
-    }
+    buf.push(key);
+    if (buf.length === 2) { layoutRows.push({ keys: [...buf] }); buf = []; }
   }
-  if (smallBuf.length) layoutRows.push({ type: "row", keys: smallBuf });
+  if (buf.length) layoutRows.push({ keys: buf });
 
   return (
     <div className="container px-4 pb-28 pt-8 mx-auto max-w-5xl">
@@ -477,31 +446,19 @@ export default function Home() {
       ) : (
         <motion.div variants={container} initial="hidden" animate="show" className="space-y-4">
           {layoutRows.map((row, rowIdx) => {
-            if (row.type === "large") {
-              const card = renderLargeCard(row.key);
-              if (!card) return null;
-              return (
-                <motion.div key={row.key} variants={item}>
-                  {card}
-                </motion.div>
-              );
-            }
-            // Small row: 1 or 2 cards
             if (row.keys.length === 1) {
-              const card = renderSmallCard(row.keys[0]);
+              const card = renderCard(row.keys[0]);
               if (!card) return null;
               return (
-                <motion.div key={`row-${rowIdx}`} variants={item} className="flex justify-center">
-                  <div className="w-1/2 pr-2">
-                    {card}
-                  </div>
+                <motion.div key={`row-${rowIdx}`} variants={item} className="grid grid-cols-2 gap-4">
+                  <div>{card}</div>
                 </motion.div>
               );
             }
             return (
               <motion.div key={`row-${rowIdx}`} variants={item} className="grid grid-cols-2 gap-4">
                 {row.keys.map(key => {
-                  const card = renderSmallCard(key);
+                  const card = renderCard(key);
                   if (!card) return null;
                   return <div key={key}>{card}</div>;
                 })}
