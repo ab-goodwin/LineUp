@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
-import logoShort from "@assets/LineUp_Short_1777958974669.png";
+import logoShort from "@assets/LineUp_Stacked_tagline_1778180551921.png";
 
 type ForgotStep = "phone" | "code" | "reset";
 type ResetType = "password" | "username";
@@ -150,8 +150,7 @@ export default function AuthPage() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <div className="text-center mb-6">
-            <img src={logoShort} alt="LineUp" className="h-16 mx-auto mb-3 object-contain" />
-            <p className="text-sm font-semibold" style={{ color: "#D7A259" }}>Your Dances. Your Stats.</p>
+            <img src={logoShort} alt="LineUp" className="h-24 mx-auto object-contain" />
           </div>
           <div className="bg-card rounded-2xl border border-border shadow-lg p-6 space-y-4">
             <div className="flex items-center gap-3 mb-2">
@@ -239,8 +238,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="mb-8">
-          <img src={logoShort} alt="LineUp" className="h-20 mb-2 object-contain" />
-          <p className="text-base font-semibold" style={{ color: "#D7A259" }}>Your Dances. Your Stats.</p>
+          <img src={logoShort} alt="LineUp" className="h-28 object-contain" />
         </div>
 
         <div className="bg-card rounded-2xl border border-border shadow-lg p-6">

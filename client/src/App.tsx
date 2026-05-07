@@ -14,17 +14,29 @@ import Profile from "@/pages/Profile";
 import Buddies from "@/pages/Buddies";
 import AuthPage from "@/pages/AuthPage";
 import { Loader2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
-function Router() {
+function AnimatedRoutes() {
+  const [location] = useLocation();
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/calendar" component={CalendarPage} />
-      <Route path="/library" component={Library} />
-      <Route path="/profile" component={Profile} />
-      <Route path="/buddies" component={Buddies} />
-      <Route component={NotFound} />
-    </Switch>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
+      >
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/calendar" component={CalendarPage} />
+          <Route path="/library" component={Library} />
+          <Route path="/profile" component={Profile} />
+          <Route path="/buddies" component={Buddies} />
+          <Route component={NotFound} />
+        </Switch>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -49,7 +61,7 @@ function AppInner() {
     <div className="min-h-screen bg-background font-sans">
       {showHeader && <Header />}
       <main>
-        <Router />
+        <AnimatedRoutes />
       </main>
       <Navigation />
       <Toaster />

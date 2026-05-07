@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useProfile } from "@/hooks/use-profile";
-import logoLong from "@assets/LineUp_Long_1777958974669.png";
+import logoLong from "@assets/LineUp_tagline_1778180551921.png";
 
 export function Header() {
   const { data: profile } = useProfile();

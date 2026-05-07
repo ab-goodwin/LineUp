@@ -279,7 +279,7 @@ export class DatabaseStorage implements IStorage {
     let totalDaysDancing = 0;
     let uniqueLocations = 0;
     let mostFreqLoc: { location: string; count: number } | undefined;
-    let mostFreqDance: { danceName: string; count: number } | undefined;
+    let mostFreqDance: { songName: string; danceName: string; count: number } | undefined;
     let longestStreak = 0;
 
     if (sessionIds.length > 0) {
@@ -310,6 +310,7 @@ export class DatabaseStorage implements IStorage {
       if (locResult) mostFreqLoc = { location: locResult.location, count: Number(locResult.count) };
 
       const [danceResult] = await db.select({
+        songName: songs.songName,
         danceName: songs.danceName,
         count: sql<number>`count(*)`
       })
@@ -317,10 +318,10 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(songs, eq(sessionDances.songId, songs.id))
       .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
       .where(eq(sessions.userId, userId))
-      .groupBy(songs.danceName)
+      .groupBy(songs.songName, songs.danceName)
       .orderBy(desc(sql`count(*)`))
       .limit(1);
-      if (danceResult) mostFreqDance = { danceName: danceResult.danceName, count: Number(danceResult.count) };
+      if (danceResult) mostFreqDance = { songName: danceResult.songName, danceName: danceResult.danceName, count: Number(danceResult.count) };
 
       const allSessionDates = await db.select({ date: sessions.date })
         .from(sessions)
@@ -441,6 +442,7 @@ export class DatabaseStorage implements IStorage {
       uniqueLocations,
       mostFrequentLocation: mostFreqLoc?.location || "N/A",
       mostFrequentLocationCount: mostFreqLoc?.count || 0,
+      mostFrequentSongName: mostFreqDance?.songName || "N/A",
       mostFrequentDance: mostFreqDance?.danceName || "N/A",
       mostFrequentDanceCount: mostFreqDance?.count || 0,
       dancesThisMonth,
