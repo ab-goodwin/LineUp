@@ -552,29 +552,33 @@ export async function registerRoutes(
     await storage.createSession(userId, { date: daysAgo(3), location: "Cowboys Orlando", danceIds: [watermelon, two, cswing] });
     await storage.createSession(userId, { date: daysAgo(5), location: "The Barn",         danceIds: [boot, tush] });
 
-    // Create (or reuse) a mock opponent user
-    let [opponent] = await db.select().from(users).where(eq(users.username, 'test_opponent'));
-    if (!opponent) {
-      const hash = await bcrypt.hash('opponent123', 10);
-      [opponent] = await db.insert(users).values({
-        username: 'test_opponent', passwordHash: hash,
-        firstName: 'Jesse', lastName: 'Maverick', location: 'Nashville, TN',
+    // Create (or reuse) a mock opponent user, then insert a completed challenge
+    let challengeCreated = false;
+    try {
+      let [opponent] = await db.select().from(users).where(eq(users.username, 'test_opponent'));
+      if (!opponent) {
+        const hash = await bcrypt.hash('opponent123', 10);
+        [opponent] = await db.insert(users).values({
+          username: 'test_opponent', passwordHash: hash,
+          firstName: 'Jesse', lastName: 'Maverick', location: 'Nashville, TN',
+        }).returning();
+      }
+      const challengeStart = daysAgo(3);
+      const [challenge] = await db.insert(danceOffs).values({
+        creatorId: userId, type: 'h2h', title: 'Dance Duel',
+        durationHours: 24, startedAt: challengeStart,
+        joinCode: null, status: 'completed', challengedId: opponent.id,
       }).returning();
+      await db.insert(danceOffParticipants).values([
+        { danceOffId: challenge.id, userId: userId,      finalDanceCount: 7 },
+        { danceOffId: challenge.id, userId: opponent.id, finalDanceCount: 9 },
+      ]);
+      challengeCreated = true;
+    } catch (err) {
+      console.error('[seed] challenge creation failed:', err);
     }
 
-    // Insert a completed h2h challenge (ended 2 days ago, opponent won by 1)
-    const challengeStart = daysAgo(3);
-    const [challenge] = await db.insert(danceOffs).values({
-      creatorId: userId, type: 'h2h', title: 'Dance Duel 🤠',
-      durationHours: 24, startedAt: challengeStart,
-      joinCode: null, status: 'completed', challengedId: opponent.id,
-    }).returning();
-    await db.insert(danceOffParticipants).values([
-      { danceOffId: challenge.id, userId: userId,      finalDanceCount: 7 },
-      { danceOffId: challenge.id, userId: opponent.id, finalDanceCount: 9 },
-    ]);
-
-    res.json({ ok: true, songsCreated: created.length, sessionsCreated: 4, challengeCreated: true });
+    res.json({ ok: true, songsCreated: created.length, sessionsCreated: 4, challengeCreated });
   });
 
   return httpServer;
