@@ -283,7 +283,7 @@ export default function Profile() {
         <p className="text-xs text-muted-foreground/40">Created for dancers, by dancers</p>
         <p className="text-xs text-muted-foreground/40 font-display tracking-wide mt-1">Honky Tonk Heat</p>
         <div className="flex justify-center mt-2">
-          <img src="/honky_tonk_black.png" alt="Honky Tonk Heat" className="h-10 w-auto opacity-20" />
+          <img src="/honky_tonk_black.png" alt="Honky Tonk Heat" className="h-32 w-auto opacity-60" />
         </div>
       </div>
     </div>

@@ -175,6 +175,7 @@ export type StatsResponse = {
   uniqueLocations: number;
   mostFrequentLocation: string;
   mostFrequentLocationCount: number;
+  mostFrequentSongName: string;
   mostFrequentDance: string;
   mostFrequentDanceCount: number;
   dancesThisMonth: number;

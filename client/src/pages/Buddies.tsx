@@ -115,10 +115,11 @@ function SwipeableCard({ children, onDelete }: { children: React.ReactNode; onDe
 
   return (
     <div className="relative overflow-hidden rounded-2xl">
-      <div className="absolute inset-y-0 right-0 w-24 flex items-center justify-end pr-5 bg-destructive rounded-2xl">
+      <div className="absolute inset-y-0 right-0 w-24 flex items-center justify-end pr-5 bg-destructive rounded-2xl z-0">
         <Trash2 className="w-5 h-5 text-white" />
       </div>
       <div
+        className="relative z-10"
         style={{ transform: `translateX(${swipeX}px)`, transition: isDragging ? "none" : "transform 0.3s ease" }}
         onTouchStart={e => handleStart(e.touches[0].clientX)}
         onTouchMove={e => handleMove(e.touches[0].clientX)}

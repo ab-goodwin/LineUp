@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useProfile } from "@/hooks/use-profile";
 import { useStats } from "@/hooks/use-stats";
 import { StatCard } from "@/components/StatCard";
@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { STYLE_INFO, type StyleOption } from "@shared/schema";
 import {
   Music2, CalendarDays, MapPin, Flame, Trophy, Activity,
-  TrendingUp, Clock, BarChart2, Star, Zap, Settings2, Check, PieChart as PieIcon
+  TrendingUp, Clock, BarChart2, Star, Zap, Settings2, Check, PieChart as PieIcon, GripVertical
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
@@ -33,7 +33,9 @@ const ALL_STAT_KEYS = [
   { key: "favoriteDanceStyle",  label: "Favorite Dance Style" },
 ];
 
-// Distinct, theme-friendly colors for each stat card
+// These cards are always full-width
+const LARGE_KEYS = new Set(["top3Dances", "top3SwingSongs", "danceMix"]);
+
 const CARD_COLORS: Record<string, string> = {
   totalDances:         "bg-[#FDEBD5] border-[#ECC9A8] hover:border-[#D9A87A]",
   longestStreak:       "bg-[#FDD9D5] border-[#F0B5AE] hover:border-[#DE9088]",
@@ -89,33 +91,102 @@ function useStyleDistribution() {
   });
 }
 
+// Merge saved prefs with ALL_STAT_KEYS: add any newly-introduced keys at end
+function mergeWithDefaults(saved: string[] | null): string[] {
+  const allKeys = ALL_STAT_KEYS.map(s => s.key);
+  if (!saved) return allKeys;
+  const newKeys = allKeys.filter(k => !saved.includes(k));
+  return [...saved, ...newKeys];
+}
+
 function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: prefData } = useHomepageStats();
   const setStats = useSetHomepageStats();
   const { toast } = useToast();
-  const currentEnabled = prefData?.stats ?? ALL_STAT_KEYS.map(s => s.key);
-  const [enabled, setEnabled] = useState<string[]>(currentEnabled);
+
+  const merged = mergeWithDefaults(prefData?.stats ?? null);
+  const [enabled, setEnabled] = useState<string[]>(merged);
+  const [draggedKey, setDraggedKey] = useState<string | null>(null);
+
+  // Re-sync local state whenever dialog opens or remote prefs change
+  useEffect(() => {
+    if (open) setEnabled(mergeWithDefaults(prefData?.stats ?? null));
+  }, [open, prefData?.stats?.join(",")]);
+
   const toggle = (key: string) =>
-    setEnabled(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+    setEnabled(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+
+  const handleDragOver = (e: React.DragEvent, targetKey: string) => {
+    e.preventDefault();
+    if (!draggedKey || draggedKey === targetKey) return;
+    setEnabled(prev => {
+      const from = prev.indexOf(draggedKey);
+      const to = prev.indexOf(targetKey);
+      if (from === -1 || to === -1) return prev;
+      const next = [...prev];
+      next.splice(from, 1);
+      next.splice(to, 0, draggedKey);
+      return next;
+    });
+  };
+
   const handleSave = async () => {
     await setStats.mutateAsync(enabled);
     toast({ title: "Homepage updated!" });
     onClose();
   };
+
+  // Enabled items (in saved order) and disabled items (below)
+  const enabledInOrder = enabled
+    .map(key => ALL_STAT_KEYS.find(s => s.key === key)!)
+    .filter(Boolean);
+  const disabledItems = ALL_STAT_KEYS.filter(s => !enabled.includes(s.key));
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="rounded-2xl bg-card max-w-sm">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Customize Homepage</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground -mt-2">Toggle which stats appear on your home screen.</p>
-        <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
-          {ALL_STAT_KEYS.map(({ key, label }) => (
-            <div key={key} className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-secondary/30">
-              <span className="text-sm font-medium">{label}</span>
-              <Switch checked={enabled.includes(key)} onCheckedChange={() => toggle(key)} />
+        <p className="text-sm text-muted-foreground -mt-2">Drag to reorder. Toggle to show/hide.</p>
+        <div className="space-y-1 max-h-[26rem] overflow-y-auto pr-1">
+          {/* Enabled — draggable */}
+          {enabledInOrder.map(({ key, label }) => (
+            <div
+              key={key}
+              draggable
+              onDragStart={() => setDraggedKey(key)}
+              onDragOver={e => handleDragOver(e, key)}
+              onDragEnd={() => setDraggedKey(null)}
+              className={`flex items-center justify-between rounded-xl px-3 py-2.5 bg-secondary/40 cursor-grab active:cursor-grabbing select-none transition-opacity ${draggedKey === key ? "opacity-40" : "opacity-100"}`}
+            >
+              <div className="flex items-center gap-2">
+                <GripVertical className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
+                <span className="text-sm font-medium">{label}</span>
+              </div>
+              <Switch checked onCheckedChange={() => toggle(key)} />
             </div>
           ))}
+
+          {/* Disabled — below, non-draggable */}
+          {disabledItems.length > 0 && (
+            <>
+              <div className="pt-1 pb-0.5 px-1">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-medium">Hidden</p>
+              </div>
+              {disabledItems.map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-secondary/20 opacity-60">
+                  <div className="flex items-center gap-2">
+                    <GripVertical className="w-4 h-4 text-muted-foreground/30 flex-shrink-0" />
+                    <span className="text-sm font-medium text-muted-foreground">{label}</span>
+                  </div>
+                  <Switch checked={false} onCheckedChange={() => toggle(key)} />
+                </div>
+              ))}
+            </>
+          )}
         </div>
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1 rounded-xl" onClick={onClose}>Cancel</Button>
@@ -171,8 +242,8 @@ export default function Home() {
   const { data: styleDist = [] } = useStyleDistribution();
   const [editOpen, setEditOpen] = useState(false);
 
-  const enabledStats = prefData?.stats ?? ALL_STAT_KEYS.map(s => s.key);
-  const isEnabled = (key: string) => enabledStats.includes(key);
+  // Merge saved prefs with all keys (auto-adds new keys users haven't seen)
+  const enabledStats = mergeWithDefaults(prefData?.stats ?? null);
 
   const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.07 } } };
   const item = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } };
@@ -181,7 +252,6 @@ export default function Home() {
     ? `${format(new Date(stats.mostDancedDay.date + "T12:00:00"), "MMM d, yyyy")} · ${stats.mostDancedDay.count} dance${stats.mostDancedDay.count !== 1 ? "s" : ""}`
     : "—";
 
-  // Style distribution data for pie chart
   const totalStyleDances = styleDist.reduce((s, r) => s + r.count, 0);
   const pieData = styleDist
     .filter(r => r.count > 0)
@@ -190,10 +260,197 @@ export default function Home() {
       count: r.count,
       pct: totalStyleDances > 0 ? Math.round((r.count / totalStyleDances) * 100) : 0,
     }));
-
   const favStyle = pieData.reduce<typeof pieData[0] | null>((best, cur) => !best || cur.count > best.count ? cur : best, null);
 
   const cardColor = (key: string) => CARD_COLORS[key] ?? "bg-secondary/40 border-border";
+
+  // --- Card renderers ---
+  const renderSmallCard = (key: string) => {
+    switch (key) {
+      case "totalDances":
+        return <StatCard label="Total Dances" value={stats?.totalDances ?? 0} icon={Music2} className={cardColor(key)} />;
+      case "longestStreak":
+        return <StatCard label="Longest Streak" value={`${stats?.longestStreak ?? 0} Days`} icon={Flame} className={cardColor(key)} />;
+      case "totalDaysDancing":
+        return <StatCard label="Days Dancing" value={stats?.totalDaysDancing ?? 0} icon={CalendarDays} className={cardColor(key)} />;
+      case "uniqueLocations":
+        return <StatCard label="Locations" value={stats?.uniqueLocations ?? 0} icon={MapPin} className={cardColor(key)} />;
+      case "dancesThisMonth":
+        return <StatCard label="Dances This Month" value={stats?.dancesThisMonth ?? 0} icon={TrendingUp} className={cardColor(key)} />;
+      case "avgDancesPerSession":
+        return <StatCard label="Avg Dances per Session" value={stats?.avgDancesPerSession ?? 0} icon={Zap} className={cardColor(key)} />;
+      case "mostDancedDay":
+        return <StatCard label="Most Danced Day" value={mostDancedDayLabel} icon={BarChart2} className={cardColor(key)} />;
+      case "mostRecentDance":
+        return (
+          <StatCard
+            label="Most Recently Added"
+            value={stats?.mostRecentDance || "—"}
+            description={stats?.mostRecentStyle && stats.mostRecentStyle !== "LINE"
+              ? STYLE_INFO[stats.mostRecentStyle as StyleOption]?.short
+              : stats?.mostRecentStyle === "LINE" ? "Line Dance" : undefined}
+            icon={Clock} className={cardColor(key)} />
+        );
+      case "topLocation":
+        return (
+          <StatCard label="Favorite Location" value={stats?.mostFrequentLocation || "—"}
+            description={stats?.mostFrequentLocationCount ? `${stats.mostFrequentLocationCount} visits` : undefined}
+            icon={Trophy} className={cardColor(key)} />
+        );
+      case "favoriteDance":
+        return (
+          <StatCard
+            label="Favorite Dance"
+            value={stats?.mostFrequentSongName || "—"}
+            description={stats?.mostFrequentDance && stats.mostFrequentDanceCount
+              ? `${stats.mostFrequentDance} · ${stats.mostFrequentDanceCount}x`
+              : stats?.mostFrequentDance || undefined}
+            icon={Star} className={cardColor(key)} />
+        );
+      case "favoriteDanceStyle":
+        return (
+          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col justify-between ${cardColor(key)}`}>
+            <div className="flex items-start justify-between mb-2">
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Favorite Dance Style</span>
+            </div>
+            {favStyle ? (() => {
+              const info = STYLE_INFO[favStyle.style as StyleOption];
+              return (
+                <div>
+                  <p className="text-2xl md:text-3xl font-display font-bold" style={{ color: info?.color }}>
+                    {info?.label ?? favStyle.style}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">{favStyle.pct}% of your dances</p>
+                </div>
+              );
+            })() : (
+              <p className="text-2xl font-display font-bold text-foreground">—</p>
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderLargeCard = (key: string) => {
+    switch (key) {
+      case "top3Dances":
+        return (
+          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${cardColor(key)}`}>
+            <div className="flex items-start justify-between mb-3">
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Top 3 Line Dances</span>
+              <Activity className="w-5 h-5 text-primary/50" />
+            </div>
+            {stats?.top3Dances?.length ? (
+              <div className="space-y-2">
+                {stats.top3Dances.map((dance, idx) => (
+                  <div key={`${dance.danceName}-${dance.songName}`} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {idx === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
+                      {idx === 1 && <Trophy className="w-4 h-4 text-slate-400" />}
+                      {idx === 2 && <Trophy className="w-4 h-4 text-amber-600" />}
+                      <div>
+                        <span className="font-semibold text-foreground font-display block leading-tight">{dance.danceName}</span>
+                        {dance.songName && dance.songName !== dance.danceName && (
+                          <span className="text-xs text-muted-foreground">{dance.songName}</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-sm text-muted-foreground">{dance.count}x</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-foreground font-bold font-display text-2xl">—</p>
+            )}
+          </div>
+        );
+      case "top3SwingSongs":
+        return (
+          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md hover:-translate-y-1 ${cardColor(key)}`}>
+            <div className="flex items-start justify-between mb-3">
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Top 3 Swing Songs</span>
+              <Activity className="w-5 h-5 text-primary/50" />
+            </div>
+            {stats?.top3SwingSongs?.length ? (
+              <div className="space-y-2">
+                {stats.top3SwingSongs.map((song, idx) => {
+                  const info = STYLE_INFO[song.style as StyleOption];
+                  return (
+                    <div key={`${song.songName}-${song.style}`} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {idx === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
+                        {idx === 1 && <Trophy className="w-4 h-4 text-slate-400" />}
+                        {idx === 2 && <Trophy className="w-4 h-4 text-amber-600" />}
+                        <div>
+                          <span className="font-semibold text-foreground font-display block leading-tight">{song.songName}</span>
+                          <span className="text-xs font-medium" style={{ color: info?.color }}>{info?.short ?? song.style}</span>
+                        </div>
+                      </div>
+                      <span className="text-sm text-muted-foreground">{song.count}x</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-foreground font-bold font-display text-2xl">—</p>
+            )}
+          </div>
+        );
+      case "danceMix":
+        return (
+          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md ${cardColor(key)}`}>
+            <div className="flex items-start justify-between mb-4">
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Your Dance Mix</span>
+              <PieIcon className="w-5 h-5 text-primary/50" />
+            </div>
+            {pieData.length === 0 ? (
+              <p className="text-foreground font-bold font-display text-2xl">—</p>
+            ) : (
+              <div className="flex items-center gap-6">
+                <div className="w-36 h-36 flex-shrink-0">
+                  <DonutChart data={pieData} />
+                </div>
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  {pieData.sort((a, b) => b.count - a.count).map(entry => {
+                    const info = STYLE_INFO[entry.style as StyleOption];
+                    return (
+                      <div key={entry.style} className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: info?.color ?? "#888" }} />
+                        <span className="text-sm font-medium truncate">{info?.short ?? entry.style}</span>
+                        <span className="text-xs text-muted-foreground ml-auto">{entry.pct}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Build layout rows from enabledStats order
+  type LayoutRow =
+    | { type: "large"; key: string }
+    | { type: "row"; keys: string[] };
+
+  const layoutRows: LayoutRow[] = [];
+  let smallBuf: string[] = [];
+  for (const key of enabledStats) {
+    if (LARGE_KEYS.has(key)) {
+      if (smallBuf.length) { layoutRows.push({ type: "row", keys: [...smallBuf] }); smallBuf = []; }
+      layoutRows.push({ type: "large", key });
+    } else {
+      smallBuf.push(key);
+      if (smallBuf.length === 2) { layoutRows.push({ type: "row", keys: [...smallBuf] }); smallBuf = []; }
+    }
+  }
+  if (smallBuf.length) layoutRows.push({ type: "row", keys: smallBuf });
 
   return (
     <div className="container px-4 pb-28 pt-8 mx-auto max-w-5xl">
@@ -219,206 +476,38 @@ export default function Home() {
         </div>
       ) : (
         <motion.div variants={container} initial="hidden" animate="show" className="space-y-4">
-
-          {/* Core 2×2 grid */}
-          <div className="grid grid-cols-2 gap-4">
-            {isEnabled("totalDances") && (
-              <motion.div variants={item}>
-                <StatCard label="Total Dances" value={stats?.totalDances ?? 0} icon={Music2} className={cardColor("totalDances")} />
-              </motion.div>
-            )}
-            {isEnabled("longestStreak") && (
-              <motion.div variants={item}>
-                <StatCard label="Longest Streak" value={`${stats?.longestStreak ?? 0} Days`} icon={Flame} className={cardColor("longestStreak")} />
-              </motion.div>
-            )}
-            {isEnabled("totalDaysDancing") && (
-              <motion.div variants={item}>
-                <StatCard label="Days Dancing" value={stats?.totalDaysDancing ?? 0} icon={CalendarDays} className={cardColor("totalDaysDancing")} />
-              </motion.div>
-            )}
-            {isEnabled("uniqueLocations") && (
-              <motion.div variants={item}>
-                <StatCard label="Locations" value={stats?.uniqueLocations ?? 0} icon={MapPin} className={cardColor("uniqueLocations")} />
-              </motion.div>
-            )}
-          </div>
-
-          {/* Second 2-col row */}
-          {(isEnabled("dancesThisMonth") || isEnabled("avgDancesPerSession")) && (
-            <div className="grid grid-cols-2 gap-4">
-              {isEnabled("dancesThisMonth") && (
-                <motion.div variants={item}>
-                  <StatCard label="Dances This Month" value={stats?.dancesThisMonth ?? 0} icon={TrendingUp} className={cardColor("dancesThisMonth")} />
+          {layoutRows.map((row, rowIdx) => {
+            if (row.type === "large") {
+              const card = renderLargeCard(row.key);
+              if (!card) return null;
+              return (
+                <motion.div key={row.key} variants={item}>
+                  {card}
                 </motion.div>
-              )}
-              {isEnabled("avgDancesPerSession") && (
-                <motion.div variants={item}>
-                  <StatCard label="Avg Dances per Session" value={stats?.avgDancesPerSession ?? 0} icon={Zap} className={cardColor("avgDancesPerSession")} />
+              );
+            }
+            // Small row: 1 or 2 cards
+            if (row.keys.length === 1) {
+              const card = renderSmallCard(row.keys[0]);
+              if (!card) return null;
+              return (
+                <motion.div key={`row-${rowIdx}`} variants={item} className="flex justify-center">
+                  <div className="w-1/2 pr-2">
+                    {card}
+                  </div>
                 </motion.div>
-              )}
-            </div>
-          )}
-
-          {/* Stacked full-width cards */}
-          <div className="space-y-4">
-            {isEnabled("mostDancedDay") && (
-              <motion.div variants={item}>
-                <StatCard label="Most Danced Day" value={mostDancedDayLabel} icon={BarChart2} className={cardColor("mostDancedDay")} />
+              );
+            }
+            return (
+              <motion.div key={`row-${rowIdx}`} variants={item} className="grid grid-cols-2 gap-4">
+                {row.keys.map(key => {
+                  const card = renderSmallCard(key);
+                  if (!card) return null;
+                  return <div key={key}>{card}</div>;
+                })}
               </motion.div>
-            )}
-            {isEnabled("mostRecentDance") && (
-              <motion.div variants={item}>
-                <StatCard
-                  label="Most Recently Added"
-                  value={stats?.mostRecentDance || "—"}
-                  description={stats?.mostRecentStyle && stats.mostRecentStyle !== "LINE"
-                    ? STYLE_INFO[stats.mostRecentStyle as StyleOption]?.short
-                    : stats?.mostRecentStyle === "LINE" ? "Line Dance" : undefined}
-                  icon={Clock} className={cardColor("mostRecentDance")} />
-              </motion.div>
-            )}
-            {isEnabled("topLocation") && (
-              <motion.div variants={item}>
-                <StatCard label="Favorite Location" value={stats?.mostFrequentLocation || "—"}
-                  description={stats?.mostFrequentLocationCount ? `${stats.mostFrequentLocationCount} visits` : undefined}
-                  icon={Trophy} className={cardColor("topLocation")} />
-              </motion.div>
-            )}
-
-            {isEnabled("top3Dances") && (
-              <motion.div variants={item}>
-                <div className={`rounded-2xl border p-5 transition-all hover:shadow-md hover:-translate-y-1 ${cardColor("top3Dances")}`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Activity className="w-5 h-5 text-indigo-500" />
-                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Top 3 Line Dances</span>
-                  </div>
-                  {stats?.top3Dances?.length ? (
-                    <div className="space-y-2">
-                      {stats.top3Dances.map((dance, idx) => (
-                        <div key={`${dance.danceName}-${dance.songName}`} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {idx === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
-                            {idx === 1 && <Trophy className="w-4 h-4 text-slate-400" />}
-                            {idx === 2 && <Trophy className="w-4 h-4 text-amber-600" />}
-                            <div>
-                              <span className="font-semibold text-foreground font-display block leading-tight">{dance.danceName}</span>
-                              {dance.songName && dance.songName !== dance.danceName && (
-                                <span className="text-xs text-muted-foreground">{dance.songName}</span>
-                              )}
-                            </div>
-                          </div>
-                          <span className="text-sm text-muted-foreground">{dance.count}x</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-foreground font-bold font-display text-2xl">—</p>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {isEnabled("top3SwingSongs") && (
-              <motion.div variants={item}>
-                <div className={`rounded-2xl border p-5 transition-all hover:shadow-md hover:-translate-y-1 ${cardColor("top3SwingSongs")}`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Activity className="w-5 h-5 text-cyan-500" />
-                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Top 3 Swing Songs</span>
-                  </div>
-                  {stats?.top3SwingSongs?.length ? (
-                    <div className="space-y-2">
-                      {stats.top3SwingSongs.map((song, idx) => {
-                        const info = STYLE_INFO[song.style as StyleOption];
-                        return (
-                          <div key={`${song.songName}-${song.style}`} className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              {idx === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
-                              {idx === 1 && <Trophy className="w-4 h-4 text-slate-400" />}
-                              {idx === 2 && <Trophy className="w-4 h-4 text-amber-600" />}
-                              <div>
-                                <span className="font-semibold text-foreground font-display block leading-tight">{song.songName}</span>
-                                <span className="text-xs font-medium" style={{ color: info?.color }}>{info?.short ?? song.style}</span>
-                              </div>
-                            </div>
-                            <span className="text-sm text-muted-foreground">{song.count}x</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-foreground font-bold font-display text-2xl">—</p>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {isEnabled("favoriteDance") && (
-              <motion.div variants={item}>
-                <StatCard label="Favorite Dance" value={stats?.mostFrequentDance || "—"}
-                  description={stats?.mostFrequentDanceCount ? `${stats.mostFrequentDanceCount} times` : undefined}
-                  icon={Star} className={cardColor("favoriteDance")} />
-              </motion.div>
-            )}
-
-            {/* Your Dance Mix — pie chart */}
-            {isEnabled("danceMix") && (
-              <motion.div variants={item}>
-                <div className={`rounded-2xl border p-5 transition-all hover:shadow-md ${cardColor("danceMix")}`}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <PieIcon className="w-5 h-5 text-[#C0AB80]" />
-                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Your Dance Mix</span>
-                  </div>
-                  {pieData.length === 0 ? (
-                    <p className="text-foreground font-bold font-display text-2xl">—</p>
-                  ) : (
-                    <div className="flex items-center gap-6">
-                      <div className="w-36 h-36 flex-shrink-0">
-                        <DonutChart data={pieData} />
-                      </div>
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        {pieData.sort((a, b) => b.count - a.count).map(entry => {
-                          const info = STYLE_INFO[entry.style as StyleOption];
-                          return (
-                            <div key={entry.style} className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: info?.color ?? "#888" }} />
-                              <span className="text-sm font-medium truncate">{info?.short ?? entry.style}</span>
-                              <span className="text-xs text-muted-foreground ml-auto">{entry.pct}%</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Favorite Dance Style */}
-            {isEnabled("favoriteDanceStyle") && (
-              <motion.div variants={item}>
-                <div className={`rounded-2xl border p-5 transition-all hover:shadow-md hover:-translate-y-1 ${cardColor("favoriteDanceStyle")}`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Favorite Dance Style</span>
-                  </div>
-                  {favStyle ? (() => {
-                    const info = STYLE_INFO[favStyle.style as StyleOption];
-                    return (
-                      <div>
-                        <p className="text-2xl md:text-3xl font-display font-bold" style={{ color: info?.color }}>
-                          {info?.label ?? favStyle.style}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">{favStyle.pct}% of your session dances</p>
-                      </div>
-                    );
-                  })() : (
-                    <p className="text-2xl font-display font-bold text-foreground">—</p>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </div>
+            );
+          })}
         </motion.div>
       )}
 
