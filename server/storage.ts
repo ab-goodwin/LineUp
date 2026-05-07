@@ -310,7 +310,7 @@ export class DatabaseStorage implements IStorage {
       if (locResult) mostFreqLoc = { location: locResult.location, count: Number(locResult.count) };
 
       const [danceResult] = await db.select({
-        songName: songs.songName,
+        songName: sql<string>`COALESCE(NULLIF(${songs.songName}, ''), ${songs.danceName})`,
         danceName: songs.danceName,
         count: sql<number>`count(*)`
       })
