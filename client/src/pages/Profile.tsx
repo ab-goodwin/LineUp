@@ -284,7 +284,7 @@ export default function Profile() {
         <p className="text-xs text-muted-foreground/40">Created for dancers, by dancers</p>
         <p className="text-xs text-muted-foreground/40 font-display tracking-wide mt-1">Honky Tonk Heat</p>
         <div className="flex justify-center mt-2">
-          <img src={honkyTonkLogo} alt="Honky Tonk Heat" className="h-44 w-auto opacity-75" />
+          <img src={honkyTonkLogo} alt="Honky Tonk Heat" className="h-28 w-auto opacity-75" />
         </div>
       </div>
     </div>
