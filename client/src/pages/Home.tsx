@@ -22,11 +22,12 @@ const ALL_STAT_KEYS = [
   { key: "totalDaysDancing",    label: "Days Dancing" },
   { key: "uniqueLocations",     label: "Locations" },
   { key: "dancesThisMonth",     label: "Dances This Month" },
-  { key: "avgDancesPerSession", label: "Avg Per Session" },
+  { key: "avgDancesPerSession", label: "Avg Dances per Session" },
   { key: "mostDancedDay",       label: "Most Danced Day" },
   { key: "mostRecentDance",     label: "Most Recently Added" },
-  { key: "topLocation",         label: "Top Location" },
-  { key: "top3Dances",          label: "Top 3 Dances" },
+  { key: "topLocation",         label: "Favorite Location" },
+  { key: "top3Dances",          label: "Top 3 Line Dances" },
+  { key: "top3SwingSongs",      label: "Top 3 Swing Songs" },
   { key: "favoriteDance",       label: "Favorite Dance" },
   { key: "danceMix",            label: "Your Dance Mix" },
   { key: "favoriteDanceStyle",  label: "Favorite Dance Style" },
@@ -44,6 +45,7 @@ const CARD_COLORS: Record<string, string> = {
   mostRecentDance:     "bg-[#D5EEE8] border-[#A5D4CA] hover:border-[#6FBAA8]",
   topLocation:         "bg-[#FFF5D5] border-[#EDDC98] hover:border-[#D4C064]",
   top3Dances:          "bg-[#DCE0F8] border-[#AABAE8] hover:border-[#7A91D4]",
+  top3SwingSongs:      "bg-[#D5F0F8] border-[#A5D4E8] hover:border-[#6FBAD4]",
   favoriteDance:       "bg-[#FDE8C0] border-[#EDCA88] hover:border-[#D4A84E]",
   danceMix:            "bg-[#F5ECD8] border-[#DCCEB0] hover:border-[#C0AB80]",
   favoriteDanceStyle:  "bg-[#E8D5C8] border-[#CAAED0] hover:border-[#D88098]",
@@ -252,7 +254,7 @@ export default function Home() {
               )}
               {isEnabled("avgDancesPerSession") && (
                 <motion.div variants={item}>
-                  <StatCard label="Avg Per Session" value={stats?.avgDancesPerSession ?? 0} icon={Zap} className={cardColor("avgDancesPerSession")} />
+                  <StatCard label="Avg Dances per Session" value={stats?.avgDancesPerSession ?? 0} icon={Zap} className={cardColor("avgDancesPerSession")} />
                 </motion.div>
               )}
             </div>
@@ -267,12 +269,18 @@ export default function Home() {
             )}
             {isEnabled("mostRecentDance") && (
               <motion.div variants={item}>
-                <StatCard label="Most Recently Added" value={stats?.mostRecentDance || "—"} icon={Clock} className={cardColor("mostRecentDance")} />
+                <StatCard
+                  label="Most Recently Added"
+                  value={stats?.mostRecentDance || "—"}
+                  description={stats?.mostRecentStyle && stats.mostRecentStyle !== "LINE"
+                    ? STYLE_INFO[stats.mostRecentStyle as StyleOption]?.short
+                    : stats?.mostRecentStyle === "LINE" ? "Line Dance" : undefined}
+                  icon={Clock} className={cardColor("mostRecentDance")} />
               </motion.div>
             )}
             {isEnabled("topLocation") && (
               <motion.div variants={item}>
-                <StatCard label="Top Location" value={stats?.mostFrequentLocation || "—"}
+                <StatCard label="Favorite Location" value={stats?.mostFrequentLocation || "—"}
                   description={stats?.mostFrequentLocationCount ? `${stats.mostFrequentLocationCount} visits` : undefined}
                   icon={Trophy} className={cardColor("topLocation")} />
               </motion.div>
@@ -283,21 +291,60 @@ export default function Home() {
                 <div className={`rounded-2xl border p-5 transition-all hover:shadow-md hover:-translate-y-1 ${cardColor("top3Dances")}`}>
                   <div className="flex items-center gap-2 mb-3">
                     <Activity className="w-5 h-5 text-indigo-500" />
-                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Top 3 Dances</span>
+                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Top 3 Line Dances</span>
                   </div>
                   {stats?.top3Dances?.length ? (
                     <div className="space-y-2">
                       {stats.top3Dances.map((dance, idx) => (
-                        <div key={dance.danceName} className="flex items-center justify-between">
+                        <div key={`${dance.danceName}-${dance.songName}`} className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             {idx === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
                             {idx === 1 && <Trophy className="w-4 h-4 text-slate-400" />}
                             {idx === 2 && <Trophy className="w-4 h-4 text-amber-600" />}
-                            <span className="font-semibold text-foreground font-display">{dance.danceName}</span>
+                            <div>
+                              <span className="font-semibold text-foreground font-display block leading-tight">{dance.danceName}</span>
+                              {dance.songName && dance.songName !== dance.danceName && (
+                                <span className="text-xs text-muted-foreground">{dance.songName}</span>
+                              )}
+                            </div>
                           </div>
                           <span className="text-sm text-muted-foreground">{dance.count}x</span>
                         </div>
                       ))}
+                    </div>
+                  ) : (
+                    <p className="text-foreground font-bold font-display text-2xl">—</p>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {isEnabled("top3SwingSongs") && (
+              <motion.div variants={item}>
+                <div className={`rounded-2xl border p-5 transition-all hover:shadow-md hover:-translate-y-1 ${cardColor("top3SwingSongs")}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Activity className="w-5 h-5 text-cyan-500" />
+                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Top 3 Swing Songs</span>
+                  </div>
+                  {stats?.top3SwingSongs?.length ? (
+                    <div className="space-y-2">
+                      {stats.top3SwingSongs.map((song, idx) => {
+                        const info = STYLE_INFO[song.style as StyleOption];
+                        return (
+                          <div key={`${song.songName}-${song.style}`} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {idx === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
+                              {idx === 1 && <Trophy className="w-4 h-4 text-slate-400" />}
+                              {idx === 2 && <Trophy className="w-4 h-4 text-amber-600" />}
+                              <div>
+                                <span className="font-semibold text-foreground font-display block leading-tight">{song.songName}</span>
+                                <span className="text-xs font-medium" style={{ color: info?.color }}>{info?.short ?? song.style}</span>
+                              </div>
+                            </div>
+                            <span className="text-sm text-muted-foreground">{song.count}x</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-foreground font-bold font-display text-2xl">—</p>
