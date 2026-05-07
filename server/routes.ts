@@ -518,5 +518,19 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/danceoffs/results", requireAuth, async (req, res) => {
+    await storage.clearDanceOffResults(req.user!.id);
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/danceoffs/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteDanceOffResult(Number(req.params.id), req.user!.id);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(403).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

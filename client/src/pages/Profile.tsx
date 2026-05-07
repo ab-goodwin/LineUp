@@ -276,6 +276,16 @@ export default function Profile() {
           <DeleteDialog title="Delete ALL Data?" description="This will wipe your account data completely. Are you absolutely sure?" onConfirm={() => handleDelete("all")} triggerLabel="Delete All Data" variant="destructive" />
         </div>
       </section>
+
+      {/* Credits */}
+      <div className="border-t border-border/30 pt-6 pb-2 text-center space-y-1">
+        <p className="text-xs text-muted-foreground/50">By Austin Brady Goodwin</p>
+        <p className="text-xs text-muted-foreground/40">Created for dancers, by dancers</p>
+        <p className="text-xs text-muted-foreground/40 font-display tracking-wide mt-1">Honky Tonk Heat</p>
+        <div className="flex justify-center mt-2">
+          <img src="/honky_tonk_black.png" alt="Honky Tonk Heat" className="h-10 w-auto opacity-20" />
+        </div>
+      </div>
     </div>
   );
 }

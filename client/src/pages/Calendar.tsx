@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DayPicker } from "react-day-picker";
-import { format, isSameDay, parseISO } from "date-fns";
+import { format, isSameDay, parseISO, isAfter, startOfDay } from "date-fns";
 import { useSessions } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
 import { SessionDialog } from "@/components/SessionDialog";
@@ -11,6 +11,8 @@ import { StyleTag } from "@/lib/style-tags";
 export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const isFuture = isAfter(startOfDay(selectedDate), startOfDay(new Date()));
   
   const { data: sessions = [], isLoading } = useSessions();
 
@@ -31,6 +33,7 @@ export default function CalendarPage() {
             mode="single"
             selected={selectedDate}
             onSelect={(date) => date && setSelectedDate(date)}
+            disabled={{ after: new Date() }}
             modifiers={{ hasSession: sessionDates }}
             modifiersStyles={{
               hasSession: {
@@ -100,8 +103,10 @@ export default function CalendarPage() {
                 <Button 
                   onClick={() => setIsDialogOpen(true)}
                   className="w-full rounded-xl shadow-lg shadow-primary/20"
+                  disabled={isFuture}
+                  data-testid="button-create-session"
                 >
-                  Create Session
+                  {isFuture ? "Future dates unavailable" : "Create Session"}
                 </Button>
               </div>
             )}

@@ -179,9 +179,11 @@ export type StatsResponse = {
   mostFrequentDanceCount: number;
   dancesThisMonth: number;
   mostRecentDance: string;
+  mostRecentStyle: string;
   mostDancedDay: { date: string; count: number } | null;
   avgDancesPerSession: number;
-  top3Dances: { danceName: string; count: number }[];
+  top3Dances: { danceName: string; songName: string; count: number }[];
+  top3SwingSongs: { songName: string; danceName: string; style: string; count: number }[];
 };
 
 export const STYLE_OPTIONS = ['LINE', 'WCS', 'ECS', 'CSW', 'TWO', 'OTHER'] as const;

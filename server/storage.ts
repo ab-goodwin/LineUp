@@ -63,6 +63,16 @@ export interface IStorage {
   // Challenges
   getChallenges(userId: number): Promise<any[]>;
   sendChallenge(challengerId: number, challengedId: number, durationDays: number): Promise<void>;
+
+  // Dance-Offs
+  getDanceOffs(userId: number): Promise<any[]>;
+  createDanceOff(creatorId: number, type: 'h2h' | 'showdown', title: string, durationHours: number, challengedId?: number): Promise<{ id: number; joinCode: string | null }>;
+  joinDanceOff(userId: number, joinCode: string): Promise<void>;
+  clearDanceOffResults(userId: number): Promise<void>;
+  deleteDanceOffResult(id: number, userId: number): Promise<void>;
+
+  // Style Distribution
+  getStyleDistribution(userId: number): Promise<{ style: string; count: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -340,15 +350,20 @@ export class DatabaseStorage implements IStorage {
     // Additional stats
     let dancesThisMonth = 0;
     let mostRecentDance = "N/A";
+    let mostRecentStyle = "";
     let mostDancedDay: { date: string; count: number } | null = null;
     let avgDancesPerSession = 0;
-    let top3Dances: { danceName: string; count: number }[] = [];
+    let top3Dances: { danceName: string; songName: string; count: number }[] = [];
+    let top3SwingSongs: { songName: string; danceName: string; style: string; count: number }[] = [];
 
-    // Most recently added song
-    const [recentSong] = await db.select({ danceName: songs.danceName })
+    // Most recently added song (by id, not by session date)
+    const [recentSong] = await db.select({ songName: songs.songName, danceName: songs.danceName, style: songs.style })
       .from(songs).where(eq(songs.userId, userId))
       .orderBy(desc(songs.id)).limit(1);
-    if (recentSong) mostRecentDance = recentSong.danceName;
+    if (recentSong) {
+      mostRecentDance = recentSong.songName || recentSong.danceName;
+      mostRecentStyle = recentSong.style;
+    }
 
     if (sessionIds.length > 0) {
       // Dances this month
@@ -387,19 +402,36 @@ export class DatabaseStorage implements IStorage {
         ? Math.round((totalDances / sessionCount) * 10) / 10
         : 0;
 
-      // Top 3 dances
+      // Top 3 line dances (style = 'LINE')
       const top3 = await db.select({
         danceName: songs.danceName,
+        songName: songs.songName,
         count: sql<number>`count(*)`
       })
       .from(sessionDances)
       .innerJoin(songs, eq(sessionDances.songId, songs.id))
       .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
-      .where(eq(sessions.userId, userId))
-      .groupBy(songs.danceName)
+      .where(and(eq(sessions.userId, userId), eq(songs.style, 'LINE')))
+      .groupBy(songs.danceName, songs.songName)
       .orderBy(desc(sql`count(*)`))
       .limit(3);
-      top3Dances = top3.map(r => ({ danceName: r.danceName, count: Number(r.count) }));
+      top3Dances = top3.map(r => ({ danceName: r.danceName, songName: r.songName, count: Number(r.count) }));
+
+      // Top 3 swing songs (style != 'LINE')
+      const top3Swing = await db.select({
+        songName: songs.songName,
+        danceName: songs.danceName,
+        style: songs.style,
+        count: sql<number>`count(*)`
+      })
+      .from(sessionDances)
+      .innerJoin(songs, eq(sessionDances.songId, songs.id))
+      .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+      .where(and(eq(sessions.userId, userId), ne(songs.style, 'LINE')))
+      .groupBy(songs.songName, songs.danceName, songs.style)
+      .orderBy(desc(sql`count(*)`))
+      .limit(3);
+      top3SwingSongs = top3Swing.map(r => ({ songName: r.songName, danceName: r.danceName, style: r.style, count: Number(r.count) }));
     }
 
     return {
@@ -413,9 +445,11 @@ export class DatabaseStorage implements IStorage {
       mostFrequentDanceCount: mostFreqDance?.count || 0,
       dancesThisMonth,
       mostRecentDance,
+      mostRecentStyle,
       mostDancedDay,
       avgDancesPerSession,
       top3Dances,
+      top3SwingSongs,
     };
   }
   // --- Buddies ---
@@ -704,10 +738,15 @@ export class DatabaseStorage implements IStorage {
     const [danceOff] = await db.select().from(danceOffs).where(eq(danceOffs.id, id));
     if (!danceOff) return;
     const parts = await db.select().from(danceOffParticipants).where(eq(danceOffParticipants.danceOffId, id));
-    const startDate = danceOff.startedAt.toISOString().split('T')[0];
+    const endTime = new Date(danceOff.startedAt.getTime() + danceOff.durationHours * 3600 * 1000);
     for (const p of parts) {
+      // Use an 18-hour lookback window on startedAt to handle timezone differences
+      // (e.g. US users creating challenges in the evening where startedAt UTC date is "tomorrow")
       const userSessions = await db.select({ id: sessions.id }).from(sessions)
-        .where(and(eq(sessions.userId, p.userId), sql`${sessions.date}::date = ${startDate}::date`));
+        .where(and(
+          eq(sessions.userId, p.userId),
+          sql`${sessions.date}::date BETWEEN (${danceOff.startedAt}::timestamp - INTERVAL '18 hours')::date AND ${endTime}::date`
+        ));
       let finalCount = 0;
       if (userSessions.length > 0) {
         const ids = userSessions.map(s => s.id);
@@ -718,6 +757,27 @@ export class DatabaseStorage implements IStorage {
       await db.update(danceOffParticipants).set({ finalDanceCount: finalCount }).where(eq(danceOffParticipants.id, p.id));
     }
     await db.update(danceOffs).set({ status: 'completed' }).where(eq(danceOffs.id, id));
+  }
+
+  async clearDanceOffResults(userId: number): Promise<void> {
+    const userParticipations = await db
+      .select({ danceOffId: danceOffParticipants.danceOffId })
+      .from(danceOffParticipants)
+      .innerJoin(danceOffs, eq(danceOffs.id, danceOffParticipants.danceOffId))
+      .where(and(eq(danceOffParticipants.userId, userId), eq(danceOffs.status, 'completed')));
+    for (const { danceOffId } of userParticipations) {
+      await db.delete(danceOffParticipants).where(eq(danceOffParticipants.danceOffId, danceOffId));
+      await db.delete(danceOffs).where(eq(danceOffs.id, danceOffId));
+    }
+  }
+
+  async deleteDanceOffResult(id: number, userId: number): Promise<void> {
+    const [participation] = await db.select()
+      .from(danceOffParticipants)
+      .where(and(eq(danceOffParticipants.danceOffId, id), eq(danceOffParticipants.userId, userId)));
+    if (!participation) throw new Error("Not a participant in this challenge");
+    await db.delete(danceOffParticipants).where(eq(danceOffParticipants.danceOffId, id));
+    await db.delete(danceOffs).where(eq(danceOffs.id, id));
   }
 
   async getDanceOffs(userId: number): Promise<any[]> {
@@ -739,13 +799,16 @@ export class DatabaseStorage implements IStorage {
       if (updated) Object.assign(danceOff, updated);
     }
     const parts = await db.select().from(danceOffParticipants).where(eq(danceOffParticipants.danceOffId, id));
-    const startDate = danceOff.startedAt.toISOString().split('T')[0];
     const participantResults = await Promise.all(parts.map(async p => {
       const user = await this.getUserById(p.userId);
       let liveDanceCount: number | undefined;
       if (danceOff.status === 'active') {
+        // Use 18-hour lookback to handle timezone differences for US users
         const userSessions = await db.select({ id: sessions.id }).from(sessions)
-          .where(and(eq(sessions.userId, p.userId), sql`${sessions.date}::date = ${startDate}::date`));
+          .where(and(
+            eq(sessions.userId, p.userId),
+            sql`${sessions.date}::date BETWEEN (${danceOff.startedAt}::timestamp - INTERVAL '18 hours')::date AND ${danceOff.startedAt}::date`
+          ));
         if (userSessions.length > 0) {
           const ids = userSessions.map(s => s.id);
           const [r] = await db.select({ count: sql<number>`count(*)` }).from(sessionDances).where(inArray(sessionDances.sessionId, ids));

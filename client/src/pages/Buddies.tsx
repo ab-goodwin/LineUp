@@ -1,16 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useBuddies, useBuddyRequests, useSearchUsers,
   useSendBuddyRequest, useRespondToBuddyRequest,
   useRemoveBuddy,
   type BuddyPublicStats,
 } from "@/hooks/use-buddies";
-import { useDanceOffs, useCreateDanceOff, useJoinDanceOff, type DanceOffResult } from "@/hooks/use-danceoffs";
+import { useDanceOffs, useCreateDanceOff, useJoinDanceOff, useClearDanceOffResults, useDeleteDanceOffResult, type DanceOffResult } from "@/hooks/use-danceoffs";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Search, UserPlus, UserCheck, UserX, Flame, X, RefreshCw, Trophy, Swords, Users, Copy, Clock } from "lucide-react";
+import { Loader2, Search, UserPlus, UserCheck, UserX, Flame, X, RefreshCw, Trophy, Swords, Users, Copy, Clock, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Slider } from "@/components/ui/slider";
 
@@ -86,6 +87,51 @@ function formatMs(ms: number) {
   if (h > 0) return `${h}h ${m}m`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
+}
+
+function SwipeableCard({ children, onDelete }: { children: React.ReactNode; onDelete: () => void }) {
+  const [swipeX, setSwipeX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const startXRef = useRef(0);
+  const THRESHOLD = 80;
+
+  const handleStart = (clientX: number) => {
+    startXRef.current = clientX;
+    setIsDragging(true);
+  };
+  const handleMove = (clientX: number) => {
+    if (!isDragging) return;
+    const diff = clientX - startXRef.current;
+    if (diff < 0) setSwipeX(Math.max(diff, -120));
+  };
+  const handleEnd = () => {
+    setIsDragging(false);
+    if (swipeX < -THRESHOLD) {
+      onDelete();
+    } else {
+      setSwipeX(0);
+    }
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl">
+      <div className="absolute inset-y-0 right-0 w-24 flex items-center justify-end pr-5 bg-destructive rounded-2xl">
+        <Trash2 className="w-5 h-5 text-white" />
+      </div>
+      <div
+        style={{ transform: `translateX(${swipeX}px)`, transition: isDragging ? "none" : "transform 0.3s ease" }}
+        onTouchStart={e => handleStart(e.touches[0].clientX)}
+        onTouchMove={e => handleMove(e.touches[0].clientX)}
+        onTouchEnd={handleEnd}
+        onMouseDown={e => handleStart(e.clientX)}
+        onMouseMove={e => isDragging && handleMove(e.clientX)}
+        onMouseUp={handleEnd}
+        onMouseLeave={handleEnd}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 function DanceOffCard({ danceOff, currentUserId }: { danceOff: DanceOffResult; currentUserId?: number }) {
@@ -171,6 +217,8 @@ function ChallengesTab({ buddyList, currentUserId }: { buddyList: (BuddyPublicSt
   const { data: danceOffs = [], isLoading } = useDanceOffs();
   const createDanceOff = useCreateDanceOff();
   const joinDanceOff = useJoinDanceOff();
+  const clearResults = useClearDanceOffResults();
+  const deleteResult = useDeleteDanceOffResult();
   const { toast } = useToast();
 
   const [challengeType, setChallengeType] = useState<"h2h" | "showdown">("h2h");
@@ -326,8 +374,35 @@ function ChallengesTab({ buddyList, currentUserId }: { buddyList: (BuddyPublicSt
         <div className="space-y-3">
           <p className="text-sm font-semibold text-foreground flex items-center gap-2"><Trophy className="w-4 h-4 text-yellow-500" /> Results</p>
           <AnimatePresence mode="popLayout">
-            {completedChallenges.map(d => <DanceOffCard key={d.id} danceOff={d} currentUserId={currentUserId} />)}
+            {completedChallenges.map(d => (
+              <SwipeableCard key={d.id} onDelete={async () => {
+                try {
+                  await deleteResult.mutateAsync(d.id);
+                } catch {
+                  toast({ title: "Could not delete challenge", variant: "destructive" });
+                }
+              }}>
+                <DanceOffCard danceOff={d} currentUserId={currentUserId} />
+              </SwipeableCard>
+            ))}
           </AnimatePresence>
+          <div className="flex justify-center pt-1">
+            <button
+              className="text-xs text-destructive underline underline-offset-2 hover:opacity-70 transition-opacity"
+              onClick={async () => {
+                try {
+                  await clearResults.mutateAsync();
+                  toast({ title: "Challenge results cleared" });
+                } catch {
+                  toast({ title: "Could not clear results", variant: "destructive" });
+                }
+              }}
+              disabled={clearResults.isPending}
+              data-testid="button-clear-challenge-results"
+            >
+              {clearResults.isPending ? "Clearing..." : "Clear Challenge Results"}
+            </button>
+          </div>
         </div>
       )}
 
@@ -343,6 +418,7 @@ function ChallengesTab({ buddyList, currentUserId }: { buddyList: (BuddyPublicSt
 }
 
 export default function Buddies() {
+  const { user } = useAuth();
   const { data: buddyList = [], isLoading: buddiesLoading } = useBuddies();
   const { data: pendingRequests = [] } = useBuddyRequests();
   const searchUsers = useSearchUsers();
@@ -457,7 +533,7 @@ export default function Buddies() {
         </TabsContent>
 
         <TabsContent value="challenges" className="mt-2">
-          <ChallengesTab buddyList={rankedBuddies} currentUserId={undefined} />
+          <ChallengesTab buddyList={rankedBuddies} currentUserId={user?.id} />
         </TabsContent>
 
         <TabsContent value="find" className="space-y-4 mt-2">
