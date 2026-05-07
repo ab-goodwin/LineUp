@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { STYLE_INFO, type StyleOption } from "@shared/schema";
 import {
   Music2, CalendarDays, MapPin, Flame, Trophy, Activity,
-  TrendingUp, Clock, BarChart2, Star, Zap, Settings2, Check, PieChart as PieIcon, GripVertical
+  TrendingUp, Clock, BarChart2, Star, Heart, Settings2, Check, PieChart as PieIcon, GripVertical
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
@@ -275,7 +275,7 @@ export default function Home() {
       case "dancesThisMonth":
         return <StatCard label="Dances This Month" value={stats?.dancesThisMonth ?? 0} icon={TrendingUp} className={cardColor(key)} />;
       case "avgDancesPerSession":
-        return <StatCard label="Avg / Session" value={stats?.avgDancesPerSession ?? 0} icon={Zap} className={cardColor(key)} />;
+        return <StatCard label="Avg / Session" value={stats?.avgDancesPerSession ?? 0} icon={TrendingUp} className={cardColor(key)} />;
       case "mostDancedDay":
         return <StatCard label="Most Danced Day" value={mostDancedDayLabel} icon={BarChart2} className={cardColor(key)} />;
       case "mostRecentDance":
@@ -314,8 +314,8 @@ export default function Home() {
         return (
           <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col justify-between ${cardColor(key)}`}>
             <div className="flex items-start justify-between mb-2">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Fav Style</span>
-              <Zap className="w-4 h-4 text-primary/50" />
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Favorite Style</span>
+              <Heart className="w-4 h-4 text-primary/50" />
             </div>
             {favStyle ? (() => {
               const info = STYLE_INFO[favStyle.style as StyleOption];

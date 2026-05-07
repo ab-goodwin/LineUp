@@ -532,5 +532,25 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/dev/seed", requireAuth, async (req, res) => {
+    const userId = req.user!.id;
+    const seedSongs = [
+      { danceName: "Boot Scootin' Boogie", songName: "Boot Scootin' Boogie", artist: "Brooks & Dunn",   rating: 5, style: "LINE" as const },
+      { danceName: "Watermelon Crawl",     songName: "Watermelon Crawl",     artist: "Tracy Byrd",      rating: 4, style: "LINE" as const },
+      { danceName: "Tush Push",            songName: "Tush Push",            artist: "Billy Ray Cyrus", rating: 5, style: "LINE" as const },
+      { danceName: "Country Swing",        songName: "I Got You",            artist: "Erin Kinsey",     rating: 5, style: "CSW"  as const },
+      { danceName: "West Coast Swing",     songName: "Save a Horse",         artist: "Big & Rich",      rating: 4, style: "WCS"  as const },
+      { danceName: "Two-Step",             songName: "Friends in Low Places",artist: "Garth Brooks",    rating: 5, style: "TWO"  as const },
+    ];
+    const created = await Promise.all(seedSongs.map(s => storage.createSong(userId, s)));
+    const [boot, watermelon, tush, cswing, wcs, two] = created.map(s => s.id);
+    const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return d; };
+    await storage.createSession(userId, { date: daysAgo(0), location: "Cowboys Orlando", danceIds: [boot, boot, watermelon, cswing] });
+    await storage.createSession(userId, { date: daysAgo(1), location: "The Barn",         danceIds: [boot, tush, wcs] });
+    await storage.createSession(userId, { date: daysAgo(3), location: "Cowboys Orlando", danceIds: [watermelon, two, cswing] });
+    await storage.createSession(userId, { date: daysAgo(5), location: "The Barn",         danceIds: [boot, tush] });
+    res.json({ ok: true, songsCreated: created.length, sessionsCreated: 4 });
+  });
+
   return httpServer;
 }

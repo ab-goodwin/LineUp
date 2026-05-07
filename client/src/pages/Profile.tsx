@@ -9,7 +9,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Trash2, LogOut, ArrowLeft, Camera } from "lucide-react";
+import { Loader2, Trash2, LogOut, ArrowLeft, Camera, FlaskConical } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -58,6 +60,17 @@ export default function Profile() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const seedData = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/dev/seed"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/songs"] });
+      toast({ title: "Test data loaded!", description: "6 songs and 4 sessions added." });
+    },
+    onError: () => toast({ title: "Failed to load test data", variant: "destructive" }),
+  });
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -251,6 +264,22 @@ export default function Profile() {
             </Button>
           </form>
         </Form>
+      </section>
+
+      {/* Dev Tools */}
+      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
+        <h2 className="text-xl font-bold mb-1 font-display text-foreground">Developer Tools</h2>
+        <p className="text-sm text-muted-foreground mb-4">Load sample data to preview all stat cards.</p>
+        <Button
+          variant="outline"
+          className="w-full rounded-xl border-2 justify-start gap-2"
+          onClick={() => seedData.mutate()}
+          disabled={seedData.isPending}
+          data-testid="button-seed-data"
+        >
+          {seedData.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
+          {seedData.isPending ? "Loading..." : "Load Test Data"}
+        </Button>
       </section>
 
       {/* Sign Out — above Danger Zone, red styling */}
