@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   useBuddies, useBuddyRequests, useSearchUsers,
   useSendBuddyRequest, useRespondToBuddyRequest,
@@ -11,8 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Search, UserPlus, UserCheck, UserX, Flame, X, RefreshCw, Trophy, Swords, Users, Copy, Clock, Trash2 } from "lucide-react";
+import { Loader2, Search, UserPlus, UserCheck, UserX, Flame, X, RefreshCw, Trophy, Swords, Users, Copy, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Slider } from "@/components/ui/slider";
 
 function AvatarCircle({ firstName, avatar, size = "md" }: { firstName: string; avatar?: string; size?: "sm" | "md" }) {
@@ -89,54 +93,9 @@ function formatMs(ms: number) {
   return `${s}s`;
 }
 
-function SwipeableCard({ children, onDelete }: { children: React.ReactNode; onDelete: () => void }) {
-  const [swipeX, setSwipeX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const startXRef = useRef(0);
-  const THRESHOLD = 80;
-
-  const handleStart = (clientX: number) => {
-    startXRef.current = clientX;
-    setIsDragging(true);
-  };
-  const handleMove = (clientX: number) => {
-    if (!isDragging) return;
-    const diff = clientX - startXRef.current;
-    if (diff < 0) setSwipeX(Math.max(diff, -120));
-  };
-  const handleEnd = () => {
-    setIsDragging(false);
-    if (swipeX < -THRESHOLD) {
-      onDelete();
-    } else {
-      setSwipeX(0);
-    }
-  };
-
-  return (
-    <div className="relative overflow-hidden rounded-2xl">
-      <div className="absolute inset-y-0 right-0 w-24 flex items-center justify-end pr-5 bg-destructive rounded-2xl z-0">
-        <Trash2 className="w-5 h-5 text-white" />
-      </div>
-      <div
-        className="relative z-10"
-        style={{ transform: `translateX(${swipeX}px) translateZ(0)`, transition: isDragging ? "none" : "transform 0.3s ease" }}
-        onTouchStart={e => handleStart(e.touches[0].clientX)}
-        onTouchMove={e => handleMove(e.touches[0].clientX)}
-        onTouchEnd={handleEnd}
-        onMouseDown={e => handleStart(e.clientX)}
-        onMouseMove={e => isDragging && handleMove(e.clientX)}
-        onMouseUp={handleEnd}
-        onMouseLeave={handleEnd}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function DanceOffCard({ danceOff, currentUserId }: { danceOff: DanceOffResult; currentUserId?: number }) {
+function DanceOffCard({ danceOff, currentUserId, onDelete }: { danceOff: DanceOffResult; currentUserId?: number; onDelete?: () => void }) {
   const [msLeft, setMsLeft] = useState(danceOff.msRemaining);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (danceOff.status !== "active" || msLeft <= 0) return;
@@ -159,58 +118,104 @@ function DanceOffCard({ danceOff, currentUserId }: { danceOff: DanceOffResult; c
     }
   };
 
+  const cardBg = danceOff.status === "active" ? "bg-card border-primary/20" : "bg-secondary/20 border-border";
+
   return (
-    <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl border p-4 shadow-sm ${danceOff.status === "active" ? "bg-card border-primary/20" : "bg-secondary/20 border-border"}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            {danceOff.type === "h2h" ? <Swords className="w-4 h-4 text-primary" /> : <Users className="w-4 h-4 text-blue-500" />}
-            <span className="font-bold text-sm">{danceOff.type === "h2h" ? "Head-to-Head" : "Showdown"}</span>
-            {danceOff.title && <span className="text-muted-foreground text-sm">· {danceOff.title}</span>}
+    <>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this result?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This challenge result will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction onClick={onDelete}>Yes, delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        className={`rounded-2xl border p-4 shadow-sm ${cardBg}`}>
+
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              {danceOff.type === "h2h"
+                ? <Swords className="w-4 h-4 text-primary" />
+                : <Users className="w-4 h-4 text-blue-500" />}
+              <span className="font-bold text-sm">
+                {danceOff.type === "h2h" ? "Head-to-Head" : "Showdown"}
+              </span>
+              {danceOff.title && (
+                <span className="text-muted-foreground text-sm">· {danceOff.title}</span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">{danceOff.durationHours}h challenge</p>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{danceOff.durationHours}h challenge</p>
-        </div>
-        <div className="text-right">
-          {danceOff.status === "active" ? (
-            <div className="flex items-center gap-1 text-sm font-bold text-primary">
-              <Clock className="w-3.5 h-3.5" />
-              {msLeft > 0 ? formatMs(msLeft) : "Finalizing..."}
-            </div>
-          ) : (
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Final Results</span>
-          )}
-        </div>
-      </div>
 
-      {danceOff.joinCode && danceOff.status === "active" && (
-        <button onClick={copyCode}
-          className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-3 text-sm w-full hover:bg-blue-100 transition-colors">
-          <span className="font-mono font-bold text-blue-700 tracking-widest">{danceOff.joinCode}</span>
-          <Copy className="w-3.5 h-3.5 text-blue-500 ml-auto" />
-          <span className="text-xs text-blue-500">Tap to copy join code</span>
-        </button>
-      )}
-
-      <div className="space-y-2">
-        {sorted.map((p, idx) => {
-          const count = danceOff.status === "completed" ? (p.finalDanceCount ?? 0) : (p.liveDanceCount ?? 0);
-          const isMe = p.userId === currentUserId;
-          return (
-            <div key={p.userId} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${isMe ? "bg-primary/5 border border-primary/20" : "bg-secondary/30"}`}>
-              <RankBadge rank={idx + 1} />
-              <div className="flex-1 min-w-0">
-                <span className="font-semibold text-sm">{p.firstName}</span>
-                {isMe && <span className="text-xs text-primary ml-1">(you)</span>}
-                <span className="text-xs text-muted-foreground ml-1">@{p.username}</span>
+          <div className="flex items-center gap-2">
+            {danceOff.status === "active" ? (
+              <div className="flex items-center gap-1 text-sm font-bold text-primary">
+                <Clock className="w-3.5 h-3.5" />
+                {msLeft > 0 ? formatMs(msLeft) : "Finalizing..."}
               </div>
-              <span className="font-bold text-base tabular-nums">{count}</span>
-              <span className="text-xs text-muted-foreground">dances</span>
-            </div>
-          );
-        })}
-      </div>
-    </motion.div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Final Results
+                </span>
+                {onDelete && (
+                  <button
+                    onClick={() => setConfirmOpen(true)}
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    data-testid="button-delete-result"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {danceOff.joinCode && danceOff.status === "active" && (
+          <button
+            onClick={copyCode}
+            className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-3 text-sm w-full hover:bg-blue-100 transition-colors"
+          >
+            <span className="font-mono font-bold text-blue-700 tracking-widest">{danceOff.joinCode}</span>
+            <Copy className="w-3.5 h-3.5 text-blue-500 ml-auto" />
+            <span className="text-xs text-blue-500">Tap to copy join code</span>
+          </button>
+        )}
+
+        <div className="space-y-2">
+          {sorted.map((p, idx) => {
+            const count = danceOff.status === "completed"
+              ? (p.finalDanceCount ?? 0)
+              : (p.liveDanceCount ?? 0);
+            const isMe = p.userId === currentUserId;
+            const rowBg = isMe ? "bg-primary/5 border border-primary/20" : "bg-secondary/30";
+            return (
+              <div key={p.userId} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${rowBg}`}>
+                <RankBadge rank={idx + 1} />
+                <div className="flex-1 min-w-0">
+                  <span className="font-semibold text-sm">{p.firstName}</span>
+                  {isMe && <span className="text-xs text-primary ml-1">(you)</span>}
+                  <span className="text-xs text-muted-foreground ml-1">@{p.username}</span>
+                </div>
+                <span className="font-bold text-base tabular-nums">{count}</span>
+                <span className="text-xs text-muted-foreground">dances</span>
+              </div>
+            );
+          })}
+        </div>
+
+      </motion.div>
+    </>
   );
 }
 
@@ -376,15 +381,13 @@ function ChallengesTab({ buddyList, currentUserId }: { buddyList: (BuddyPublicSt
           <p className="text-sm font-semibold text-foreground flex items-center gap-2"><Trophy className="w-4 h-4 text-yellow-500" /> Results</p>
           <AnimatePresence mode="popLayout">
             {completedChallenges.map(d => (
-              <SwipeableCard key={d.id} onDelete={async () => {
+              <DanceOffCard key={d.id} danceOff={d} currentUserId={currentUserId} onDelete={async () => {
                 try {
                   await deleteResult.mutateAsync(d.id);
                 } catch {
                   toast({ title: "Could not delete challenge", variant: "destructive" });
                 }
-              }}>
-                <DanceOffCard danceOff={d} currentUserId={currentUserId} />
-              </SwipeableCard>
+              }} />
             ))}
           </AnimatePresence>
           <div className="flex justify-center pt-1">
