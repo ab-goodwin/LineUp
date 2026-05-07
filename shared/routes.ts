@@ -158,6 +158,7 @@ export const api = {
           uniqueLocations: z.number(),
           mostFrequentLocation: z.string(),
           mostFrequentLocationCount: z.number(),
+          mostFrequentSongName: z.string(),
           mostFrequentDance: z.string(),
           mostFrequentDanceCount: z.number(),
           dancesThisMonth: z.number(),

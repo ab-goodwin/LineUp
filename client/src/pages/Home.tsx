@@ -298,10 +298,16 @@ export default function Home() {
         return (
           <StatCard
             label="Favorite Dance"
-            value={stats?.mostFrequentSongName || "—"}
-            description={stats?.mostFrequentDance && stats.mostFrequentDanceCount
+            value={
+              stats?.mostFrequentSongName && stats.mostFrequentSongName !== "N/A"
+                ? stats.mostFrequentSongName
+                : stats?.mostFrequentDance && stats.mostFrequentDance !== "N/A"
+                  ? stats.mostFrequentDance
+                  : "—"
+            }
+            description={stats?.mostFrequentDance && stats.mostFrequentDance !== "N/A" && stats.mostFrequentDanceCount
               ? `${stats.mostFrequentDance} · ${stats.mostFrequentDanceCount}x`
-              : stats?.mostFrequentDance || undefined}
+              : undefined}
             icon={Star} className={cardColor(key)} />
         );
       case "favoriteDanceStyle":
@@ -309,13 +315,14 @@ export default function Home() {
           <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col justify-between ${cardColor(key)}`}>
             <div className="flex items-start justify-between mb-2">
               <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Fav Style</span>
+              <Zap className="w-4 h-4 text-primary/50" />
             </div>
             {favStyle ? (() => {
               const info = STYLE_INFO[favStyle.style as StyleOption];
               return (
                 <div>
-                  <p className="text-2xl font-display font-bold" style={{ color: info?.color }}>
-                    {info?.short ?? favStyle.style}
+                  <p className="text-2xl font-display font-bold leading-tight" style={{ color: info?.color }}>
+                    {info?.label ?? favStyle.style}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">{favStyle.pct}% of dances</p>
                 </div>
@@ -368,7 +375,7 @@ export default function Home() {
                       {idx === 1 && <Trophy className="w-3 h-3 text-slate-400 flex-shrink-0" />}
                       {idx === 2 && <Trophy className="w-3 h-3 text-amber-600 flex-shrink-0" />}
                       <span className="font-semibold text-foreground font-display text-sm leading-tight truncate flex-1">{song.songName}</span>
-                      <span className="text-xs font-medium flex-shrink-0" style={{ color: info?.color }}>{info?.short ?? song.style}</span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{song.count}x</span>
                     </div>
                   );
                 })}
