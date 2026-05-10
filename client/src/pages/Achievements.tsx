@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Lock, Star, Flame, MapPin, Music2, Users, HelpCircle, ChevronLeft } from "lucide-react";
-import { useLocation } from "wouter";
+import { Trophy, Lock, Star, Flame, MapPin, Music2, Users, HelpCircle } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAchievements, useMarkAchievementsSeen } from "@/hooks/use-achievements";
 import { ACHIEVEMENT_DEFS, ACHIEVEMENT_GROUPS, type AchievementDef, type AchievementGroup } from "@shared/achievements";
@@ -64,21 +63,14 @@ export default function Achievements() {
 
   return (
     <div className="min-h-screen bg-background pb-28">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-md border-b border-border/40 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => setLocation("/")} className="p-1.5 rounded-xl hover:bg-secondary transition-colors">
-          <ChevronLeft className="w-5 h-5 text-muted-foreground" />
-        </button>
-        <div>
-          <h1 className="font-display text-xl text-foreground leading-tight">Your Badges</h1>
-          {!isLoading && (
-            <p className="text-xs text-muted-foreground">{earnedCount} of {ACHIEVEMENT_DEFS.length} earned</p>
-          )}
-        </div>
-        <Trophy className="w-5 h-5 text-primary ml-auto" />
+      <div className="container px-4 pb-0 pt-8 mx-auto max-w-xl">
+        <h1 className="text-3xl font-display font-bold text-foreground">Your Badges</h1>
+        {!isLoading && (
+          <p className="text-muted-foreground mt-1">{earnedCount} of {ACHIEVEMENT_DEFS.length} earned</p>
+        )}
       </div>
 
-      <div className="px-4 pt-4 space-y-8 max-w-xl mx-auto">
+      <div className="px-4 pt-6 space-y-8 max-w-xl mx-auto">
         {ACHIEVEMENT_GROUPS.map(group => {
           const GroupIcon = GROUP_ICONS[group];
           const groupDefs = ACHIEVEMENT_DEFS.filter(d => d.group === group);
