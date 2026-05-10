@@ -5,7 +5,7 @@ import { StatCard } from "@/components/StatCard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { STYLE_INFO, type StyleOption } from "@shared/schema";
 import {
-  Music2, CalendarDays, MapPin, Flame, Trophy, Activity,
+  Music2, CalendarDays, MapPin, Flame, Trophy, Sparkles,
   TrendingUp, Clock, BarChart2, Star, Heart, Settings2, Check, PieChart as PieIcon, GripVertical, Zap
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -281,7 +281,7 @@ export default function Home() {
       case "mostRecentDance":
         return (
           <StatCard
-            label="Most Recent"
+            label="Recently Added"
             value={stats?.mostRecentDance || "—"}
             description={stats?.mostRecentStyle && stats.mostRecentStyle !== "LINE"
               ? STYLE_INFO[stats.mostRecentStyle as StyleOption]?.short
@@ -339,7 +339,7 @@ export default function Home() {
           <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col ${cardColor(key)}`}>
             <div className="flex items-start justify-between mb-2">
               <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Top 3 Line</span>
-              <Activity className="w-4 h-4 text-primary/50" />
+              <span className="text-base leading-none">🥾</span>
             </div>
             {stats?.top3Dances?.length ? (
               <div className="space-y-1.5 flex-1">
@@ -363,7 +363,7 @@ export default function Home() {
           <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col ${cardColor(key)}`}>
             <div className="flex items-start justify-between mb-2">
               <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Top 3 Swing</span>
-              <Activity className="w-4 h-4 text-primary/50" />
+              <Sparkles className="w-4 h-4 text-primary/50" />
             </div>
             {stats?.top3SwingSongs?.length ? (
               <div className="space-y-1.5 flex-1">

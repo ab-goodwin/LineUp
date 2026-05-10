@@ -18,7 +18,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StyleTag } from "@/lib/style-tags";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const lineSongSchema = insertSongSchema.omit({ publicId: true, style: true, styleCustom: true });
+const lineSongSchema = insertSongSchema.omit({ publicId: true, style: true, styleCustom: true }).extend({
+  songName: z.string().min(1, "Song name is required"),
+});
 type LineSongValues = z.infer<typeof lineSongSchema>;
 
 const swingSongSchema = z.object({
