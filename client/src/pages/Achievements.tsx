@@ -44,7 +44,6 @@ function AchievementImage({ id, size = "sm" }: { id: string; size?: "sm" | "lg" 
 }
 
 export default function Achievements() {
-  const [, setLocation] = useLocation();
   const { data: statuses = [], isLoading } = useAchievements();
   const markSeen = useMarkAchievementsSeen();
   const [selected, setSelected] = useState<string | null>(null);
