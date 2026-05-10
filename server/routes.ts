@@ -534,6 +534,23 @@ export async function registerRoutes(
     }
   });
 
+  // --- Achievement Routes ---
+  app.get("/api/achievements", requireAuth, async (req, res) => {
+    const statuses = await storage.computeAchievements(req.user!.id);
+    res.json(statuses);
+  });
+
+  app.get("/api/achievements/unseen", requireAuth, async (req, res) => {
+    const statuses = await storage.computeAchievements(req.user!.id);
+    const unseen = statuses.filter(s => s.earned && !s.seen);
+    res.json({ count: unseen.length, ids: unseen.map(s => s.id) });
+  });
+
+  app.put("/api/achievements/seen", requireAuth, async (req, res) => {
+    await storage.markAchievementsSeen(req.user!.id);
+    res.json({ ok: true });
+  });
+
   app.post("/api/dev/seed", requireAuth, async (req, res) => {
     const userId = req.user!.id;
     const seedSongs = [
