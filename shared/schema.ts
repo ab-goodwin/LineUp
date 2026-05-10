@@ -97,6 +97,15 @@ export const danceOffParticipants = pgTable("dance_off_participants", {
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
+// Achievement tracking
+export const userAchievements = pgTable("user_achievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  achievementId: text("achievement_id").notNull(),
+  earnedAt: timestamp("earned_at").defaultNow(),
+  seenAt: timestamp("seen_at"),
+});
+
 // Many-to-Many link between Sessions and Songs
 export const sessionDances = pgTable("session_dances", {
   id: serial("id").primaryKey(),

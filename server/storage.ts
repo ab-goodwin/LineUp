@@ -1,14 +1,23 @@
 import { db } from "./db";
 import { 
   users, songs, sessions, sessionDances, locations, buddies, streakChallenges, verificationCodes,
-  danceOffs, danceOffParticipants,
+  danceOffs, danceOffParticipants, userAchievements,
   type User, type InsertUser,
   type Song, type InsertSong, type CreateSongRequest, type UpdateSongRequest,
   type Session, type InsertSession, type CreateSessionRequest, type UpdateSessionRequest, type SessionResponse,
   type StatsResponse, type Location
 } from "@shared/schema";
+import { ACHIEVEMENT_DEFS, type AchievementStatus } from "@shared/achievements";
 import { eq, desc, sql, and, or, ilike, ne, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+
+function getISOWeek(d: Date): string {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNum = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${date.getUTCFullYear()}-W${weekNum}`;
+}
 
 export interface IStorage {
   // Auth
@@ -73,6 +82,10 @@ export interface IStorage {
 
   // Style Distribution
   getStyleDistribution(userId: number): Promise<{ style: string; count: number }[]>;
+
+  // Achievements
+  computeAchievements(userId: number): Promise<AchievementStatus[]>;
+  markAchievementsSeen(userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -841,6 +854,233 @@ export class DatabaseStorage implements IStorage {
       participants: participantResults,
       msRemaining: Math.max(0, endTime.getTime() - now.getTime()),
     };
+  }
+
+  async computeAchievements(userId: number): Promise<AchievementStatus[]> {
+    const userSessions = await db.select({
+      id: sessions.id,
+      date: sessions.date,
+      location: sessions.location,
+    }).from(sessions).where(eq(sessions.userId, userId)).orderBy(sessions.date);
+
+    const sessionIds = userSessions.map(s => s.id);
+
+    let danceRows: { sessionId: number; danceName: string }[] = [];
+    if (sessionIds.length > 0) {
+      danceRows = await db.select({
+        sessionId: sessionDances.sessionId,
+        danceName: songs.danceName,
+      }).from(sessionDances)
+        .innerJoin(songs, eq(sessionDances.songId, songs.id))
+        .where(inArray(sessionDances.sessionId, sessionIds));
+    }
+
+    const totalDances = danceRows.length;
+
+    const dancesBySession = new Map<number, string[]>();
+    for (const row of danceRows) {
+      if (!dancesBySession.has(row.sessionId)) dancesBySession.set(row.sessionId, []);
+      dancesBySession.get(row.sessionId)!.push(row.danceName);
+    }
+    const maxDancesInSession = dancesBySession.size > 0
+      ? Math.max(...[...dancesBySession.values()].map(d => d.length)) : 0;
+
+    const lateNightSessions = userSessions.filter(s => {
+      const h = s.date.getUTCHours();
+      return h >= 5 && h < 12;
+    });
+
+    const uniqueDanceNames = new Set(danceRows.map(r => r.danceName));
+
+    const danceFreq = new Map<string, number>();
+    for (const row of danceRows) {
+      danceFreq.set(row.danceName, (danceFreq.get(row.danceName) || 0) + 1);
+    }
+    const maxDanceFreq = danceFreq.size > 0 ? Math.max(...danceFreq.values()) : 0;
+
+    const danceSessionMap = new Map<string, Set<number>>();
+    for (const row of danceRows) {
+      if (!danceSessionMap.has(row.danceName)) danceSessionMap.set(row.danceName, new Set());
+      danceSessionMap.get(row.danceName)!.add(row.sessionId);
+    }
+    const maxSessionsForOneDance = danceSessionMap.size > 0
+      ? Math.max(...[...danceSessionMap.values()].map(s => s.size)) : 0;
+
+    const venueCounts = new Map<string, number>();
+    for (const s of userSessions) {
+      const loc = s.location || '';
+      if (loc) venueCounts.set(loc, (venueCounts.get(loc) || 0) + 1);
+    }
+    const uniqueVenues = venueCounts.size;
+    const maxVenueCount = venueCounts.size > 0 ? Math.max(...venueCounts.values()) : 0;
+
+    let maxConsecutiveVenue = userSessions.length > 0 ? 1 : 0;
+    let curConsecVenue = 1;
+    for (let i = 1; i < userSessions.length; i++) {
+      if (userSessions[i].location && userSessions[i].location === userSessions[i - 1].location) {
+        curConsecVenue++;
+        if (curConsecVenue > maxConsecutiveVenue) maxConsecutiveVenue = curConsecVenue;
+      } else { curConsecVenue = 1; }
+    }
+
+    const allDatesSet = new Set(userSessions.map(s => s.date.toISOString().split('T')[0]));
+    const allDates = [...allDatesSet].sort();
+
+    let longestStreak = allDates.length > 0 ? 1 : 0;
+    let currentStrk = 1;
+    for (let i = 1; i < allDates.length; i++) {
+      const diff = (new Date(allDates[i]).getTime() - new Date(allDates[i - 1]).getTime()) / 86400000;
+      if (diff === 1) { currentStrk++; if (currentStrk > longestStreak) longestStreak = currentStrk; }
+      else currentStrk = 1;
+    }
+
+    const weekDayMap = new Map<string, Set<string>>();
+    for (const s of userSessions) {
+      const week = getISOWeek(s.date);
+      if (!weekDayMap.has(week)) weekDayMap.set(week, new Set());
+      weekDayMap.get(week)!.add(s.date.toISOString().split('T')[0]);
+    }
+    const maxDaysInWeek = weekDayMap.size > 0 ? Math.max(...[...weekDayMap.values()].map(s => s.size)) : 0;
+
+    let hasWeekendWarrior = false;
+    const weekDayOfWeekMap = new Map<string, Set<number>>();
+    for (const s of userSessions) {
+      const week = getISOWeek(s.date);
+      if (!weekDayOfWeekMap.has(week)) weekDayOfWeekMap.set(week, new Set());
+      weekDayOfWeekMap.get(week)!.add(s.date.getUTCDay());
+    }
+    for (const days of weekDayOfWeekMap.values()) {
+      if (days.has(5) && days.has(6)) { hasWeekendWarrior = true; break; }
+    }
+
+    const monthDances = new Map<string, number>();
+    for (const row of danceRows) {
+      const sess = userSessions.find(s => s.id === row.sessionId);
+      if (!sess) continue;
+      const key = `${sess.date.getFullYear()}-${sess.date.getMonth()}`;
+      monthDances.set(key, (monthDances.get(key) || 0) + 1);
+    }
+    const maxDancesInMonth = monthDances.size > 0 ? Math.max(...monthDances.values()) : 0;
+
+    let hasFloorHopper = false;
+    const weekVenueMap = new Map<string, Set<string>>();
+    for (const s of userSessions) {
+      const week = getISOWeek(s.date);
+      if (!weekVenueMap.has(week)) weekVenueMap.set(week, new Set());
+      if (s.location) weekVenueMap.get(week)!.add(s.location);
+    }
+    for (const venues of weekVenueMap.values()) {
+      if (venues.size >= 3) { hasFloorHopper = true; break; }
+    }
+
+    let hasBackInSaddle = false;
+    for (let i = 1; i < allDates.length; i++) {
+      const diff = (new Date(allDates[i]).getTime() - new Date(allDates[i - 1]).getTime()) / 86400000;
+      if (diff >= 7) { hasBackInSaddle = true; break; }
+    }
+
+    // Dance-off / challenge stats
+    const participations = await db.select({
+      danceOffId: danceOffParticipants.danceOffId,
+    }).from(danceOffParticipants).where(eq(danceOffParticipants.userId, userId));
+
+    const danceOffIds = participations.map(p => p.danceOffId);
+    let completedDanceOffs: (typeof danceOffs.$inferSelect)[] = [];
+    if (danceOffIds.length > 0) {
+      completedDanceOffs = await db.select().from(danceOffs)
+        .where(and(inArray(danceOffs.id, danceOffIds), eq(danceOffs.status, 'completed')))
+        .orderBy(danceOffs.startedAt);
+    }
+
+    let wins = 0;
+    let consecutiveWins = 0;
+    let maxConsecutiveWins = 0;
+    let mainCharacter = false;
+    let showdownCount = 0;
+
+    for (const ch of completedDanceOffs) {
+      if (ch.type === 'showdown') showdownCount++;
+      const allParts = await db.select().from(danceOffParticipants).where(eq(danceOffParticipants.danceOffId, ch.id));
+      const userPart = allParts.find(p => p.userId === userId);
+      if (!userPart) continue;
+      const maxCount = Math.max(...allParts.map(p => p.finalDanceCount ?? 0));
+      const userCount = userPart.finalDanceCount ?? 0;
+      const won = userCount > 0 && userCount >= maxCount;
+      if (won) {
+        wins++; consecutiveWins++;
+        if (consecutiveWins > maxConsecutiveWins) maxConsecutiveWins = consecutiveWins;
+        if (userCount >= 30) mainCharacter = true;
+      } else { consecutiveWins = 0; }
+    }
+    const totalChallenges = completedDanceOffs.length;
+
+    const progressMap: Record<string, number> = {
+      first_steps:        Math.min(userSessions.length, 1),
+      on_the_floor:       Math.min(totalDances, 10),
+      boot_scootin:       Math.min(totalDances, 50),
+      dance_machine:      Math.min(totalDances, 100),
+      cant_stop_now:      Math.min(totalDances, 500),
+      thousand_stepper:   Math.min(totalDances, 1000),
+      step_streak:        Math.min(longestStreak, 3),
+      dance_fever:        Math.min(maxDaysInWeek, 5),
+      weekend_warrior:    hasWeekendWarrior ? 1 : 0,
+      peak_season:        Math.min(maxDancesInMonth, 100),
+      home_turf:          Math.min(maxVenueCount, 10),
+      wanderer:           Math.min(uniqueVenues, 3),
+      road_trip:          Math.min(uniqueVenues, 5),
+      bar_regular:        Math.min(maxConsecutiveVenue, 5),
+      dance_passport:     Math.min(uniqueVenues, 10),
+      variety_pack:       Math.min(uniqueDanceNames.size, 10),
+      collector:          Math.min(uniqueDanceNames.size, 25),
+      human_jukebox:      Math.min(uniqueDanceNames.size, 50),
+      crowd_favorite:     Math.min(maxDanceFreq, 10),
+      encore:             Math.min(maxSessionsForOneDance, 5),
+      competitive_spirit: Math.min(showdownCount, 10),
+      showdown_winner:    Math.min(wins, 1),
+      rivalry:            Math.min(totalChallenges, 5),
+      undefeated:         Math.min(maxConsecutiveWins, 3),
+      main_character:     mainCharacter ? 1 : 0,
+      marathon_night:     Math.min(maxDancesInSession, 25),
+      closing_time:       Math.min(lateNightSessions.length, 1),
+      night_owl:          Math.min(lateNightSessions.length, 3),
+      back_in_the_saddle: hasBackInSaddle ? 1 : 0,
+      floor_hopper:       hasFloorHopper ? 1 : 0,
+    };
+
+    const existing = await db.select().from(userAchievements).where(eq(userAchievements.userId, userId));
+    const existingMap = new Map(existing.map(e => [e.achievementId, e]));
+
+    for (const def of ACHIEVEMENT_DEFS) {
+      const progress = progressMap[def.id] ?? 0;
+      if (progress >= def.target && !existingMap.has(def.id)) {
+        const [inserted] = await db.insert(userAchievements).values({
+          userId, achievementId: def.id,
+        }).returning();
+        existingMap.set(def.id, inserted);
+      }
+    }
+
+    return ACHIEVEMENT_DEFS.map(def => {
+      const progress = progressMap[def.id] ?? 0;
+      const record = existingMap.get(def.id);
+      return {
+        id: def.id,
+        earned: !!record,
+        progress,
+        target: def.target,
+        earnedAt: record?.earnedAt?.toISOString(),
+        seen: !!record?.seenAt,
+      };
+    });
+  }
+
+  async markAchievementsSeen(userId: number): Promise<void> {
+    await db.update(userAchievements)
+      .set({ seenAt: new Date() })
+      .where(and(
+        eq(userAchievements.userId, userId),
+        sql`${userAchievements.seenAt} IS NULL`
+      ));
   }
 }
 

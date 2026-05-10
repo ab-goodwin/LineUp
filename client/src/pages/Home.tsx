@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useProfile } from "@/hooks/use-profile";
 import { useStats } from "@/hooks/use-stats";
 import { StatCard } from "@/components/StatCard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { STYLE_INFO, type StyleOption } from "@shared/schema";
+import { useUnseenAchievements, useMarkAchievementsSeen } from "@/hooks/use-achievements";
 import {
-  Music2, CalendarDays, MapPin, Flame, Trophy, Sparkles,
-  TrendingUp, Clock, BarChart2, Star, Heart, Settings2, Check, PieChart as PieIcon, GripVertical, Zap
+  Music2, CalendarDays, MapPin, Flame, Trophy, Sparkles, Footprints,
+  TrendingUp, Clock, BarChart2, Star, Heart, Settings2, Check, PieChart as PieIcon, GripVertical, Zap, ChevronRight
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
@@ -233,11 +235,15 @@ function DonutChart({ data, size = 88 }: { data: { style: string; count: number;
 }
 
 export default function Home() {
+  const [, setLocation] = useLocation();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: stats, isLoading: statsLoading } = useStats();
   const { data: prefData } = useHomepageStats();
   const { data: styleDist = [] } = useStyleDistribution();
+  const { data: unseenData } = useUnseenAchievements();
+  const markSeen = useMarkAchievementsSeen();
   const [editOpen, setEditOpen] = useState(false);
+  const unseenCount = unseenData?.count ?? 0;
 
   // Merge saved prefs with all keys (auto-adds new keys users haven't seen)
   const enabledStats = mergeWithDefaults(prefData?.stats ?? null);
@@ -339,7 +345,7 @@ export default function Home() {
           <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col ${cardColor(key)}`}>
             <div className="flex items-start justify-between mb-2">
               <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Top 3 Line</span>
-              <span className="text-base leading-none">🥾</span>
+              <Footprints className="w-4 h-4 text-primary/50" />
             </div>
             {stats?.top3Dances?.length ? (
               <div className="space-y-1.5 flex-1">
@@ -430,6 +436,25 @@ export default function Home() {
 
   return (
     <div className="container px-4 pb-28 pt-8 mx-auto max-w-5xl">
+      {unseenCount > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 bg-primary/10 border border-primary/30 rounded-2xl p-4 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
+          onClick={() => { markSeen.mutate(); setLocation("/achievements"); }}
+          data-testid="banner-new-achievements"
+        >
+          <Trophy className="w-5 h-5 text-primary flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm text-primary leading-tight">
+              New Badge{unseenCount > 1 ? "s" : ""} Unlocked!
+            </p>
+            <p className="text-xs text-muted-foreground">Tap to view your achievements</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-primary flex-shrink-0" />
+        </motion.div>
+      )}
+
       <div className="mb-8 space-y-1">
         {profileLoading ? (
           <Skeleton className="h-10 w-48 rounded-lg" />
