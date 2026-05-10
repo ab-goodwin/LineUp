@@ -41,7 +41,7 @@ function resizeImageToBase64(file: File, maxSize = 200): Promise<string> {
         canvas.height = img.height * scale;
         const ctx = canvas.getContext("2d")!;
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.75));
+        resolve(canvas.toDataURL("image/jpeg", 0.65));
       };
       img.onerror = reject;
       img.src = e.target!.result as string;
@@ -266,21 +266,23 @@ export default function Profile() {
         </Form>
       </section>
 
-      {/* Dev Tools */}
-      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
-        <h2 className="text-xl font-bold mb-1 font-display text-foreground">Developer Tools</h2>
-        <p className="text-sm text-muted-foreground mb-4">Load sample data to preview all stat cards.</p>
-        <Button
-          variant="outline"
-          className="w-full rounded-xl border-2 justify-start gap-2"
-          onClick={() => seedData.mutate()}
-          disabled={seedData.isPending}
-          data-testid="button-seed-data"
-        >
-          {seedData.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
-          {seedData.isPending ? "Loading..." : "Load Test Data"}
-        </Button>
-      </section>
+      {/* Dev Tools — admin only */}
+      {profile?.username === "lineupadmin" && (
+        <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
+          <h2 className="text-xl font-bold mb-1 font-display text-foreground">Developer Tools</h2>
+          <p className="text-sm text-muted-foreground mb-4">Load sample data to preview all stat cards.</p>
+          <Button
+            variant="outline"
+            className="w-full rounded-xl border-2 justify-start gap-2"
+            onClick={() => seedData.mutate()}
+            disabled={seedData.isPending}
+            data-testid="button-seed-data"
+          >
+            {seedData.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
+            {seedData.isPending ? "Loading..." : "Load Test Data"}
+          </Button>
+        </section>
+      )}
 
       {/* Sign Out — above Danger Zone, red styling */}
       <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
