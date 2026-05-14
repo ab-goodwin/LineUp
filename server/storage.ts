@@ -640,19 +640,15 @@ export class DatabaseStorage implements IStorage {
       .from(songs).where(eq(songs.userId, buddyUserId));
     const songCount = Number(songCountResult?.count || 0);
 
-    // Line / swing dance counts for this buddy
+    // Line / swing song counts from library (not session dances)
     const [lineDanceCountResult] = await db.select({ count: sql<number>`count(*)` })
-      .from(sessionDances)
-      .innerJoin(songs, eq(sessionDances.songId, songs.id))
-      .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
-      .where(and(eq(sessions.userId, buddyUserId), eq(songs.style, 'LINE')));
+      .from(songs)
+      .where(and(eq(songs.userId, buddyUserId), eq(songs.style, 'LINE')));
     const lineDanceCount = Number(lineDanceCountResult?.count || 0);
 
     const [swingDanceCountResult] = await db.select({ count: sql<number>`count(*)` })
-      .from(sessionDances)
-      .innerJoin(songs, eq(sessionDances.songId, songs.id))
-      .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
-      .where(and(eq(sessions.userId, buddyUserId), ne(songs.style, 'LINE')));
+      .from(songs)
+      .where(and(eq(songs.userId, buddyUserId), ne(songs.style, 'LINE')));
     const swingDanceCount = Number(swingDanceCountResult?.count || 0);
 
     // Current favorite song

@@ -263,20 +263,6 @@ export default function Profile() {
         </Button>
       </section>
 
-      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm">
-        <h2 className="text-xl font-bold mb-1 font-display text-foreground">Import / Export & Data</h2>
-        <p className="text-sm text-muted-foreground mb-4">Manage song templates, bulk import, and danger zone settings.</p>
-        <Button
-          variant="outline"
-          className="w-full rounded-xl border-2 justify-start gap-2"
-          onClick={() => setLocation("/settings")}
-          data-testid="button-go-settings"
-        >
-          <Settings2 className="w-4 h-4" />
-          Open Settings
-        </Button>
-      </section>
-
       {/* Credits */}
       <div className="border-t border-border/30 pt-6 pb-2 text-center space-y-1">
         <p className="text-xs text-muted-foreground/50">By Austin Brady Goodwin</p>
