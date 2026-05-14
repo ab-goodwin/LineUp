@@ -1,0 +1,38 @@
+Home Page:
+
+Settings menu:
+Create Settings menu left side of profile, add a cog settings icon to click to go to the settings tab. 
+I want the following moved from profile to settings menu:
+Developer tools (still only accessible if username is “lineupadmin”)
+Danger Zone
+Add the following to settings:
+In the settings, I want a way to save an empty song library templates that a user can download, fill in with their songs, and then they can import it. One template for line, and one for swing. This will then add the songs in the template to their library, and then delete the imported file.
+
+New stats:
+Line Dances(this year): total line dances from sessions of the current year (not 365 days prior
+Swing Dances(this year): total swing dances from) sessions of the current year (not 365 days prior)
+Total Dances(this year): total line and swing dances combined from the current year (not 365 days prior, but only sessions from the current year)
+Line Dances(this month): total line dances this month (not 30 days prior, but only sessions from the current month)
+Swing Dances(this month): total swing dances this month (not 30 days prior, but only sessions from the current month)
+Total Line Dances (all time): total line dances from all sessions, just line)
+Total Swing Dances(all time): total swing dances from all sessions, just swing)
+Current Favorite: user’s personal pick of what dance they are liking at the current moment, indicated by tapping the heart on the song they see as their current favorite.
+
+Change stats:
+Total dances: change to total dances (all time): total dances from all sessions (both swing and line)
+Favorite Dance: change title to “most danced”
+
+Calendar Page:
+Add the ability to have multiple sessions in one day, add another button under the edit session button that allows the user to add another session for the same day, and have it appear in another widget box below the first one.
+
+Library Page:
+Add the ability to sort the library by song, or dance. This should be changed by clicking an icon to the right of the search bar. The search bar can be resized to fit.
+If sorting by song name, the icon changes to a music note. the song name should be at the top of the library tile in the larger font and the dance name below, as it currently is.
+If sorting is by dance name, the icon changes to a stick figure person dancing. The dance name should be at the top of the library tile in the larger font and the song name and artist below, it should just be swapped if sorting by dance name.
+Add a current favorite:
+They should be able to select their current favorite dance to display to their friends, this can be done by tapping a blank heart icon next to the edit button. (There can only be one selected at a time) Once tapped, the heart icon of the selected song will turn pink, and will display on their own buddy page. (friends can see it)
+
+Buddies page:
+Each friend tile should show their:
+# in library, # of line dances (replace best streak), # of swing dances (replace days active)
+where the current “favorite dance” is, change it from their most danced song to their current favorite song.

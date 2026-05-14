@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import honkyTonkLogo from "@assets/HonkyTonk_Cropped_(Black)_1778181896344.png";
 import { useLocation } from "wouter";
-import { useProfile, useUpdateProfile, useDeleteData } from "@/hooks/use-profile";
+import { useProfile, useUpdateProfile } from "@/hooks/use-profile";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,17 +9,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Trash2, LogOut, ArrowLeft, Camera, FlaskConical } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { cn } from "@/lib/utils";
+import { Loader2, LogOut, ArrowLeft, Camera, Settings2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
-  AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -54,23 +46,11 @@ function resizeImageToBase64(file: File, maxSize = 200): Promise<string> {
 export default function Profile() {
   const { data: profile, isLoading } = useProfile();
   const updateProfile = useUpdateProfile();
-  const deleteData = useDeleteData();
   const { logout } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
-
-  const seedData = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/dev/seed"),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/songs"] });
-      toast({ title: "Test data loaded!", description: "6 songs and 4 sessions added." });
-    },
-    onError: () => toast({ title: "Failed to load test data", variant: "destructive" }),
-  });
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -93,14 +73,6 @@ export default function Profile() {
     try {
       await updateProfile.mutateAsync(values);
       toast({ title: "Profile saved!" });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDelete = async (type: "sessions" | "songs" | "all") => {
-    try {
-      await deleteData.mutateAsync(type);
     } catch (e) {
       console.error(e);
     }
@@ -154,15 +126,26 @@ export default function Profile() {
     <div className="container px-4 pb-24 pt-8 mx-auto max-w-xl">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-display font-bold">Your Profile</h1>
-        <Button
-          variant="ghost"
-          className="text-muted-foreground hover:text-foreground gap-2"
-          onClick={() => setLocation("/")}
-          data-testid="button-back-home"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Home
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={() => setLocation("/settings")}
+            data-testid="button-open-settings"
+          >
+            <Settings2 className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            className="text-muted-foreground hover:text-foreground gap-2"
+            onClick={() => setLocation("/")}
+            data-testid="button-back-home"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Home
+          </Button>
+        </div>
       </div>
 
       {/* Avatar Section */}
@@ -266,24 +249,6 @@ export default function Profile() {
         </Form>
       </section>
 
-      {/* Dev Tools — admin only */}
-      {profile?.username === "lineupadmin" && (
-        <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
-          <h2 className="text-xl font-bold mb-1 font-display text-foreground">Developer Tools</h2>
-          <p className="text-sm text-muted-foreground mb-4">Load sample data to preview all stat cards.</p>
-          <Button
-            variant="outline"
-            className="w-full rounded-xl border-2 justify-start gap-2"
-            onClick={() => seedData.mutate()}
-            disabled={seedData.isPending}
-            data-testid="button-seed-data"
-          >
-            {seedData.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
-            {seedData.isPending ? "Loading..." : "Load Test Data"}
-          </Button>
-        </section>
-      )}
-
       {/* Sign Out — above Danger Zone, red styling */}
       <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
         <h2 className="text-xl font-bold mb-3 font-display text-foreground">Account</h2>
@@ -298,15 +263,18 @@ export default function Profile() {
         </Button>
       </section>
 
-      {/* Danger Zone */}
-      <section className="bg-red-50/50 rounded-2xl p-6 border border-red-100">
-        <h2 className="text-xl font-bold mb-2 font-display text-destructive">Danger Zone</h2>
-        <p className="text-sm text-muted-foreground mb-6">Permanently delete your data. This cannot be undone.</p>
-        <div className="space-y-3">
-          <DeleteDialog title="Delete Session Data?" description="This will remove all your tracked dance sessions." onConfirm={() => handleDelete("sessions")} triggerLabel="Delete Session Data" />
-          <DeleteDialog title="Delete Song Library?" description="This will empty your song library." onConfirm={() => handleDelete("songs")} triggerLabel="Delete Song Library" />
-          <DeleteDialog title="Delete ALL Data?" description="This will wipe your account data completely. Are you absolutely sure?" onConfirm={() => handleDelete("all")} triggerLabel="Delete All Data" variant="destructive" />
-        </div>
+      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm">
+        <h2 className="text-xl font-bold mb-1 font-display text-foreground">Import / Export & Data</h2>
+        <p className="text-sm text-muted-foreground mb-4">Manage song templates, bulk import, and danger zone settings.</p>
+        <Button
+          variant="outline"
+          className="w-full rounded-xl border-2 justify-start gap-2"
+          onClick={() => setLocation("/settings")}
+          data-testid="button-go-settings"
+        >
+          <Settings2 className="w-4 h-4" />
+          Open Settings
+        </Button>
       </section>
 
       {/* Credits */}
@@ -324,36 +292,3 @@ export default function Profile() {
   );
 }
 
-function DeleteDialog({ title, description, onConfirm, triggerLabel, variant = "outline" }: any) {
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn(
-            "w-full justify-start rounded-xl",
-            variant === "destructive"
-              ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-transparent"
-              : "text-destructive hover:bg-red-100 hover:text-destructive border-red-200"
-          )}
-          data-testid={`button-delete-${triggerLabel.toLowerCase().replace(/\s+/g, "-")}`}
-        >
-          <Trash2 className="w-4 h-4 mr-2" />
-          {triggerLabel}
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent className="rounded-2xl bg-card">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="font-display text-xl">{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Yes, Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}

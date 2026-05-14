@@ -21,18 +21,26 @@ import { useToast } from "@/hooks/use-toast";
 const ALL_STAT_KEYS = [
   { key: "totalDances",         label: "Total Dances" },
   { key: "longestStreak",       label: "Longest Streak" },
-  { key: "totalDaysDancing",    label: "Days Dancing" },
-  { key: "uniqueLocations",     label: "Locations" },
-  { key: "dancesThisMonth",     label: "Dances This Month" },
-  { key: "avgDancesPerSession", label: "Avg Dances per Session" },
-  { key: "mostDancedDay",       label: "Most Danced Day" },
-  { key: "mostRecentDance",     label: "Most Recently Added" },
-  { key: "topLocation",         label: "Favorite Location" },
-  { key: "top3Dances",          label: "Top 3 Line Dances" },
-  { key: "top3SwingSongs",      label: "Top 3 Swing Songs" },
-  { key: "favoriteDance",       label: "Favorite Dance" },
-  { key: "danceMix",            label: "Your Dance Mix" },
-  { key: "favoriteDanceStyle",  label: "Favorite Dance Style" },
+  { key: "totalDaysDancing",       label: "Days Dancing" },
+  { key: "uniqueLocations",        label: "Locations" },
+  { key: "dancesThisMonth",        label: "Dances This Month" },
+  { key: "avgDancesPerSession",    label: "Avg Dances per Session" },
+  { key: "mostDancedDay",          label: "Most Danced Day" },
+  { key: "mostRecentDance",        label: "Most Recently Added" },
+  { key: "topLocation",            label: "Favorite Location" },
+  { key: "top3Dances",             label: "Top 3 Line Dances" },
+  { key: "top3SwingSongs",         label: "Top 3 Swing Songs" },
+  { key: "favoriteDance",          label: "Most Danced" },
+  { key: "danceMix",               label: "Your Dance Mix" },
+  { key: "favoriteDanceStyle",     label: "Favorite Dance Style" },
+  { key: "totalLineDancesAllTime", label: "Total Line Dances (All Time)" },
+  { key: "totalSwingDancesAllTime", label: "Total Swing Dances (All Time)" },
+  { key: "totalDancesThisYear",    label: "Dances This Year" },
+  { key: "lineDancesThisYear",     label: "Line Dances (This Year)" },
+  { key: "swingDancesThisYear",    label: "Swing Dances (This Year)" },
+  { key: "lineDancesThisMonth",    label: "Line Dances (This Month)" },
+  { key: "swingDancesThisMonth",   label: "Swing Dances (This Month)" },
+  { key: "currentFavorite",        label: "Current Favorite" },
 ];
 
 
@@ -51,6 +59,14 @@ const CARD_COLORS: Record<string, string> = {
   favoriteDance:       "bg-[#FDE8C0] border-[#EDCA88] hover:border-[#D4A84E]",
   danceMix:            "bg-[#F5ECD8] border-[#DCCEB0] hover:border-[#C0AB80]",
   favoriteDanceStyle:  "bg-[#E8D5C8] border-[#CAAED0] hover:border-[#D88098]",
+  totalLineDancesAllTime:  "bg-[#FDEBD5] border-[#ECC9A8] hover:border-[#D9A87A]",
+  totalSwingDancesAllTime: "bg-[#D5E5F5] border-[#A8C4E0] hover:border-[#7BA3C8]",
+  totalDancesThisYear:     "bg-[#FBF0D0] border-[#E8D398] hover:border-[#CDB66A]",
+  lineDancesThisYear:      "bg-[#D5EDD6] border-[#AACBAB] hover:border-[#82AA83]",
+  swingDancesThisYear:     "bg-[#D5E5F5] border-[#A8C4E0] hover:border-[#7BA3C8]",
+  lineDancesThisMonth:     "bg-[#D5EDD6] border-[#AACBAB] hover:border-[#82AA83]",
+  swingDancesThisMonth:    "bg-[#D5E5F5] border-[#A8C4E0] hover:border-[#7BA3C8]",
+  currentFavorite:         "bg-[#FDE8C0] border-[#EDCA88] hover:border-[#D4A84E]",
 };
 
 function useHomepageStats() {
@@ -271,7 +287,7 @@ export default function Home() {
   const renderCard = (key: string) => {
     switch (key) {
       case "totalDances":
-        return <StatCard label="Total Dances" value={stats?.totalDances ?? 0} icon={Music2} className={cardColor(key)} />;
+        return <StatCard label="Total Dances (All Time)" value={stats?.totalDances ?? 0} icon={Music2} className={cardColor(key)} />;
       case "longestStreak":
         return <StatCard label="Longest Streak" value={`${stats?.longestStreak ?? 0} Days`} icon={Flame} className={cardColor(key)} />;
       case "totalDaysDancing":
@@ -303,7 +319,7 @@ export default function Home() {
       case "favoriteDance":
         return (
           <StatCard
-            label="Favorite Dance"
+            label="Most Danced"
             value={
               stats?.mostFrequentSongName && stats.mostFrequentSongName !== "N/A"
                 ? stats.mostFrequentSongName
@@ -420,6 +436,22 @@ export default function Home() {
             )}
           </div>
         );
+      case "totalLineDancesAllTime":
+        return <StatCard label="Total Line Dances" value={stats?.totalLineDancesAllTime ?? 0} icon={Music2} className={cardColor(key)} />;
+      case "totalSwingDancesAllTime":
+        return <StatCard label="Total Swing Dances" value={stats?.totalSwingDancesAllTime ?? 0} icon={Sparkles} className={cardColor(key)} />;
+      case "totalDancesThisYear":
+        return <StatCard label="Dances This Year" value={stats?.totalDancesThisYear ?? 0} icon={CalendarDays} className={cardColor(key)} />;
+      case "lineDancesThisYear":
+        return <StatCard label="Line Dances (This Year)" value={stats?.lineDancesThisYear ?? 0} icon={CalendarDays} className={cardColor(key)} />;
+      case "swingDancesThisYear":
+        return <StatCard label="Swing (This Year)" value={stats?.swingDancesThisYear ?? 0} icon={CalendarDays} className={cardColor(key)} />;
+      case "lineDancesThisMonth":
+        return <StatCard label="Line Dances (This Month)" value={stats?.lineDancesThisMonth ?? 0} icon={TrendingUp} className={cardColor(key)} />;
+      case "swingDancesThisMonth":
+        return <StatCard label="Swing (This Month)" value={stats?.swingDancesThisMonth ?? 0} icon={TrendingUp} className={cardColor(key)} />;
+      case "currentFavorite":
+        return <StatCard label="Current Favorite" value={stats?.currentFavorite && stats.currentFavorite !== "N/A" ? stats.currentFavorite : "—"} icon={Star} className={cardColor(key)} />;
       default:
         return null;
     }

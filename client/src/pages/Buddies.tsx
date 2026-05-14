@@ -68,17 +68,22 @@ function BuddyCard({ buddy, rank, onRemove }: { buddy: BuddyPublicStats & { song
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
         <StatPill label="In Library" value={(buddy as any).songCount ?? buddy.totalDances} />
-        <StatPill label="Best Streak" value={`${buddy.longestStreak}d`} highlight />
-        <StatPill label="Days Active" value={buddy.totalDaysDancing} />
+        <StatPill label="Line Dances" value={buddy.lineDanceCount ?? 0} highlight />
+        <StatPill label="Swing Dances" value={buddy.swingDanceCount ?? 0} />
       </div>
       {buddy.currentStreak > 0 && (
         <div className="flex items-center gap-1.5 text-sm text-orange-500 font-medium mb-2">
           <Flame className="w-4 h-4" /><span>{buddy.currentStreak}-day streak going!</span>
         </div>
       )}
-      {buddy.favoriteDance !== "N/A" && (
-        <p className="text-xs text-muted-foreground">Favorite: <span className="font-medium text-foreground">{buddy.favoriteDance}</span></p>
-      )}
+      {buddy.currentFavoriteSong ? (
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <span className="text-pink-500">♥</span>
+          <span className="font-medium text-foreground">{buddy.currentFavoriteSong}</span>
+        </p>
+      ) : buddy.favoriteDance !== "N/A" ? (
+        <p className="text-xs text-muted-foreground">Most danced: <span className="font-medium text-foreground">{buddy.favoriteDance}</span></p>
+      ) : null}
     </motion.div>
   );
 }

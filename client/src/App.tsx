@@ -13,6 +13,7 @@ import Library from "@/pages/Library";
 import Profile from "@/pages/Profile";
 import Buddies from "@/pages/Buddies";
 import Achievements from "@/pages/Achievements";
+import Settings from "@/pages/Settings";
 import AuthPage from "@/pages/AuthPage";
 import { Loader2 } from "lucide-react";
 function AnimatedRoutes() {
@@ -24,6 +25,7 @@ function AnimatedRoutes() {
       <Route path="/profile" component={Profile} />
       <Route path="/buddies" component={Buddies} />
       <Route path="/achievements" component={Achievements} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );

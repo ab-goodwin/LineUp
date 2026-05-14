@@ -348,6 +348,15 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  app.post("/api/songs/:id/favorite", requireAuth, async (req, res) => {
+    try {
+      const song = await storage.toggleFavorite(Number(req.params.id), req.user!.id);
+      res.json(song);
+    } catch {
+      res.status(404).json({ message: "Song not found" });
+    }
+  });
+
   // --- Session Routes ---
   app.get(api.sessions.list.path, requireAuth, async (req, res) => {
     const sessions = await storage.getSessions(req.user!.id);

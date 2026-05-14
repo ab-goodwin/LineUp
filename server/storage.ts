@@ -41,6 +41,7 @@ export interface IStorage {
   createSong(userId: number, song: CreateSongRequest): Promise<Song>;
   updateSong(id: number, userId: number, song: UpdateSongRequest): Promise<Song>;
   deleteSong(id: number, userId: number): Promise<void>;
+  toggleFavorite(songId: number, userId: number): Promise<Song>;
 
   // Sessions (scoped to userId)
   getSessions(userId: number): Promise<SessionResponse[]>;
@@ -369,6 +370,14 @@ export class DatabaseStorage implements IStorage {
     let avgDancesPerSession = 0;
     let top3Dances: { danceName: string; songName: string; count: number }[] = [];
     let top3SwingSongs: { songName: string; danceName: string; style: string; count: number }[] = [];
+    let lineDancesThisYear = 0;
+    let swingDancesThisYear = 0;
+    let totalDancesThisYear = 0;
+    let lineDancesThisMonth = 0;
+    let swingDancesThisMonth = 0;
+    let totalLineDancesAllTime = 0;
+    let totalSwingDancesAllTime = 0;
+    let currentFavorite = "N/A";
 
     // Most recently added song (by id, not by session date)
     const [recentSong] = await db.select({ songName: songs.songName, danceName: songs.danceName, style: songs.style })
@@ -446,7 +455,70 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(sql`count(*)`))
       .limit(3);
       top3SwingSongs = top3Swing.map(r => ({ songName: r.songName, danceName: r.danceName, style: r.style, count: Number(r.count) }));
+
+      // Line dances this year
+      const [lineDancesYearResult] = await db.select({ count: sql<number>`count(*)` })
+        .from(sessionDances)
+        .innerJoin(songs, eq(sessionDances.songId, songs.id))
+        .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+        .where(and(eq(sessions.userId, userId), eq(songs.style, 'LINE'), sql`EXTRACT(YEAR FROM ${sessions.date}) = ${now.getFullYear()}`));
+      lineDancesThisYear = Number(lineDancesYearResult?.count || 0);
+
+      // Swing dances this year
+      const [swingDancesYearResult] = await db.select({ count: sql<number>`count(*)` })
+        .from(sessionDances)
+        .innerJoin(songs, eq(sessionDances.songId, songs.id))
+        .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+        .where(and(eq(sessions.userId, userId), ne(songs.style, 'LINE'), sql`EXTRACT(YEAR FROM ${sessions.date}) = ${now.getFullYear()}`));
+      swingDancesThisYear = Number(swingDancesYearResult?.count || 0);
+      totalDancesThisYear = lineDancesThisYear + swingDancesThisYear;
+
+      // Line dances this month
+      const [lineDancesMonthResult] = await db.select({ count: sql<number>`count(*)` })
+        .from(sessionDances)
+        .innerJoin(songs, eq(sessionDances.songId, songs.id))
+        .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+        .where(and(
+          eq(sessions.userId, userId), eq(songs.style, 'LINE'),
+          sql`EXTRACT(MONTH FROM ${sessions.date}) = ${now.getMonth() + 1}`,
+          sql`EXTRACT(YEAR FROM ${sessions.date}) = ${now.getFullYear()}`
+        ));
+      lineDancesThisMonth = Number(lineDancesMonthResult?.count || 0);
+
+      // Swing dances this month
+      const [swingDancesMonthResult] = await db.select({ count: sql<number>`count(*)` })
+        .from(sessionDances)
+        .innerJoin(songs, eq(sessionDances.songId, songs.id))
+        .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+        .where(and(
+          eq(sessions.userId, userId), ne(songs.style, 'LINE'),
+          sql`EXTRACT(MONTH FROM ${sessions.date}) = ${now.getMonth() + 1}`,
+          sql`EXTRACT(YEAR FROM ${sessions.date}) = ${now.getFullYear()}`
+        ));
+      swingDancesThisMonth = Number(swingDancesMonthResult?.count || 0);
+
+      // All-time line / swing totals
+      const [lineTotalResult] = await db.select({ count: sql<number>`count(*)` })
+        .from(sessionDances)
+        .innerJoin(songs, eq(sessionDances.songId, songs.id))
+        .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+        .where(and(eq(sessions.userId, userId), eq(songs.style, 'LINE')));
+      totalLineDancesAllTime = Number(lineTotalResult?.count || 0);
+
+      const [swingTotalResult] = await db.select({ count: sql<number>`count(*)` })
+        .from(sessionDances)
+        .innerJoin(songs, eq(sessionDances.songId, songs.id))
+        .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+        .where(and(eq(sessions.userId, userId), ne(songs.style, 'LINE')));
+      totalSwingDancesAllTime = Number(swingTotalResult?.count || 0);
     }
+
+    // Current favorite song
+    const [favSong] = await db.select({ danceName: songs.danceName, songName: songs.songName })
+      .from(songs)
+      .where(and(eq(songs.userId, userId), eq(songs.isFavorite, true)))
+      .limit(1);
+    if (favSong) currentFavorite = favSong.danceName || favSong.songName;
 
     return {
       totalDances,
@@ -465,6 +537,14 @@ export class DatabaseStorage implements IStorage {
       avgDancesPerSession,
       top3Dances,
       top3SwingSongs,
+      lineDancesThisYear,
+      swingDancesThisYear,
+      totalDancesThisYear,
+      lineDancesThisMonth,
+      swingDancesThisMonth,
+      totalLineDancesAllTime,
+      totalSwingDancesAllTime,
+      currentFavorite,
     };
   }
   // --- Buddies ---
@@ -559,6 +639,29 @@ export class DatabaseStorage implements IStorage {
     const [songCountResult] = await db.select({ count: sql<number>`count(*)` })
       .from(songs).where(eq(songs.userId, buddyUserId));
     const songCount = Number(songCountResult?.count || 0);
+
+    // Line / swing dance counts for this buddy
+    const [lineDanceCountResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(sessionDances)
+      .innerJoin(songs, eq(sessionDances.songId, songs.id))
+      .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+      .where(and(eq(sessions.userId, buddyUserId), eq(songs.style, 'LINE')));
+    const lineDanceCount = Number(lineDanceCountResult?.count || 0);
+
+    const [swingDanceCountResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(sessionDances)
+      .innerJoin(songs, eq(sessionDances.songId, songs.id))
+      .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+      .where(and(eq(sessions.userId, buddyUserId), ne(songs.style, 'LINE')));
+    const swingDanceCount = Number(swingDanceCountResult?.count || 0);
+
+    // Current favorite song
+    const [favSong] = await db.select({ danceName: songs.danceName, songName: songs.songName })
+      .from(songs)
+      .where(and(eq(songs.userId, buddyUserId), eq(songs.isFavorite, true)))
+      .limit(1);
+    const currentFavoriteSong = favSong ? (favSong.danceName || favSong.songName) : null;
+
     return {
       userId: user.id,
       username: user.username || "",
@@ -570,7 +673,26 @@ export class DatabaseStorage implements IStorage {
       currentStreak,
       favoriteDance: stats.mostFrequentDance,
       songCount,
+      lineDanceCount,
+      swingDanceCount,
+      currentFavoriteSong,
     };
+  }
+
+  async toggleFavorite(songId: number, userId: number): Promise<Song> {
+    const [existing] = await db.select({ isFavorite: songs.isFavorite })
+      .from(songs).where(and(eq(songs.id, songId), eq(songs.userId, userId)));
+    if (!existing) throw new Error("Song not found");
+    if (existing.isFavorite) {
+      const [updated] = await db.update(songs).set({ isFavorite: false })
+        .where(and(eq(songs.id, songId), eq(songs.userId, userId))).returning();
+      return updated;
+    } else {
+      await db.update(songs).set({ isFavorite: false }).where(eq(songs.userId, userId));
+      const [updated] = await db.update(songs).set({ isFavorite: true })
+        .where(and(eq(songs.id, songId), eq(songs.userId, userId))).returning();
+      return updated;
+    }
   }
 
   async getBuddies(userId: number): Promise<any[]> {
