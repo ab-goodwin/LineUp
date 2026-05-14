@@ -170,11 +170,11 @@ export default function Settings() {
         <Button
           variant="ghost"
           className="text-muted-foreground hover:text-foreground gap-2"
-          onClick={() => setLocation("/profile")}
-          data-testid="button-back-profile"
+          onClick={() => setLocation("/")}
+          data-testid="button-back-home"
         >
           <ArrowLeft className="w-4 h-4" />
-          Profile
+          Home
         </Button>
       </div>
 
