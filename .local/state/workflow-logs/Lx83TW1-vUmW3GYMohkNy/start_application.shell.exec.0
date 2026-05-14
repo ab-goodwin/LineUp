@@ -1,0 +1,254 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0K5:53:37 AM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 7 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+5:53:41 AM [express] GET /api/me 304 in 6ms :: {"id":11,"username":"lineupadmin","firstName":"lineupadmin","lastName":"","location":""}
+5:53:41 AM [express] GET /api/profile 304 in 10ms :: {"id":11,"username":"lineupadmin","passwordHash":"$2b$12$M91I0L9.Q/nFtbYjcVReLeZn8FJvievlRwuPMJw7HnuJxQiSmzaxK","firstName":"lineupadmin","lastName":"","location":"","phoneNumber":null,"avatar":null,"homepageStats":null}
+5:53:41 AM [express] GET /api/profile/homepage-stats 304 in 6ms :: {"stats":null}
+5:53:41 AM [express] GET /api/stats/style-distribution 304 in 14ms :: [{"style":"CSW","count":1},{"style":"LINE","count":1}]
+5:53:41 AM [express] GET /api/achievements/unseen 304 in 18ms :: {"count":0,"ids":[]}
+5:53:41 AM [express] GET /api/stats 304 in 39ms :: {"totalDances":2,"longestStreak":1,"totalDaysDancing":1,"uniqueLocations":1,"mostFrequentLocation":"Cowboys Dance Hall","mostFrequentLocationCount":1,"mostFrequentSongName":"I Got You","mostFrequentDance":"Country Swing","mostFrequentDanceCount":1,"dancesThisMonth":2,"mostRecentDance":"I Got You","mostRecentStyle":"CSW","mostDancedDay":{"date":"2026-05-13","count":2},"avgDancesPerSession":2,"top3Dances":[{"danceName":"Bumper to Bumper","songName":"Tráfico","count":1}],"top3SwingSongs":[{"songName":"I Got You","danceName":"Country Swing","style":"CSW","count":1}],"lineDancesThisYear":1,"swingDancesThisYear":1,"totalDancesThisYear":2,"lineDancesThisMonth":1,"swingDancesThisMonth":1,"totalLineDancesAllTime":1,"totalSwingDancesAllTime":1,"currentFavorite":"Bumper to Bumper"}
+5:53:41 AM [express] GET /api/me 304 in 4ms :: {"id":10,"username":"abgoodwin01","firstName":"Brady","lastName":"","location":""}
+5:53:41 AM [express] GET /api/profile 304 in 6ms :: {"id":10,"username":"abgoodwin01","passwordHash":"$2b$12$i5oOZzkui25xW5VOPnr5funSU79UtzPT4qVEZcd0ZPtuVwTv9g0kO","firstName":"Brady","lastName":"","location":"","phoneNumber":null,"avatar":null,"homepageStats":null}
+5:53:41 AM [express] GET /api/profile/homepage-stats 304 in 5ms :: {"stats":null}
+5:53:41 AM [express] GET /api/stats/style-distribution 200 in 9ms :: [{"style":"ECS","count":1},{"style":"LINE","count":2}]
+5:53:41 AM [express] GET /api/achievements/unseen 304 in 12ms :: {"count":0,"ids":[]}
+5:53:41 AM [express] GET /api/stats 304 in 26ms :: {"totalDances":3,"longestStreak":2,"totalDaysDancing":3,"uniqueLocations":1,"mostFrequentLocation":"N/A","mostFrequentLocationCount":3,"mostFrequentSongName":"Chattahoochee","mostFrequentDance":"Tush ","mostFrequentDanceCount":2,"dancesThisMonth":3,"mostRecentDance":"Shake That","mostRecentStyle":"ECS","mostDancedDay":{"date":"2026-05-09","count":1},"avgDancesPerSession":1,"top3Dances":[{"danceName":"Tush ","songName":"Chattahoochee","count":2}],"top3SwingSongs":[{"songName":"Shake That","danceName":"East Coast Swing","style":"ECS","count":1}],"lineDancesThisYear":2,"swingDancesThisYear":1,"totalDancesThisYear":3,"lineDancesThisMonth":2,"swingDancesThisMonth":1,"totalLineDancesAllTime":2,"totalSwingDancesAllTime":1,"currentFavorite":"Tush "}
+5:53:43 AM [express] GET /api/buddies 304 in 5ms :: []
+5:53:43 AM [express] GET /api/buddies/requests 304 in 4ms :: []
+5:53:44 AM [express] PUT /api/achievements/seen 200 in 6ms :: {"ok":true}
+5:53:44 AM [express] GET /api/achievements 200 in 7ms :: [{"id":"first_steps","earned":true,"progress":1,"target":1,"earnedAt":"2026-05-10T02:10:42.822Z","seen":true},{"id":"on_the_floor","earned":false,"progress":3,"target":10,"seen":false},{"id":"boot_scootin","earned":false,"progress":3,"target":50,"seen":false},{"id":"dance_machine","earned":false,"progress":3,"target":100,"seen":false},{"id":"cant_stop_now","earned":false,"progress":3,"target":500,"seen":false},{"id":"thousand_stepper","earned":false,"progress":3,"target":1000,"seen":false},{"id":"step_streak","earned":false,"progress":2,"target":3,"seen":false},{"id":"dance_fever","earned":false,"progress":2,"target":5,"seen":false},{"id":"weekend_warrior","earned":false,"progress":0,"target":1,"seen":false},{"id":"peak_season","earned":false,"progress":3,"target":100,"seen":false},{"id":"home_turf","earned":false,"progress":0,"target":10,"seen":false},{"id":"wanderer","earned":false,"progress":0,"target":3,"seen":false},{"id":"road_trip","earned":false,"progress":0,"target":5,"seen":false},{"id":"bar_regular","earned":false,"progress":1,"target":5,"seen":false},{"id":"dance_passport","earned":false,"progress":0,"target":10,"seen":false},{"id":"variety_pack","earned":false,"progress":2,"target":10,"seen":false},{"id":"collector","earned":false,"progress":2,"target":25,"seen":false},{"id":"human_jukebox","earned":false,"progress":2,"target":50,"seen":false},{"id":"crowd_favorite","earned":false,"progress":2,"target":10,"seen":false},{"id":"encore","earned":false,"progress":2,"target":5,"seen":false},{"id":"competitive_spirit","earned":false,"progress":0,"target":10,"seen":false},{"id":"showdown_winner","earned":false,"progress":0,"target":1,"seen":false},{"id":"rivalry","earned":false,"progress":0,"target":5,"seen":false},{"id":"undefeated","earned":false,"progress":0,"target":3,"seen":false},{"id":"main_character","earned":false,"progress":0,"target":1,"seen":false},{"id":"marathon_night","earned":false,"progress":1,"target":25,"seen":false},{"id":"closing_time","earned":false,"progress":0,"target":1,"seen":false},{"id":"night_owl","earned":false,"progress":0,"target":3,"seen":false},{"id":"back_in_the_saddle","earned":false,"progress":0,"target":1,"seen":false},{"id":"floor_hopper","earned":false,"progress":0,"target":1,"seen":false}]
+5:53:44 AM [express] GET /api/achievements/unseen 304 in 6ms :: {"count":0,"ids":[]}
+5:53:50 AM [express] POST /api/logout 200 in 9ms :: {"success":true}
+5:53:58 AM [express] POST /api/login 200 in 372ms :: {"id":11,"username":"lineupadmin","firstName":"lineupadmin","lastName":"","location":""}
+5:53:59 AM [express] GET /api/profile/homepage-stats 304 in 4ms :: {"stats":null}
+5:53:59 AM [express] GET /api/profile 200 in 4ms :: {"id":11,"username":"lineupadmin","passwordHash":"$2b$12$M91I0L9.Q/nFtbYjcVReLeZn8FJvievlRwuPMJw7HnuJxQiSmzaxK","firstName":"lineupadmin","lastName":"","location":"","phoneNumber":null,"avatar":null,"homepageStats":null}
+5:53:59 AM [express] GET /api/stats/style-distribution 200 in 6ms :: [{"style":"CSW","count":1},{"style":"LINE","count":1}]
+5:53:59 AM [express] GET /api/stats 200 in 26ms :: {"totalDances":2,"longestStreak":1,"totalDaysDancing":1,"uniqueLocations":1,"mostFrequentLocation":"Cowboys Dance Hall","mostFrequentLocationCount":1,"mostFrequentSongName":"I Got You","mostFrequentDance":"Country Swing","mostFrequentDanceCount":1,"dancesThisMonth":2,"mostRecentDance":"I Got You","mostRecentStyle":"CSW","mostDancedDay":{"date":"2026-05-13","count":2},"avgDancesPerSession":2,"top3Dances":[{"danceName":"Bumper to Bumper","songName":"Tráfico","count":1}],"top3SwingSongs":[{"songName":"I Got You","danceName":"Country Swing","style":"CSW","count":1}],"lineDancesThisYear":1,"swingDancesThisYear":1,"totalDancesThisYear":2,"lineDancesThisMonth":1,"swingDancesThisMonth":1,"totalLineDancesAllTime":1,"totalSwingDancesAllTime":1,"currentFavorite":"Bumper to Bumper"}
+5:53:59 AM [express] GET /api/achievements/unseen 304 in 7ms :: {"count":0,"ids":[]}
+5:54:03 AM [express] GET /api/buddies 304 in 4ms :: []
+5:54:03 AM [express] GET /api/buddies/requests 200 in 6ms :: [{"id":4,"requesterId":12,"recipientId":11,"status":"pending","requesterUsername":"test1","requesterFirstName":"Test1"}]
+5:54:04 AM [express] PUT /api/buddies/request/4 200 in 6ms :: {"ok":true}
+5:54:04 AM [express] GET /api/buddies/requests 200 in 6ms :: []
+5:54:04 AM [express] GET /api/buddies 200 in 25ms :: [{"userId":12,"username":"test1","firstName":"Test1","totalDances":1,"longestStreak":1,"totalDaysDancing":1,"currentStreak":1,"favoriteDance":"3 tequila floor","songCount":3,"lineDanceCount":1,"swingDanceCount":2,"currentFavoriteSong":"3 tequila floor"}]
+5:54:26 AM [express] GET /api/sessions 200 in 7ms :: [{"id":43,"userId":11,"date":"2026-05-13T04:00:00.000Z","location":"Cowboys Dance Hall","dances":[{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null},{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null}]}]
+5:54:26 AM [express] GET /api/locations 200 in 5ms :: [{"id":5,"userId":11,"name":"Cowboys Dance Hall"}]
+5:54:26 AM [express] GET /api/songs 200 in 7ms :: [{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null,"isFavorite":false},{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null,"isFavorite":true}]
+5:55:41 AM [express] GET /api/achievements/unseen 304 in 46ms :: {"count":0,"ids":[]}
+5:55:56 AM [express] GET /api/me 200 in 4ms :: {"id":11,"username":"lineupadmin","firstName":"lineupadmin","lastName":"","location":""}
+5:55:56 AM [express] GET /api/profile 304 in 7ms :: {"id":11,"username":"lineupadmin","passwordHash":"$2b$12$M91I0L9.Q/nFtbYjcVReLeZn8FJvievlRwuPMJw7HnuJxQiSmzaxK","firstName":"lineupadmin","lastName":"","location":"","phoneNumber":null,"avatar":null,"homepageStats":null}
+5:55:56 AM [express] GET /api/profile/homepage-stats 304 in 5ms :: {"stats":null}
+5:55:56 AM [express] GET /api/stats/style-distribution 304 in 10ms :: [{"style":"CSW","count":1},{"style":"LINE","count":1}]
+5:55:56 AM [express] GET /api/achievements/unseen 304 in 14ms :: {"count":0,"ids":[]}
+5:55:56 AM [express] GET /api/stats 304 in 30ms :: {"totalDances":2,"longestStreak":1,"totalDaysDancing":1,"uniqueLocations":1,"mostFrequentLocation":"Cowboys Dance Hall","mostFrequentLocationCount":1,"mostFrequentSongName":"I Got You","mostFrequentDance":"Country Swing","mostFrequentDanceCount":1,"dancesThisMonth":2,"mostRecentDance":"I Got You","mostRecentStyle":"CSW","mostDancedDay":{"date":"2026-05-13","count":2},"avgDancesPerSession":2,"top3Dances":[{"danceName":"Bumper to Bumper","songName":"Tráfico","count":1}],"top3SwingSongs":[{"songName":"I Got You","danceName":"Country Swing","style":"CSW","count":1}],"lineDancesThisYear":1,"swingDancesThisYear":1,"totalDancesThisYear":2,"lineDancesThisMonth":1,"swingDancesThisMonth":1,"totalLineDancesAllTime":1,"totalSwingDancesAllTime":1,"currentFavorite":"Bumper to Bumper"}
+5:56:00 AM [express] GET /api/buddies/requests 304 in 9ms :: []
+5:56:00 AM [express] GET /api/buddies 304 in 26ms :: [{"userId":12,"username":"test1","firstName":"Test1","totalDances":1,"longestStreak":1,"totalDaysDancing":1,"currentStreak":1,"favoriteDance":"3 tequila floor","songCount":3,"lineDanceCount":1,"swingDanceCount":2,"currentFavoriteSong":"3 tequila floor"}]
+5:56:01 AM [express] GET /api/sessions 304 in 5ms :: [{"id":43,"userId":11,"date":"2026-05-13T04:00:00.000Z","location":"Cowboys Dance Hall","dances":[{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null},{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null}]}]
+5:56:01 AM [express] GET /api/songs 304 in 9ms :: [{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null,"isFavorite":false},{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null,"isFavorite":true}]
+5:56:01 AM [express] GET /api/locations 304 in 6ms :: [{"id":5,"userId":11,"name":"Cowboys Dance Hall"}]
+5:56:16 AM [express] PUT /api/achievements/seen 200 in 8ms :: {"ok":true}
+5:56:16 AM [express] GET /api/achievements 200 in 13ms :: [{"id":"first_steps","earned":true,"progress":1,"target":1,"earnedAt":"2026-05-14T05:16:21.941Z","seen":true},{"id":"on_the_floor","earned":false,"progress":2,"target":10,"seen":false},{"id":"boot_scootin","earned":false,"progress":2,"target":50,"seen":false},{"id":"dance_machine","earned":false,"progress":2,"target":100,"seen":false},{"id":"cant_stop_now","earned":false,"progress":2,"target":500,"seen":false},{"id":"thousand_stepper","earned":false,"progress":2,"target":1000,"seen":false},{"id":"step_streak","earned":false,"progress":1,"target":3,"seen":false},{"id":"dance_fever","earned":false,"progress":1,"target":5,"seen":false},{"id":"weekend_warrior","earned":false,"progress":0,"target":1,"seen":false},{"id":"peak_season","earned":false,"progress":2,"target":100,"seen":false},{"id":"home_turf","earned":false,"progress":1,"target":10,"seen":false},{"id":"wanderer","earned":false,"progress":1,"target":3,"seen":false},{"id":"road_trip","earned":false,"progress":1,"target":5,"seen":false},{"id":"bar_regular","earned":false,"progress":1,"target":5,"seen":false},{"id":"dance_passport","earned":false,"progress":1,"target":10,"seen":false},{"id":"variety_pack","earned":false,"progress":2,"target":10,"seen":false},{"id":"collector","earned":false,"progress":2,"target":25,"seen":false},{"id":"human_jukebox","earned":false,"progress":2,"target":50,"seen":false},{"id":"crowd_favorite","earned":false,"progress":1,"target":10,"seen":false},{"id":"encore","earned":false,"progress":1,"target":5,"seen":false},{"id":"competitive_spirit","earned":false,"progress":0,"target":10,"seen":false},{"id":"showdown_winner","earned":false,"progress":0,"target":1,"seen":false},{"id":"rivalry","earned":false,"progress":0,"target":5,"seen":false},{"id":"undefeated","earned":false,"progress":0,"target":3,"seen":false},{"id":"main_character","earned":false,"progress":0,"target":1,"seen":false},{"id":"marathon_night","earned":false,"progress":2,"target":25,"seen":false},{"id":"closing_time","earned":false,"progress":0,"target":1,"seen":false},{"id":"night_owl","earned":false,"progress":0,"target":3,"seen":false},{"id":"back_in_the_saddle","earned":false,"progress":0,"target":1,"seen":false},{"id":"floor_hopper","earned":false,"progress":0,"target":1,"seen":false}]
+5:56:17 AM [express] GET /api/achievements/unseen 304 in 12ms :: {"count":0,"ids":[]}
+5:57:11 AM [express] GET /api/me 304 in 4ms :: {"id":11,"username":"lineupadmin","firstName":"lineupadmin","lastName":"","location":""}
+5:57:11 AM [express] GET /api/profile 304 in 5ms :: {"id":11,"username":"lineupadmin","passwordHash":"$2b$12$M91I0L9.Q/nFtbYjcVReLeZn8FJvievlRwuPMJw7HnuJxQiSmzaxK","firstName":"lineupadmin","lastName":"","location":"","phoneNumber":null,"avatar":null,"homepageStats":null}
+5:57:11 AM [express] GET /api/profile/homepage-stats 304 in 4ms :: {"stats":null}
+5:57:11 AM [express] GET /api/stats/style-distribution 304 in 8ms :: [{"style":"CSW","count":1},{"style":"LINE","count":1}]
+5:57:11 AM [express] GET /api/achievements/unseen 304 in 12ms :: {"count":0,"ids":[]}
+5:57:11 AM [express] GET /api/stats 304 in 24ms :: {"totalDances":2,"longestStreak":1,"totalDaysDancing":1,"uniqueLocations":1,"mostFrequentLocation":"Cowboys Dance Hall","mostFrequentLocationCount":1,"mostFrequentSongName":"I Got You","mostFrequentDance":"Country Swing","mostFrequentDanceCount":1,"dancesThisMonth":2,"mostRecentDance":"I Got You","mostRecentStyle":"CSW","mostDancedDay":{"date":"2026-05-13","count":2},"avgDancesPerSession":2,"top3Dances":[{"danceName":"Bumper to Bumper","songName":"Tráfico","count":1}],"top3SwingSongs":[{"songName":"I Got You","danceName":"Country Swing","style":"CSW","count":1}],"lineDancesThisYear":1,"swingDancesThisYear":1,"totalDancesThisYear":2,"lineDancesThisMonth":1,"swingDancesThisMonth":1,"totalLineDancesAllTime":1,"totalSwingDancesAllTime":1,"currentFavorite":"Bumper to Bumper"}
+5:57:15 AM [express] GET /api/songs 304 in 5ms :: [{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null,"isFavorite":false},{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null,"isFavorite":true}]
+5:57:15 AM [express] GET /api/locations 304 in 8ms :: [{"id":5,"userId":11,"name":"Cowboys Dance Hall"}]
+5:57:15 AM [express] GET /api/sessions 304 in 7ms :: [{"id":43,"userId":11,"date":"2026-05-13T04:00:00.000Z","location":"Cowboys Dance Hall","dances":[{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null},{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null}]}]
+5:57:15 AM [express] GET /api/buddies/requests 304 in 4ms :: []
+5:57:15 AM [express] GET /api/buddies 304 in 23ms :: [{"userId":12,"username":"test1","firstName":"Test1","totalDances":1,"longestStreak":1,"totalDaysDancing":1,"currentStreak":1,"favoriteDance":"3 tequila floor","songCount":3,"lineDanceCount":1,"swingDanceCount":2,"currentFavoriteSong":"3 tequila floor"}]
+5:57:16 AM [express] PUT /api/achievements/seen 200 in 4ms :: {"ok":true}
+5:57:16 AM [express] GET /api/achievements 304 in 7ms :: [{"id":"first_steps","earned":true,"progress":1,"target":1,"earnedAt":"2026-05-14T05:16:21.941Z","seen":true},{"id":"on_the_floor","earned":false,"progress":2,"target":10,"seen":false},{"id":"boot_scootin","earned":false,"progress":2,"target":50,"seen":false},{"id":"dance_machine","earned":false,"progress":2,"target":100,"seen":false},{"id":"cant_stop_now","earned":false,"progress":2,"target":500,"seen":false},{"id":"thousand_stepper","earned":false,"progress":2,"target":1000,"seen":false},{"id":"step_streak","earned":false,"progress":1,"target":3,"seen":false},{"id":"dance_fever","earned":false,"progress":1,"target":5,"seen":false},{"id":"weekend_warrior","earned":false,"progress":0,"target":1,"seen":false},{"id":"peak_season","earned":false,"progress":2,"target":100,"seen":false},{"id":"home_turf","earned":false,"progress":1,"target":10,"seen":false},{"id":"wanderer","earned":false,"progress":1,"target":3,"seen":false},{"id":"road_trip","earned":false,"progress":1,"target":5,"seen":false},{"id":"bar_regular","earned":false,"progress":1,"target":5,"seen":false},{"id":"dance_passport","earned":false,"progress":1,"target":10,"seen":false},{"id":"variety_pack","earned":false,"progress":2,"target":10,"seen":false},{"id":"collector","earned":false,"progress":2,"target":25,"seen":false},{"id":"human_jukebox","earned":false,"progress":2,"target":50,"seen":false},{"id":"crowd_favorite","earned":false,"progress":1,"target":10,"seen":false},{"id":"encore","earned":false,"progress":1,"target":5,"seen":false},{"id":"competitive_spirit","earned":false,"progress":0,"target":10,"seen":false},{"id":"showdown_winner","earned":false,"progress":0,"target":1,"seen":false},{"id":"rivalry","earned":false,"progress":0,"target":5,"seen":false},{"id":"undefeated","earned":false,"progress":0,"target":3,"seen":false},{"id":"main_character","earned":false,"progress":0,"target":1,"seen":false},{"id":"marathon_night","earned":false,"progress":2,"target":25,"seen":false},{"id":"closing_time","earned":false,"progress":0,"target":1,"seen":false},{"id":"night_owl","earned":false,"progress":0,"target":3,"seen":false},{"id":"back_in_the_saddle","earned":false,"progress":0,"target":1,"seen":false},{"id":"floor_hopper","earned":false,"progress":0,"target":1,"seen":false}]
+5:57:16 AM [express] GET /api/achievements/unseen 304 in 11ms :: {"count":0,"ids":[]}
+5:57:43 AM [express] GET /api/achievements/unseen 304 in 8ms :: {"count":0,"ids":[]}
+5:57:50 AM [express] POST /api/sessions 201 in 12ms :: {"id":47,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]}
+5:57:50 AM [express] GET /api/sessions 200 in 6ms :: [{"id":47,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]},{"id":43,"userId":11,"date":"2026-05-13T04:00:00.000Z","location":"Cowboys Dance Hall","dances":[{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null},{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null}]}]
+5:57:52 AM [express] POST /api/sessions 201 in 8ms :: {"id":48,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]}
+5:57:53 AM [express] GET /api/sessions 200 in 6ms :: [{"id":47,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]},{"id":48,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]},{"id":43,"userId":11,"date":"2026-05-13T04:00:00.000Z","location":"Cowboys Dance Hall","dances":[{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null},{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null}]}]
+5:57:55 AM [express] POST /api/sessions 201 in 7ms :: {"id":49,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]}
+5:57:55 AM [express] GET /api/sessions 200 in 7ms :: [{"id":47,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]},{"id":48,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]},{"id":49,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]},{"id":43,"userId":11,"date":"2026-05-13T04:00:00.000Z","location":"Cowboys Dance Hall","dances":[{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null},{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null}]}]
+5:57:58 AM [express] GET /api/stats 200 in 19ms :: {"totalDances":2,"longestStreak":2,"totalDaysDancing":2,"uniqueLocations":2,"mostFrequentLocation":"N/A","mostFrequentLocationCount":3,"mostFrequentSongName":"I Got You","mostFrequentDance":"Country Swing","mostFrequentDanceCount":1,"dancesThisMonth":2,"mostRecentDance":"I Got You","mostRecentStyle":"CSW","mostDancedDay":{"date":"2026-05-13","count":2},"avgDancesPerSession":0.5,"top3Dances":[{"danceName":"Bumper to Bumper","songName":"Tráfico","count":1}],"top3SwingSongs":[{"songName":"I Got You","danceName":"Country Swing","style":"CSW","count":1}],"lineDancesThisYear":1,"swingDancesThisYear":1,"totalDancesThisYear":2,"lineDancesThisMonth":1,"swingDancesThisMonth":1,"totalLineDancesAllTime":1,"totalSwingDancesAllTime":1,"currentFavorite":"Bumper to Bumper"}
+5:58:08 AM [express] DELETE /api/sessions/48 204 in 8ms
+5:58:08 AM [express] GET /api/sessions 200 in 8ms :: [{"id":47,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]},{"id":49,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]},{"id":43,"userId":11,"date":"2026-05-13T04:00:00.000Z","location":"Cowboys Dance Hall","dances":[{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null},{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null}]}]
+5:58:11 AM [express] DELETE /api/sessions/49 204 in 5ms
+5:58:11 AM [express] GET /api/sessions 200 in 44ms :: [{"id":47,"userId":11,"date":"2026-05-14T05:57:47.086Z","location":"","dances":[]},{"id":43,"userId":11,"date":"2026-05-13T04:00:00.000Z","location":"Cowboys Dance Hall","dances":[{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null},{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null}]}]
+5:58:14 AM [express] DELETE /api/sessions/47 204 in 7ms
+5:58:14 AM [express] GET /api/sessions 200 in 5ms :: [{"id":43,"userId":11,"date":"2026-05-13T04:00:00.000Z","location":"Cowboys Dance Hall","dances":[{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null},{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null}]}]
+5:58:14 AM [express] GET /api/stats 200 in 20ms :: {"totalDances":2,"longestStreak":1,"totalDaysDancing":1,"uniqueLocations":1,"mostFrequentLocation":"Cowboys Dance Hall","mostFrequentLocationCount":1,"mostFrequentSongName":"I Got You","mostFrequentDance":"Country Swing","mostFrequentDanceCount":1,"dancesThisMonth":2,"mostRecentDance":"I Got You","mostRecentStyle":"CSW","mostDancedDay":{"date":"2026-05-13","count":2},"avgDancesPerSession":2,"top3Dances":[{"danceName":"Bumper to Bumper","songName":"Tráfico","count":1}],"top3SwingSongs":[{"songName":"I Got You","danceName":"Country Swing","style":"CSW","count":1}],"lineDancesThisYear":1,"swingDancesThisYear":1,"totalDancesThisYear":2,"lineDancesThisMonth":1,"swingDancesThisMonth":1,"totalLineDancesAllTime":1,"totalSwingDancesAllTime":1,"currentFavorite":"Bumper to Bumper"}
+5:58:17 AM [express] PUT /api/achievements/seen 200 in 5ms :: {"ok":true}
+5:58:17 AM [express] GET /api/achievements/unseen 304 in 6ms :: {"count":0,"ids":[]}
+5:58:17 AM [express] GET /api/achievements 304 in 7ms :: [{"id":"first_steps","earned":true,"progress":1,"target":1,"earnedAt":"2026-05-14T05:16:21.941Z","seen":true},{"id":"on_the_floor","earned":false,"progress":2,"target":10,"seen":false},{"id":"boot_scootin","earned":false,"progress":2,"target":50,"seen":false},{"id":"dance_machine","earned":false,"progress":2,"target":100,"seen":false},{"id":"cant_stop_now","earned":false,"progress":2,"target":500,"seen":false},{"id":"thousand_stepper","earned":false,"progress":2,"target":1000,"seen":false},{"id":"step_streak","earned":false,"progress":1,"target":3,"seen":false},{"id":"dance_fever","earned":false,"progress":1,"target":5,"seen":false},{"id":"weekend_warrior","earned":false,"progress":0,"target":1,"seen":false},{"id":"peak_season","earned":false,"progress":2,"target":100,"seen":false},{"id":"home_turf","earned":false,"progress":1,"target":10,"seen":false},{"id":"wanderer","earned":false,"progress":1,"target":3,"seen":false},{"id":"road_trip","earned":false,"progress":1,"target":5,"seen":false},{"id":"bar_regular","earned":false,"progress":1,"target":5,"seen":false},{"id":"dance_passport","earned":false,"progress":1,"target":10,"seen":false},{"id":"variety_pack","earned":false,"progress":2,"target":10,"seen":false},{"id":"collector","earned":false,"progress":2,"target":25,"seen":false},{"id":"human_jukebox","earned":false,"progress":2,"target":50,"seen":false},{"id":"crowd_favorite","earned":false,"progress":1,"target":10,"seen":false},{"id":"encore","earned":false,"progress":1,"target":5,"seen":false},{"id":"competitive_spirit","earned":false,"progress":0,"target":10,"seen":false},{"id":"showdown_winner","earned":false,"progress":0,"target":1,"seen":false},{"id":"rivalry","earned":false,"progress":0,"target":5,"seen":false},{"id":"undefeated","earned":false,"progress":0,"target":3,"seen":false},{"id":"main_character","earned":false,"progress":0,"target":1,"seen":false},{"id":"marathon_night","earned":false,"progress":2,"target":25,"seen":false},{"id":"closing_time","earned":false,"progress":0,"target":1,"seen":false},{"id":"night_owl","earned":false,"progress":0,"target":3,"seen":false},{"id":"back_in_the_saddle","earned":false,"progress":0,"target":1,"seen":false},{"id":"floor_hopper","earned":false,"progress":0,"target":1,"seen":false}]
+8:23:12 AM [express] GET /api/me 304 in 3ms :: {"id":11,"username":"lineupadmin","firstName":"lineupadmin","lastName":"","location":""}
+8:23:12 AM [express] GET /api/profile 304 in 5ms :: {"id":11,"username":"lineupadmin","passwordHash":"$2b$12$M91I0L9.Q/nFtbYjcVReLeZn8FJvievlRwuPMJw7HnuJxQiSmzaxK","firstName":"lineupadmin","lastName":"","location":"","phoneNumber":null,"avatar":null,"homepageStats":null}
+8:23:12 AM [express] GET /api/profile/homepage-stats 304 in 3ms :: {"stats":null}
+8:23:12 AM [express] GET /api/stats/style-distribution 304 in 6ms :: [{"style":"CSW","count":1},{"style":"LINE","count":1}]
+8:23:12 AM [express] GET /api/achievements/unseen 304 in 7ms :: {"count":0,"ids":[]}
+8:23:12 AM [express] GET /api/stats 304 in 22ms :: {"totalDances":2,"longestStreak":1,"totalDaysDancing":1,"uniqueLocations":1,"mostFrequentLocation":"Cowboys Dance Hall","mostFrequentLocationCount":1,"mostFrequentSongName":"I Got You","mostFrequentDance":"Country Swing","mostFrequentDanceCount":1,"dancesThisMonth":2,"mostRecentDance":"I Got You","mostRecentStyle":"CSW","mostDancedDay":{"date":"2026-05-13","count":2},"avgDancesPerSession":2,"top3Dances":[{"danceName":"Bumper to Bumper","songName":"Tráfico","count":1}],"top3SwingSongs":[{"songName":"I Got You","danceName":"Country Swing","style":"CSW","count":1}],"lineDancesThisYear":1,"swingDancesThisYear":1,"totalDancesThisYear":2,"lineDancesThisMonth":1,"swingDancesThisMonth":1,"totalLineDancesAllTime":1,"totalSwingDancesAllTime":1,"currentFavorite":"Bumper to Bumper"}
+8:23:16 AM [express] GET /api/songs 304 in 3ms :: [{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null,"isFavorite":false},{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null,"isFavorite":true}]
+8:23:16 AM [express] GET /api/sessions 304 in 5ms :: [{"id":43,"userId":11,"date":"2026-05-13T04:00:00.000Z","location":"Cowboys Dance Hall","dances":[{"id":66,"userId":11,"publicId":"421247","danceName":"Bumper to Bumper","songName":"Tráfico","artist":"Casely","rating":0,"style":"LINE","styleCustom":null},{"id":67,"userId":11,"publicId":"533481","danceName":"Country Swing","songName":"I Got You","artist":"Erin Kinsey","rating":0,"style":"CSW","styleCustom":null}]}]
+8:23:16 AM [express] GET /api/locations 304 in 3ms :: [{"id":5,"userId":11,"name":"Cowboys Dance Hall"}]
+8:23:17 AM [express] GET /api/buddies/requests 304 in 4ms :: []
+8:23:17 AM [express] GET /api/buddies 304 in 20ms :: [{"userId":12,"username":"test1","firstName":"Test1","totalDances":1,"longestStreak":1,"totalDaysDancing":1,"currentStreak":1,"favoriteDance":"3 tequila floor","songCount":3,"lineDanceCount":1,"swingDanceCount":2,"currentFavoriteSong":"3 tequila floor"}]
+8:23:17 AM [express] GET /api/achievements 304 in 5ms :: [{"id":"first_steps","earned":true,"progress":1,"target":1,"earnedAt":"2026-05-14T05:16:21.941Z","seen":true},{"id":"on_the_floor","earned":false,"progress":2,"target":10,"seen":false},{"id":"boot_scootin","earned":false,"progress":2,"target":50,"seen":false},{"id":"dance_machine","earned":false,"progress":2,"target":100,"seen":false},{"id":"cant_stop_now","earned":false,"progress":2,"target":500,"seen":false},{"id":"thousand_stepper","earned":false,"progress":2,"target":1000,"seen":false},{"id":"step_streak","earned":false,"progress":1,"target":3,"seen":false},{"id":"dance_fever","earned":false,"progress":1,"target":5,"seen":false},{"id":"weekend_warrior","earned":false,"progress":0,"target":1,"seen":false},{"id":"peak_season","earned":false,"progress":2,"target":100,"seen":false},{"id":"home_turf","earned":false,"progress":1,"target":10,"seen":false},{"id":"wanderer","earned":false,"progress":1,"target":3,"seen":false},{"id":"road_trip","earned":false,"progress":1,"target":5,"seen":false},{"id":"bar_regular","earned":false,"progress":1,"target":5,"seen":false},{"id":"dance_passport","earned":false,"progress":1,"target":10,"seen":false},{"id":"variety_pack","earned":false,"progress":2,"target":10,"seen":false},{"id":"collector","earned":false,"progress":2,"target":25,"seen":false},{"id":"human_jukebox","earned":false,"progress":2,"target":50,"seen":false},{"id":"crowd_favorite","earned":false,"progress":1,"target":10,"seen":false},{"id":"encore","earned":false,"progress":1,"target":5,"seen":false},{"id":"competitive_spirit","earned":false,"progress":0,"target":10,"seen":false},{"id":"showdown_winner","earned":false,"progress":0,"target":1,"seen":false},{"id":"rivalry","earned":false,"progress":0,"target":5,"seen":false},{"id":"undefeated","earned":false,"progress":0,"target":3,"seen":false},{"id":"main_character","earned":false,"progress":0,"target":1,"seen":false},{"id":"marathon_night","earned":false,"progress":2,"target":25,"seen":false},{"id":"closing_time","earned":false,"progress":0,"target":1,"seen":false},{"id":"night_owl","earned":false,"progress":0,"target":3,"seen":false},{"id":"back_in_the_saddle","earned":false,"progress":0,"target":1,"seen":false},{"id":"floor_hopper","earned":false,"progress":0,"target":1,"seen":false}]
+8:23:17 AM [express] PUT /api/achievements/seen 200 in 3ms :: {"ok":true}
+8:23:17 AM [express] GET /api/achievements 304 in 5ms :: [{"id":"first_steps","earned":true,"progress":1,"target":1,"earnedAt":"2026-05-14T05:16:21.941Z","seen":true},{"id":"on_the_floor","earned":false,"progress":2,"target":10,"seen":false},{"id":"boot_scootin","earned":false,"progress":2,"target":50,"seen":false},{"id":"dance_machine","earned":false,"progress":2,"target":100,"seen":false},{"id":"cant_stop_now","earned":false,"progress":2,"target":500,"seen":false},{"id":"thousand_stepper","earned":false,"progress":2,"target":1000,"seen":false},{"id":"step_streak","earned":false,"progress":1,"target":3,"seen":false},{"id":"dance_fever","earned":false,"progress":1,"target":5,"seen":false},{"id":"weekend_warrior","earned":false,"progress":0,"target":1,"seen":false},{"id":"peak_season","earned":false,"progress":2,"target":100,"seen":false},{"id":"home_turf","earned":false,"progress":1,"target":10,"seen":false},{"id":"wanderer","earned":false,"progress":1,"target":3,"seen":false},{"id":"road_trip","earned":false,"progress":1,"target":5,"seen":false},{"id":"bar_regular","earned":false,"progress":1,"target":5,"seen":false},{"id":"dance_passport","earned":false,"progress":1,"target":10,"seen":false},{"id":"variety_pack","earned":false,"progress":2,"target":10,"seen":false},{"id":"collector","earned":false,"progress":2,"target":25,"seen":false},{"id":"human_jukebox","earned":false,"progress":2,"target":50,"seen":false},{"id":"crowd_favorite","earned":false,"progress":1,"target":10,"seen":false},{"id":"encore","earned":false,"progress":1,"target":5,"seen":false},{"id":"competitive_spirit","earned":false,"progress":0,"target":10,"seen":false},{"id":"showdown_winner","earned":false,"progress":0,"target":1,"seen":false},{"id":"rivalry","earned":false,"progress":0,"target":5,"seen":false},{"id":"undefeated","earned":false,"progress":0,"target":3,"seen":false},{"id":"main_character","earned":false,"progress":0,"target":1,"seen":false},{"id":"marathon_night","earned":false,"progress":2,"target":25,"seen":false},{"id":"closing_time","earned":false,"progress":0,"target":1,"seen":false},{"id":"night_owl","earned":false,"progress":0,"target":3,"seen":false},{"id":"back_in_the_saddle","earned":false,"progress":0,"target":1,"seen":false},{"id":"floor_hopper","earned":false,"progress":0,"target":1,"seen":false}]
+8:23:17 AM [express] GET /api/achievements/unseen 304 in 6ms :: {"count":0,"ids":[]}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:25:11 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Profile.tsx, /src/index.css[22m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:25:12 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Settings.tsx, /src/index.css[22m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:25:13 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Buddies.tsx, /src/index.css[22m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:25:17 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Buddies.tsx, /src/index.css[22m [33m(x2)[39m
