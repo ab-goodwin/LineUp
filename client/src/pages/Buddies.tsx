@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Search, UserPlus, UserCheck, UserX, Flame, X, RefreshCw, Trophy, Swords, Users, Copy, Clock } from "lucide-react";
+import { Loader2, Search, UserPlus, UserCheck, UserX, Flame, X, RefreshCw, Trophy, Swords, Users, Copy, Clock, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -78,7 +78,7 @@ function BuddyCard({ buddy, rank, onRemove }: { buddy: BuddyPublicStats & { song
       )}
       {buddy.currentFavoriteSong ? (
         <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <span className="text-pink-500">♥</span>
+          <Heart className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" fill="currentColor" />
           <span className="font-medium text-foreground">{buddy.currentFavoriteSong}</span>
         </p>
       ) : buddy.favoriteDance !== "N/A" ? (

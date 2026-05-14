@@ -9,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, LogOut, ArrowLeft, Camera, Settings2 } from "lucide-react";
+import { Loader2, LogOut, ArrowLeft, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 
@@ -126,26 +126,15 @@ export default function Profile() {
     <div className="container px-4 pb-24 pt-8 mx-auto max-w-xl">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-display font-bold">Your Profile</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => setLocation("/settings")}
-            data-testid="button-open-settings"
-          >
-            <Settings2 className="w-5 h-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            className="text-muted-foreground hover:text-foreground gap-2"
-            onClick={() => setLocation("/")}
-            data-testid="button-back-home"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Home
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          className="text-muted-foreground hover:text-foreground gap-2"
+          onClick={() => setLocation("/")}
+          data-testid="button-back-home"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Home
+        </Button>
       </div>
 
       {/* Avatar Section */}
