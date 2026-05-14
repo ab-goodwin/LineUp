@@ -37,6 +37,7 @@ export const songs = pgTable("songs", {
   rating: integer("rating").notNull().default(0),
   style: text("style").notNull().default("LINE"),
   styleCustom: text("style_custom"),
+  isFavorite: boolean("is_favorite").default(false).notNull(),
 });
 
 // Dance Sessions
@@ -194,6 +195,14 @@ export type StatsResponse = {
   avgDancesPerSession: number;
   top3Dances: { danceName: string; songName: string; count: number }[];
   top3SwingSongs: { songName: string; danceName: string; style: string; count: number }[];
+  lineDancesThisYear: number;
+  swingDancesThisYear: number;
+  totalDancesThisYear: number;
+  lineDancesThisMonth: number;
+  swingDancesThisMonth: number;
+  totalLineDancesAllTime: number;
+  totalSwingDancesAllTime: number;
+  currentFavorite: string;
 };
 
 export const STYLE_OPTIONS = ['LINE', 'WCS', 'ECS', 'CSW', 'TWO', 'OTHER'] as const;

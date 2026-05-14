@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSongs, useCreateSong, useUpdateSong, useDeleteSong } from "@/hooks/use-songs";
+import { useSongs, useCreateSong, useUpdateSong, useDeleteSong, useToggleFavorite } from "@/hooks/use-songs";
 import { useSessions } from "@/hooks/use-sessions";
 import { useLocations, useCreateLocation, useDeleteLocation } from "@/hooks/use-locations";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,13 @@ import { z } from "zod";
 import { insertSongSchema, STYLE_INFO, STYLE_OPTIONS, type StyleOption } from "@shared/schema";
 import { RatingStars } from "@/components/RatingStars";
 import { SpotifySearch } from "@/components/SpotifySearch";
-import { Search, Plus, Music, Edit2, Trash2, MapPin } from "lucide-react";
+import { Search, Plus, Music, Edit2, Trash2, MapPin, Footprints, Heart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StyleTag } from "@/lib/style-tags";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const lineSongSchema = insertSongSchema.omit({ publicId: true, style: true, styleCustom: true }).extend({
+const lineSongSchema = insertSongSchema.omit({ publicId: true, style: true, styleCustom: true, isFavorite: true }).extend({
   songName: z.string().min(1, "Song name is required"),
 });
 type LineSongValues = z.infer<typeof lineSongSchema>;
@@ -79,17 +79,23 @@ function LineSongForm({ initialData, onClose }: { initialData?: any; onClose: ()
           )} />
           <FormField control={form.control} name="artist" render={({ field }) => (
             <FormItem>
-              <FormControl><Input placeholder="Artist (optional)" className="rounded-xl" data-testid="input-artist" {...field} /></FormControl>
+              <FormControl><Input placeholder="Artist name" className="rounded-xl" data-testid="input-artist" {...field} /></FormControl>
+              <FormMessage />
             </FormItem>
           )} />
         </div>
         <FormField control={form.control} name="rating" render={({ field }) => (
           <FormItem>
             <FormLabel>Rating</FormLabel>
-            <FormControl><div className="py-2"><RatingStars rating={field.value} onRate={field.onChange} className="gap-2" /></div></FormControl>
+            <FormControl>
+              <div className="flex items-center gap-2">
+                <RatingStars rating={field.value} onRate={field.onChange} className="w-6 h-6" />
+              </div>
+            </FormControl>
+            <FormMessage />
           </FormItem>
         )} />
-        <Button type="submit" className="w-full rounded-xl font-bold mt-4" disabled={createSong.isPending || updateSong.isPending} data-testid="button-submit-song">
+        <Button type="submit" className="w-full rounded-xl font-bold mt-4" disabled={createSong.isPending || updateSong.isPending} data-testid="button-submit-line-song">
           {initialData ? "Update Song" : "Add to Library"}
         </Button>
       </form>
@@ -104,21 +110,19 @@ function SwingSongForm({ initialData, onClose }: { initialData?: any; onClose: (
   const form = useForm<SwingSongValues>({
     resolver: zodResolver(swingSongSchema),
     defaultValues: initialData
-      ? { songName: initialData.songName, artist: initialData.artist, style: initialData.style, styleCustom: initialData.styleCustom || "", rating: initialData.rating }
-      : { songName: "", artist: "", style: 'WCS', styleCustom: "", rating: 0 },
+      ? { songName: initialData.songName, artist: initialData.artist, style: initialData.style, styleCustom: initialData.styleCustom, rating: initialData.rating }
+      : { songName: "", artist: "", style: 'WCS', rating: 0 },
   });
 
-  const currentStyle = form.watch("style");
+  const watchStyle = form.watch("style");
 
   const onSubmit = async (values: SwingSongValues) => {
-    const styleName = values.style === 'OTHER' && values.styleCustom
-      ? values.styleCustom
-      : STYLE_INFO[values.style as StyleOption].label;
     try {
+      const payload = { ...values, danceName: values.songName };
       if (initialData) {
-        await updateSong.mutateAsync({ id: initialData.id, songName: values.songName, artist: values.artist, style: values.style, styleCustom: values.styleCustom || null, rating: values.rating, danceName: styleName });
+        await updateSong.mutateAsync({ id: initialData.id, ...payload });
       } else {
-        await createSong.mutateAsync({ songName: values.songName, artist: values.artist, style: values.style, styleCustom: values.styleCustom || null, rating: values.rating, danceName: styleName });
+        await createSong.mutateAsync({ ...payload });
       }
       onClose();
     } catch (e) { console.error(e); }
@@ -129,16 +133,19 @@ function SwingSongForm({ initialData, onClose }: { initialData?: any; onClose: (
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
           <FormLabel>Song</FormLabel>
-          <SpotifySearch placeholder="Search Spotify..." onSelect={(t) => { form.setValue("songName", t.name); form.setValue("artist", t.artist); }} />
+          {!initialData && (
+            <SpotifySearch placeholder="Search Spotify..." onSelect={(t) => { form.setValue("songName", t.name); form.setValue("artist", t.artist); }} />
+          )}
           <FormField control={form.control} name="songName" render={({ field }) => (
             <FormItem>
-              <FormControl><Input placeholder="Song title" className="rounded-xl" data-testid="input-song-name" {...field} /></FormControl>
+              <FormControl><Input placeholder="Song title" className="rounded-xl" data-testid="input-swing-song-name" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
           <FormField control={form.control} name="artist" render={({ field }) => (
             <FormItem>
-              <FormControl><Input placeholder="Artist (optional)" className="rounded-xl" data-testid="input-artist" {...field} /></FormControl>
+              <FormControl><Input placeholder="Artist name" className="rounded-xl" data-testid="input-swing-artist" {...field} /></FormControl>
+              <FormMessage />
             </FormItem>
           )} />
         </div>
@@ -147,35 +154,39 @@ function SwingSongForm({ initialData, onClose }: { initialData?: any; onClose: (
             <FormLabel>Style</FormLabel>
             <Select onValueChange={field.onChange} defaultValue={field.value}>
               <FormControl>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Select style" />
+                <SelectTrigger className="rounded-xl" data-testid="select-swing-style">
+                  <SelectValue placeholder="Choose style" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
                 {SWING_STYLES.map(s => (
-                  <SelectItem key={s} value={s}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold px-1 py-0.5 rounded" style={{ color: STYLE_INFO[s].color, backgroundColor: STYLE_INFO[s].color + '22' }}>{STYLE_INFO[s].short}</span>
-                      {STYLE_INFO[s].label}
-                    </div>
+                  <SelectItem key={s} value={s} data-testid={`option-style-${s}`}>
+                    {STYLE_INFO[s].label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <FormMessage />
           </FormItem>
         )} />
-        {currentStyle === 'OTHER' && (
+        {watchStyle === 'OTHER' && (
           <FormField control={form.control} name="styleCustom" render={({ field }) => (
             <FormItem>
               <FormLabel>Custom Style Name</FormLabel>
-              <FormControl><Input placeholder="e.g. Balboa" className="rounded-xl" {...field} /></FormControl>
+              <FormControl><Input placeholder="e.g. Polka" className="rounded-xl" data-testid="input-style-custom" {...field} /></FormControl>
+              <FormMessage />
             </FormItem>
           )} />
         )}
         <FormField control={form.control} name="rating" render={({ field }) => (
           <FormItem>
             <FormLabel>Rating</FormLabel>
-            <FormControl><div className="py-2"><RatingStars rating={field.value} onRate={field.onChange} className="gap-2" /></div></FormControl>
+            <FormControl>
+              <div className="flex items-center gap-2">
+                <RatingStars rating={field.value} onRate={field.onChange} className="w-6 h-6" />
+              </div>
+            </FormControl>
+            <FormMessage />
           </FormItem>
         )} />
         <Button type="submit" className="w-full rounded-xl font-bold mt-4" disabled={createSong.isPending || updateSong.isPending} data-testid="button-submit-swing-song">
@@ -236,17 +247,27 @@ function LocationsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
   );
 }
 
-function SongCard({ song, sessions, onEdit, onDelete }: { song: any; sessions: any[]; onEdit: () => void; onDelete: () => void }) {
+function SongCard({ song, sessions, onEdit, onDelete, sortBy, onFavorite }: {
+  song: any; sessions: any[]; onEdit: () => void; onDelete: () => void;
+  sortBy: "song" | "dance"; onFavorite: () => void;
+}) {
   const count = sessions.filter(s => s.dances.some((d: any) => d.id === song.id)).length;
+
+  const title = sortBy === "dance" ? song.danceName : (song.songName || song.danceName);
+  const titleArtist = sortBy === "dance" ? "" : (song.artist ? ` · ${song.artist}` : "");
+  const subtitle = sortBy === "dance"
+    ? `${song.songName}${song.artist ? ` · ${song.artist}` : ""}`
+    : song.danceName;
+
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
       className="group bg-card p-4 rounded-xl border border-border shadow-sm hover:shadow-md transition-all flex items-center justify-between"
       data-testid={`card-song-${song.id}`}>
-      <div className="flex-1 min-w-0 mr-4">
+      <div className="flex-1 min-w-0 mr-3">
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="font-bold text-lg truncate font-display text-foreground">
-            {song.songName || song.danceName}
-            {song.artist ? <span className="font-normal text-muted-foreground"> · {song.artist}</span> : null}
+            {title}
+            {titleArtist && <span className="font-normal text-muted-foreground">{titleArtist}</span>}
           </h3>
           <StyleTag style={song.style} styleCustom={song.styleCustom} />
           {count > 0 && (
@@ -255,10 +276,18 @@ function SongCard({ song, sessions, onEdit, onDelete }: { song: any; sessions: a
             </span>
           )}
         </div>
-        <p className="text-muted-foreground text-sm truncate">{song.danceName}</p>
+        <p className="text-muted-foreground text-sm truncate">{subtitle}</p>
         <div className="mt-2"><RatingStars rating={song.rating} readonly className="w-4 h-4" /></div>
       </div>
-      <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        <Button
+          size="icon" variant="ghost"
+          className={`h-9 w-9 rounded-lg transition-colors ${song.isFavorite ? "text-pink-500 hover:text-pink-600" : "text-muted-foreground hover:text-pink-400"}`}
+          onClick={onFavorite}
+          data-testid={`button-favorite-song-${song.id}`}
+        >
+          <Heart className="w-4 h-4" fill={song.isFavorite ? "currentColor" : "none"} />
+        </Button>
         <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-primary rounded-lg" onClick={onEdit} data-testid={`button-edit-song-${song.id}`}>
           <Edit2 className="w-4 h-4" />
         </Button>
@@ -274,7 +303,9 @@ export default function Library() {
   const { data: songs = [], isLoading } = useSongs();
   const { data: sessions = [] } = useSessions();
   const deleteSong = useDeleteSong();
+  const toggleFavorite = useToggleFavorite();
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"song" | "dance">("song");
   const [editingSong, setEditingSong] = useState<any>(null);
   const [isSongDialogOpen, setIsSongDialogOpen] = useState(false);
   const [isLocationsDialogOpen, setIsLocationsDialogOpen] = useState(false);
@@ -282,17 +313,25 @@ export default function Library() {
 
   const SWING_STYLES_SET = new Set(['WCS', 'ECS', 'CSW', 'TWO', 'OTHER']);
 
-  const lineSongs = songs.filter(s => (s as any).style === 'LINE' || !(s as any).style).filter(s =>
-    s.danceName.toLowerCase().includes(search.toLowerCase()) ||
-    s.songName.toLowerCase().includes(search.toLowerCase()) ||
-    (s.artist && s.artist.toLowerCase().includes(search.toLowerCase()))
-  ).sort((a, b) => a.songName.localeCompare(b.songName));
+  const sortFn = (a: any, b: any) =>
+    sortBy === "dance"
+      ? (a.danceName || "").localeCompare(b.danceName || "")
+      : (a.songName || "").localeCompare(b.songName || "");
 
-  const swingSongs = songs.filter(s => SWING_STYLES_SET.has((s as any).style)).filter(s =>
+  const searchFilter = (s: any) =>
     s.danceName.toLowerCase().includes(search.toLowerCase()) ||
     s.songName.toLowerCase().includes(search.toLowerCase()) ||
-    (s.artist && s.artist.toLowerCase().includes(search.toLowerCase()))
-  ).sort((a, b) => a.songName.localeCompare(b.songName));
+    (s.artist && s.artist.toLowerCase().includes(search.toLowerCase()));
+
+  const lineSongs = songs
+    .filter(s => (s as any).style === 'LINE' || !(s as any).style)
+    .filter(searchFilter)
+    .sort(sortFn);
+
+  const swingSongs = songs
+    .filter(s => SWING_STYLES_SET.has((s as any).style))
+    .filter(searchFilter)
+    .sort(sortFn);
 
   const handleDelete = async (id: number) => {
     if (confirm("Are you sure? This will remove the song and affect stats.")) {
@@ -333,10 +372,28 @@ export default function Library() {
         </div>
       </div>
 
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-        <Input placeholder="Search dances, songs, or artists..." className="pl-10 h-12 rounded-xl bg-card border-border shadow-sm"
-          value={search} onChange={(e) => setSearch(e.target.value)} data-testid="input-library-search" />
+      {/* Search bar + sort toggle */}
+      <div className="flex items-center gap-2 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Input
+            placeholder="Search dances, songs, or artists..."
+            className="pl-10 h-12 rounded-xl bg-card border-border shadow-sm"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            data-testid="input-library-search"
+          />
+        </div>
+        <Button
+          size="icon"
+          variant="outline"
+          className="h-12 w-12 rounded-xl border-2 flex-shrink-0"
+          onClick={() => setSortBy(prev => prev === "song" ? "dance" : "song")}
+          title={sortBy === "song" ? "Sorted by song name — click to sort by dance name" : "Sorted by dance name — click to sort by song name"}
+          data-testid="button-sort-toggle"
+        >
+          {sortBy === "song" ? <Music className="w-5 h-5" /> : <Footprints className="w-5 h-5" />}
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -361,7 +418,8 @@ export default function Library() {
           ) : (
             <AnimatePresence mode="popLayout">
               {lineSongs.map(song => (
-                <SongCard key={song.id} song={song} sessions={sessions}
+                <SongCard key={song.id} song={song} sessions={sessions} sortBy={sortBy}
+                  onFavorite={() => toggleFavorite.mutate(song.id)}
                   onEdit={() => { setEditingSong(song); setIsSongDialogOpen(true); }}
                   onDelete={() => handleDelete(song.id)} />
               ))}
@@ -381,7 +439,8 @@ export default function Library() {
           ) : (
             <AnimatePresence mode="popLayout">
               {swingSongs.map(song => (
-                <SongCard key={song.id} song={song} sessions={sessions}
+                <SongCard key={song.id} song={song} sessions={sessions} sortBy={sortBy}
+                  onFavorite={() => toggleFavorite.mutate(song.id)}
                   onEdit={() => { setEditingSong(song); setIsSongDialogOpen(true); }}
                   onDelete={() => handleDelete(song.id)} />
               ))}
