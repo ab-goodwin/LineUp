@@ -1,0 +1,55 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0K8:25:19 AM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 7 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+8:25:27 AM [express] GET /api/me 401 in 2ms :: {"message":"Not authenticated"}
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:25:41 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Profile.tsx, /src/index.css[22m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:26:04 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m8:26:53 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/dialog.tsx, /src/index.css[22m
+8:26:58 AM [express] GET /api/me 401 in 1ms :: {"message":"Not authenticated"}

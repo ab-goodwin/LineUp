@@ -1,0 +1,78 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0K5:37:18 AM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 7 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+5:37:22 AM [express] GET /api/me 200 in 6ms :: {"id":11,"username":"lineupadmin","firstName":"lineupadmin","lastName":"","location":""}
+5:37:22 AM [express] GET /api/profile/homepage-stats 304 in 6ms :: {"stats":null}
+5:37:22 AM [express] GET /api/profile 304 in 7ms :: {"id":11,"username":"lineupadmin","passwordHash":"$2b$12$M91I0L9.Q/nFtbYjcVReLeZn8FJvievlRwuPMJw7HnuJxQiSmzaxK","firstName":"lineupadmin","lastName":"","location":"","phoneNumber":null,"avatar":null,"homepageStats":null}
+5:37:22 AM [express] GET /api/stats/style-distribution 200 in 10ms :: [{"style":"CSW","count":1},{"style":"LINE","count":1}]
+5:37:22 AM [express] GET /api/achievements/unseen 304 in 15ms :: {"count":0,"ids":[]}
+5:37:22 AM [express] GET /api/stats 304 in 34ms :: {"totalDances":2,"longestStreak":1,"totalDaysDancing":1,"uniqueLocations":1,"mostFrequentLocation":"Cowboys Dance Hall","mostFrequentLocationCount":1,"mostFrequentSongName":"I Got You","mostFrequentDance":"Country Swing","mostFrequentDanceCount":1,"dancesThisMonth":2,"mostRecentDance":"I Got You","mostRecentStyle":"CSW","mostDancedDay":{"date":"2026-05-13","count":2},"avgDancesPerSession":2,"top3Dances":[{"danceName":"Bumper to Bumper","songName":"Tráfico","count":1}],"top3SwingSongs":[{"songName":"I Got You","danceName":"Country Swing","style":"CSW","count":1}],"lineDancesThisYear":1,"swingDancesThisYear":1,"totalDancesThisYear":2,"lineDancesThisMonth":1,"swingDancesThisMonth":1,"totalLineDancesAllTime":1,"totalSwingDancesAllTime":1,"currentFavorite":"Bumper to Bumper"}
+5:37:25 AM [express] GET /api/me 401 in 1ms :: {"message":"Not authenticated"}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m5:38:48 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Header.tsx, /src/pages/Profile.tsx, /src/pages/Settings.tsx, /src/pages/Home.tsx, /src/pages/Calendar.tsx, /src/pages/Library.tsx, /src/components/SessionDialog.tsx[22m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m5:38:58 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/Header.tsx, /src/index.css[22m
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[1;1H[0J[2m5:39:02 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Profile.tsx, /src/index.css[22m
