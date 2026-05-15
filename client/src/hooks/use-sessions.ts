@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { type CreateSessionRequest } from "@shared/schema";
+import { apiFetch } from "@/lib/api";
 
 export function useSessions() {
   return useQuery({
     queryKey: [api.sessions.list.path],
     queryFn: async () => {
-      const res = await fetch(api.sessions.list.path);
+      const res = await apiFetch(api.sessions.list.path);
       if (!res.ok) throw new Error("Failed to fetch sessions");
       return api.sessions.list.responses[200].parse(await res.json());
     },
@@ -17,7 +18,7 @@ export function useCreateSession() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: CreateSessionRequest) => {
-      const res = await fetch(api.sessions.create.path, {
+      const res = await apiFetch(api.sessions.create.path, {
         method: api.sessions.create.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -37,7 +38,7 @@ export function useUpdateSession() {
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: number } & Partial<CreateSessionRequest>) => {
       const url = buildUrl(api.sessions.update.path, { id });
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: api.sessions.update.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -57,7 +58,7 @@ export function useDeleteSession() {
   return useMutation({
     mutationFn: async (id: number) => {
       const url = buildUrl(api.sessions.delete.path, { id });
-      const res = await fetch(url, { method: api.sessions.delete.method });
+      const res = await apiFetch(url, { method: api.sessions.delete.method });
       if (!res.ok) throw new Error("Failed to delete session");
     },
     onSuccess: () => {

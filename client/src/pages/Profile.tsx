@@ -12,6 +12,7 @@ import { z } from "zod";
 import { Loader2, LogOut, ArrowLeft, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { apiFetch } from "@/lib/api";
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -88,7 +89,7 @@ export default function Profile() {
     setAvatarUploading(true);
     try {
       const base64 = await resizeImageToBase64(file, 200);
-      const res = await fetch("/api/profile/avatar", {
+      const res = await apiFetch("/api/profile/avatar", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ avatar: base64 }),
@@ -109,7 +110,7 @@ export default function Profile() {
   const handleRemoveAvatar = async () => {
     setAvatarUploading(true);
     try {
-      await fetch("/api/profile/avatar", {
+      await apiFetch("/api/profile/avatar", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ avatar: null }),

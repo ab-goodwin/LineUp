@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/api";
 
 const ALL_STAT_KEYS = [
   { key: "totalDances",         label: "Total Dances" },
@@ -73,7 +74,7 @@ function useHomepageStats() {
   return useQuery<{ stats: string[] | null }>({
     queryKey: ["/api/profile/homepage-stats"],
     queryFn: async () => {
-      const res = await fetch("/api/profile/homepage-stats", { credentials: "include" });
+      const res = await apiFetch("/api/profile/homepage-stats", { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
@@ -84,7 +85,7 @@ function useSetHomepageStats() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (stats: string[]) => {
-      const res = await fetch("/api/profile/homepage-stats", {
+      const res = await apiFetch("/api/profile/homepage-stats", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stats }),
@@ -100,7 +101,7 @@ function useStyleDistribution() {
   return useQuery<{ style: string; count: number }[]>({
     queryKey: ["/api/stats/style-distribution"],
     queryFn: async () => {
-      const res = await fetch("/api/stats/style-distribution", { credentials: "include" });
+      const res = await apiFetch("/api/stats/style-distribution", { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },

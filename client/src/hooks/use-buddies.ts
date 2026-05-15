@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 
 const BUDDIES_KEY = "/api/buddies";
 
@@ -46,7 +47,7 @@ export function useBuddies() {
   return useQuery<BuddyPublicStats[]>({
     queryKey: [BUDDIES_KEY],
     queryFn: async () => {
-      const res = await fetch(BUDDIES_KEY, { credentials: "include" });
+      const res = await apiFetch(BUDDIES_KEY, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch buddies");
       return res.json();
     },
@@ -57,7 +58,7 @@ export function useBuddyRequests() {
   return useQuery<BuddyRequest[]>({
     queryKey: [BUDDIES_KEY + "/requests"],
     queryFn: async () => {
-      const res = await fetch(BUDDIES_KEY + "/requests", { credentials: "include" });
+      const res = await apiFetch(BUDDIES_KEY + "/requests", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch requests");
       return res.json();
     },
@@ -67,7 +68,7 @@ export function useBuddyRequests() {
 export function useSearchUsers() {
   return useMutation({
     mutationFn: async (username: string) => {
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(username)}`, { credentials: "include" });
+      const res = await apiFetch(`/api/users/search?q=${encodeURIComponent(username)}`, { credentials: "include" });
       if (!res.ok) throw new Error("Search failed");
       return res.json() as Promise<{ id: number; username: string; firstName: string }[]>;
     },
@@ -78,7 +79,7 @@ export function useSendBuddyRequest() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (recipientId: number) => {
-      const res = await fetch(BUDDIES_KEY + "/request", {
+      const res = await apiFetch(BUDDIES_KEY + "/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipientId }),
@@ -101,7 +102,7 @@ export function useRespondToBuddyRequest() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, action }: { id: number; action: "accept" | "decline" }) => {
-      const res = await fetch(`${BUDDIES_KEY}/request/${id}`, {
+      const res = await apiFetch(`${BUDDIES_KEY}/request/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
@@ -121,7 +122,7 @@ export function useRemoveBuddy() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (buddyUserId: number) => {
-      const res = await fetch(`${BUDDIES_KEY}/${buddyUserId}`, {
+      const res = await apiFetch(`${BUDDIES_KEY}/${buddyUserId}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -137,7 +138,7 @@ export function useChallenges() {
   return useQuery<Challenge[]>({
     queryKey: [BUDDIES_KEY + "/challenges"],
     queryFn: async () => {
-      const res = await fetch(BUDDIES_KEY + "/challenges", { credentials: "include" });
+      const res = await apiFetch(BUDDIES_KEY + "/challenges", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch challenges");
       return res.json();
     },
@@ -148,7 +149,7 @@ export function useSendChallenge() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ challengedId, durationDays }: { challengedId: number; durationDays: number }) => {
-      const res = await fetch(BUDDIES_KEY + "/challenge", {
+      const res = await apiFetch(BUDDIES_KEY + "/challenge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ challengedId, durationDays }),

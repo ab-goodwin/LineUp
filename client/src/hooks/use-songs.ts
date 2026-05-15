@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl, type CreateSongRequest } from "@shared/routes";
+import { apiFetch } from "@/lib/api";
 
 export function useSongs() {
   return useQuery({
     queryKey: [api.songs.list.path],
     queryFn: async () => {
-      const res = await fetch(api.songs.list.path);
+      const res = await apiFetch(api.songs.list.path);
       if (!res.ok) throw new Error("Failed to fetch songs");
       return api.songs.list.responses[200].parse(await res.json());
     },
@@ -16,7 +17,7 @@ export function useCreateSong() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: CreateSongRequest) => {
-      const res = await fetch(api.songs.create.path, {
+      const res = await apiFetch(api.songs.create.path, {
         method: api.songs.create.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -37,7 +38,7 @@ export function useUpdateSong() {
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: number } & Partial<CreateSongRequest>) => {
       const url = buildUrl(api.songs.update.path, { id });
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: api.songs.update.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -56,7 +57,7 @@ export function useDeleteSong() {
   return useMutation({
     mutationFn: async (id: number) => {
       const url = buildUrl(api.songs.delete.path, { id });
-      const res = await fetch(url, { method: api.songs.delete.method });
+      const res = await apiFetch(url, { method: api.songs.delete.method });
       if (!res.ok) throw new Error("Failed to delete song");
     },
     onSuccess: () => {
@@ -70,7 +71,7 @@ export function useToggleFavorite() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/songs/${id}/favorite`, {
+      const res = await apiFetch(`/api/songs/${id}/favorite`, {
         method: "POST",
         credentials: "include",
       });
