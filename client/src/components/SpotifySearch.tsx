@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Music, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
 interface SpotifyTrack {
   name: string;
@@ -44,7 +45,7 @@ export function SpotifySearch({ onSelect, placeholder = "Search Spotify for a so
     setIsSearching(true);
     setError(null);
     try {
-      const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(q)}`, {
+      const res = await apiFetch(`/api/spotify/search?q=${encodeURIComponent(q)}`, {
         credentials: "include",
       });
       if (res.status === 503) {

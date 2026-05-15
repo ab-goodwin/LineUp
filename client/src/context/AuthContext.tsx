@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 
 export interface AuthUser {
   id: number;
@@ -29,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchCurrentUser = async () => {
     try {
-      const res = await fetch("/api/me", { credentials: "include" });
+      const res = await apiFetch("/api/me", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setUser(data);
@@ -46,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string) => {
-    const res = await fetch("/api/login", {
+    const res = await apiFetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -62,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const register = async (username: string, password: string, firstName?: string, lastName?: string) => {
-    const res = await fetch("/api/register", {
+    const res = await apiFetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password, firstName, lastName }),
@@ -76,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await fetch("/api/logout", { method: "POST", credentials: "include" });
+    await apiFetch("/api/logout", { method: "POST", credentials: "include" });
     setUser(null);
     queryClient.clear();
   };

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 
 const KEY = "/api/danceoffs";
 
@@ -29,7 +30,7 @@ export function useDanceOffs() {
   return useQuery<DanceOffResult[]>({
     queryKey: [KEY],
     queryFn: async () => {
-      const res = await fetch(KEY, { credentials: "include" });
+      const res = await apiFetch(KEY, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch dance-offs");
       return res.json();
     },
@@ -46,7 +47,7 @@ export function useCreateDanceOff() {
       durationHours: number;
       challengedId?: number;
     }) => {
-      const res = await fetch(KEY, {
+      const res = await apiFetch(KEY, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -66,7 +67,7 @@ export function useJoinDanceOff() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (joinCode: string) => {
-      const res = await fetch(KEY + "/join", {
+      const res = await apiFetch(KEY + "/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ joinCode }),
@@ -86,7 +87,7 @@ export function useClearDanceOffResults() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const res = await fetch(KEY + "/results", {
+      const res = await apiFetch(KEY + "/results", {
         method: "DELETE",
         credentials: "include",
       });
@@ -101,7 +102,7 @@ export function useDeleteDanceOffResult() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`${KEY}/${id}`, {
+      const res = await apiFetch(`${KEY}/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
