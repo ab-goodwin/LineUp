@@ -7,9 +7,24 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { pool } from "./db";
 import { passport } from "./auth";
+import cors from "cors";
 
 const app = express();
 const httpServer = createServer(app);
+
+app.use((req, _res, next) => {
+  console.log("Incoming request:", req.method, req.url, "Origin:", req.headers.origin);
+  next();
+});
+
+app.set("trust proxy", 1);
+
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
 declare module "http" {
   interface IncomingMessage {
@@ -39,7 +54,8 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     httpOnly: true,
     maxAge: 30 * 24 * 60 * 60 * 1000,
   },
