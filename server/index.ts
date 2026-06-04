@@ -12,11 +12,6 @@ import cors from "cors";
 const app = express();
 const httpServer = createServer(app);
 
-app.use((req, _res, next) => {
-  console.log("Incoming request:", req.method, req.url, "Origin:", req.headers.origin);
-  next();
-});
-
 app.set("trust proxy", 1);
 
 app.use(cors({
