@@ -7,7 +7,7 @@ workflows:
       - name: Build with Generic Destination
         script: |
           xcodebuild build \
-            -project "App.xcodeproj" \
+            -project "ios/App/App.xcodeproj" \
             -scheme "App" \
             -sdk iphonesimulator \
             -configuration Debug          
