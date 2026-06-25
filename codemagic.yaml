@@ -1,0 +1,15 @@
+workflows:
+  simulator-workflow:
+    name: Build for simulator
+    environment:
+      xcode: latest
+    scripts:
+      - name: Build with Generic Destination
+        script: |
+          xcodebuild build \
+            -project "ios/App/App.xcodeproj" \
+            -scheme "App" \
+            -sdk iphonesimulator \
+            -configuration Debug          
+    artifacts:
+      - /Users/builder/Library/Developer/Xcode/DerivedData/**/*.app
