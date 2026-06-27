@@ -22,7 +22,7 @@ workflows:
       - name: Build with workspace (IMPORTANT)
         script: |
           xcodebuild \
-            -workspace ios/App/App.xcodeproj \
+            -project ios/App/App.xcodeproj \
             -scheme App \
             -sdk iphonesimulator \
             -configuration Debug \
