@@ -49,7 +49,7 @@ shared/
 ## Branding
 - Primary: `#D85C31` (HSL 16 72% 50%) — terracotta
 - Accent/gold: `#D7A259` (HSL 35 70% 57%) — subtitles/slogans
-- Style tag colors: LINE #55311C · WCS #3B82F6 · ECS #EC4899 · CSW #D85C31 · TWO #9512C9 · OTHER #22C55E
+- Style tag colors: LINE #895232 · WCS #3B82F6 · ECS #EC4899 · CSW #D85C31 · TWO #9512C9 · OTHER #22C55E
 - Fonts: Rye (display/headings), Outfit (body)
 - Logo: `LineUp_Short_*.png` (auth), `LineUp_Long_*.png` (header)
 - Header only shown on dashboard (`/`) route
