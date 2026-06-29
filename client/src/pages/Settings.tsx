@@ -339,7 +339,7 @@ export default function Settings() {
       )}
 
       {/* Danger Zone */}
-      <section className="bg-red-50/50 rounded-2xl p-6 border border-red-100">
+      <section className="bg-red-50/50 dark:bg-[#2A2622] rounded-2xl p-6 border border-red-100 dark:border-[#3A3230]">
         <h2 className="text-xl font-bold mb-2 font-display text-destructive">Danger Zone</h2>
         <p className="text-sm text-muted-foreground mb-6">Permanently delete your data. This cannot be undone.</p>
         <div className="space-y-3">

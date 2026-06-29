@@ -209,7 +209,7 @@ export const STYLE_OPTIONS = ['LINE', 'WCS', 'ECS', 'CSW', 'TWO', 'OTHER'] as co
 export type StyleOption = typeof STYLE_OPTIONS[number];
 
 export const STYLE_INFO: Record<StyleOption, { label: string; short: string; color: string }> = {
-  LINE: { label: 'Line Dance', short: 'LINE', color: '#55311C' },
+  LINE: { label: 'Line Dance', short: 'LINE', color: '#895232' },
   WCS:  { label: 'West Coast Swing', short: 'WCS',  color: '#3B82F6' },
   ECS:  { label: 'East Coast Swing', short: 'ECS',  color: '#EC4899' },
   CSW:  { label: 'Country Swing',    short: 'CSW',  color: '#D85C31' },
