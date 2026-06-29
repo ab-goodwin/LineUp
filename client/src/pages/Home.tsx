@@ -17,6 +17,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const ALL_STAT_KEYS = [
   { key: "totalDances",         label: "Total Dances" },
@@ -136,6 +144,34 @@ function getEnabledStats(saved: string[] | null): string[] {
   return order.filter(k => !hidden.has(k));
 }
 
+function SortableStatItem({
+  id, label, isHidden, onToggle,
+}: { id: string; label: string; isHidden: boolean; onToggle: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex items-center justify-between rounded-xl px-3 py-2.5 select-none transition-colors ${
+        isDragging ? "opacity-40 z-50" : isHidden ? "opacity-50 bg-secondary/20" : "opacity-100 bg-secondary/40"
+      }`}
+    >
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <button
+          className="touch-none cursor-grab active:cursor-grabbing p-0.5 -ml-0.5 shrink-0"
+          {...attributes}
+          {...listeners}
+          tabIndex={-1}
+        >
+          <GripVertical className="w-4 h-4 text-muted-foreground/50" />
+        </button>
+        <span className={`text-sm font-medium truncate ${isHidden ? "text-muted-foreground" : ""}`}>{label}</span>
+      </div>
+      <Switch checked={!isHidden} onCheckedChange={onToggle} className="shrink-0 ml-2" />
+    </div>
+  );
+}
+
 function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: prefData } = useHomepageStats();
   const setStats = useSetHomepageStats();
@@ -143,7 +179,11 @@ function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => v
 
   const [order, setOrder] = useState<string[]>([]);
   const [hiddenSet, setHiddenSet] = useState<Set<string>>(new Set());
-  const [draggedKey, setDraggedKey] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  );
 
   useEffect(() => {
     if (open) {
@@ -161,18 +201,15 @@ function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => v
     });
   };
 
-  const handleDragOver = (e: React.DragEvent, targetKey: string) => {
-    e.preventDefault();
-    if (!draggedKey || draggedKey === targetKey) return;
-    setOrder(prev => {
-      const from = prev.indexOf(draggedKey);
-      const to = prev.indexOf(targetKey);
-      if (from === -1 || to === -1) return prev;
-      const next = [...prev];
-      next.splice(from, 1);
-      next.splice(to, 0, draggedKey);
-      return next;
-    });
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setOrder(prev => {
+        const oldIndex = prev.indexOf(active.id as string);
+        const newIndex = prev.indexOf(over.id as string);
+        return arrayMove(prev, oldIndex, newIndex);
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -188,32 +225,26 @@ function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => v
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Customize Homepage</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground -mt-2">Drag to reorder. Toggle to show/hide.</p>
-        <div className="space-y-1 max-h-[26rem] overflow-y-auto pr-1">
-          {order.map(key => {
-            const def = ALL_STAT_KEYS.find(s => s.key === key);
-            if (!def) return null;
-            const isHidden = hiddenSet.has(key);
-            return (
-              <div
-                key={key}
-                draggable
-                onDragStart={() => setDraggedKey(key)}
-                onDragOver={e => handleDragOver(e, key)}
-                onDragEnd={() => setDraggedKey(null)}
-                className={`flex items-center justify-between rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing select-none transition-all ${
-                  draggedKey === key ? "opacity-40" : isHidden ? "opacity-50 bg-secondary/20" : "opacity-100 bg-secondary/40"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <GripVertical className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
-                  <span className={`text-sm font-medium ${isHidden ? "text-muted-foreground" : ""}`}>{def.label}</span>
-                </div>
-                <Switch checked={!isHidden} onCheckedChange={() => toggle(key)} />
-              </div>
-            );
-          })}
-        </div>
+        <p className="text-sm text-muted-foreground -mt-2">Hold the grip icon to reorder. Toggle to show/hide.</p>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={order} strategy={verticalListSortingStrategy}>
+            <div className="space-y-1 max-h-[26rem] overflow-y-auto pr-1">
+              {order.map(key => {
+                const def = ALL_STAT_KEYS.find(s => s.key === key);
+                if (!def) return null;
+                return (
+                  <SortableStatItem
+                    key={key}
+                    id={key}
+                    label={def.label}
+                    isHidden={hiddenSet.has(key)}
+                    onToggle={() => toggle(key)}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1 rounded-xl" onClick={onClose}>Cancel</Button>
           <Button className="flex-1 rounded-xl gap-2" onClick={handleSave} disabled={setStats.isPending}>

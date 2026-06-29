@@ -75,11 +75,33 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-body);
+    /* Prevent long-press text selection and callout on mobile */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Re-enable selection inside form controls */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     @apply tracking-wide text-foreground;
+  }
+
+  /* Prevent image save / copy callout on all images */
+  img {
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+
+  /* Re-enable pointer events on images that need interaction (avatars, links) */
+  a img, button img, [role="button"] img {
+    pointer-events: auto;
   }
 }
 
