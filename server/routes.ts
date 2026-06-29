@@ -560,6 +560,11 @@ export async function registerRoutes(
     res.json({ ok: true });
   });
 
+  app.post("/api/dev/grant-all-achievements", requireAuth, async (req, res) => {
+    await storage.grantAllAchievements(req.user!.id);
+    res.json({ ok: true });
+  });
+
   app.post("/api/dev/seed", requireAuth, async (req, res) => {
     const userId = req.user!.id;
     const seedSongs = [

@@ -45,28 +45,28 @@ const ALL_STAT_KEYS = [
 
 
 const CARD_COLORS: Record<string, string> = {
-  totalDances:         "bg-[#FDEBD5] border-[#ECC9A8] hover:border-[#D9A87A]",
-  longestStreak:       "bg-[#FDD9D5] border-[#F0B5AE] hover:border-[#DE9088]",
-  totalDaysDancing:    "bg-[#D5EDD6] border-[#AACBAB] hover:border-[#82AA83]",
-  uniqueLocations:     "bg-[#D5E5F5] border-[#A8C4E0] hover:border-[#7BA3C8]",
-  dancesThisMonth:     "bg-[#FBF0D0] border-[#E8D398] hover:border-[#CDB66A]",
-  avgDancesPerSession: "bg-[#EAD8F8] border-[#CCACEC] hover:border-[#A87ED8]",
-  mostDancedDay:       "bg-[#F8D8E8] border-[#ECAED0] hover:border-[#D882AF]",
-  mostRecentDance:     "bg-[#D5EEE8] border-[#A5D4CA] hover:border-[#6FBAA8]",
-  topLocation:         "bg-[#FFF5D5] border-[#EDDC98] hover:border-[#D4C064]",
-  top3Dances:          "bg-[#DCE0F8] border-[#AABAE8] hover:border-[#7A91D4]",
-  top3SwingSongs:      "bg-[#D5F0F8] border-[#A5D4E8] hover:border-[#6FBAD4]",
-  favoriteDance:       "bg-[#FDE8C0] border-[#EDCA88] hover:border-[#D4A84E]",
-  danceMix:            "bg-[#F5ECD8] border-[#DCCEB0] hover:border-[#C0AB80]",
-  favoriteDanceStyle:  "bg-[#E8D5C8] border-[#CAAED0] hover:border-[#D88098]",
-  totalLineDancesAllTime:  "bg-[#FDEBD5] border-[#ECC9A8] hover:border-[#D9A87A]",
-  totalSwingDancesAllTime: "bg-[#D5E5F5] border-[#A8C4E0] hover:border-[#7BA3C8]",
-  totalDancesThisYear:     "bg-[#FBF0D0] border-[#E8D398] hover:border-[#CDB66A]",
-  lineDancesThisYear:      "bg-[#D5EDD6] border-[#AACBAB] hover:border-[#82AA83]",
-  swingDancesThisYear:     "bg-[#D5E5F5] border-[#A8C4E0] hover:border-[#7BA3C8]",
-  lineDancesThisMonth:     "bg-[#D5EDD6] border-[#AACBAB] hover:border-[#82AA83]",
-  swingDancesThisMonth:    "bg-[#D5E5F5] border-[#A8C4E0] hover:border-[#7BA3C8]",
-  currentFavorite:         "bg-[#FDE8C0] border-[#EDCA88] hover:border-[#D4A84E]",
+  totalDances:         "bg-[#FDEBD5] dark:bg-[#443B32] border-[#ECC9A8] dark:border-[#5C5242] hover:border-[#D9A87A] dark:hover:border-[#6C6252]",
+  longestStreak:       "bg-[#FDD9D5] dark:bg-[#423537] border-[#F0B5AE] dark:border-[#5A4A4E] hover:border-[#DE9088] dark:hover:border-[#6A5A5E]",
+  totalDaysDancing:    "bg-[#D5EDD6] dark:bg-[#324036] border-[#AACBAB] dark:border-[#4A5A4A] hover:border-[#82AA83] dark:hover:border-[#5A6A5A]",
+  uniqueLocations:     "bg-[#D5E5F5] dark:bg-[#333C4A] border-[#A8C4E0] dark:border-[#4A5264] hover:border-[#7BA3C8] dark:hover:border-[#5A6274]",
+  dancesThisMonth:     "bg-[#FBF0D0] dark:bg-[#423E30] border-[#E8D398] dark:border-[#5A5440] hover:border-[#CDB66A] dark:hover:border-[#6A6450]",
+  avgDancesPerSession: "bg-[#EAD8F8] dark:bg-[#3A334A] border-[#CCACEC] dark:border-[#504564] hover:border-[#A87ED8] dark:hover:border-[#605574]",
+  mostDancedDay:       "bg-[#F8D8E8] dark:bg-[#423537] border-[#ECAED0] dark:border-[#5A4A4E] hover:border-[#D882AF] dark:hover:border-[#6A5A5E]",
+  mostRecentDance:     "bg-[#D5EEE8] dark:bg-[#253F3F] border-[#A5D4CA] dark:border-[#3A5858] hover:border-[#6FBAA8] dark:hover:border-[#4A6868]",
+  topLocation:         "bg-[#FFF5D5] dark:bg-[#423E30] border-[#EDDC98] dark:border-[#5A5440] hover:border-[#D4C064] dark:hover:border-[#6A6450]",
+  top3Dances:          "bg-[#DCE0F8] dark:bg-[#333C4A] border-[#AABAE8] dark:border-[#4A5264] hover:border-[#7A91D4] dark:hover:border-[#5A6274]",
+  top3SwingSongs:      "bg-[#D5F0F8] dark:bg-[#253F3F] border-[#A5D4E8] dark:border-[#3A5858] hover:border-[#6FBAD4] dark:hover:border-[#4A6868]",
+  favoriteDance:       "bg-[#FDE8C0] dark:bg-[#423E30] border-[#EDCA88] dark:border-[#5A5440] hover:border-[#D4A84E] dark:hover:border-[#6A6450]",
+  danceMix:            "bg-[#F5ECD8] dark:bg-[#443B32] border-[#DCCEB0] dark:border-[#5C5242] hover:border-[#C0AB80] dark:hover:border-[#6C6252]",
+  favoriteDanceStyle:  "bg-[#E8D5C8] dark:bg-[#45313A] border-[#CAAED0] dark:border-[#5E4550] hover:border-[#D88098] dark:hover:border-[#6E5560]",
+  totalLineDancesAllTime:  "bg-[#FDEBD5] dark:bg-[#443B32] border-[#ECC9A8] dark:border-[#5C5242] hover:border-[#D9A87A] dark:hover:border-[#6C6252]",
+  totalSwingDancesAllTime: "bg-[#D5E5F5] dark:bg-[#333C4A] border-[#A8C4E0] dark:border-[#4A5264] hover:border-[#7BA3C8] dark:hover:border-[#5A6274]",
+  totalDancesThisYear:     "bg-[#FBF0D0] dark:bg-[#423E30] border-[#E8D398] dark:border-[#5A5440] hover:border-[#CDB66A] dark:hover:border-[#6A6450]",
+  lineDancesThisYear:      "bg-[#D5EDD6] dark:bg-[#324036] border-[#AACBAB] dark:border-[#4A5A4A] hover:border-[#82AA83] dark:hover:border-[#5A6A5A]",
+  swingDancesThisYear:     "bg-[#D5E5F5] dark:bg-[#333C4A] border-[#A8C4E0] dark:border-[#4A5264] hover:border-[#7BA3C8] dark:hover:border-[#5A6274]",
+  lineDancesThisMonth:     "bg-[#D5EDD6] dark:bg-[#324036] border-[#AACBAB] dark:border-[#4A5A4A] hover:border-[#82AA83] dark:hover:border-[#5A6A5A]",
+  swingDancesThisMonth:    "bg-[#D5E5F5] dark:bg-[#333C4A] border-[#A8C4E0] dark:border-[#4A5264] hover:border-[#7BA3C8] dark:hover:border-[#5A6274]",
+  currentFavorite:         "bg-[#FDE8C0] dark:bg-[#423E30] border-[#EDCA88] dark:border-[#5A5440] hover:border-[#D4A84E] dark:hover:border-[#6A6450]",
 };
 
 function useHomepageStats() {
@@ -345,7 +345,7 @@ export default function Home() {
         return (
           <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col justify-between ${cardColor(key)}`}>
             <div className="flex items-start justify-between mb-2">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Favorite Style</span>
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a] dark:text-foreground/70">Favorite Style</span>
               <Heart className="w-4 h-4 text-primary/50" />
             </div>
             {favStyle ? (() => {
@@ -369,7 +369,7 @@ export default function Home() {
         return (
           <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col ${cardColor(key)}`}>
             <div className="flex items-start justify-between mb-2">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Top 3 Line</span>
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a] dark:text-foreground/70">Top 3 Line</span>
               <Footprints className="w-4 h-4 text-primary/50" />
             </div>
             {stats?.top3Dances?.length ? (
@@ -393,7 +393,7 @@ export default function Home() {
         return (
           <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col ${cardColor(key)}`}>
             <div className="flex items-start justify-between mb-2">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Top 3 Swing</span>
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a] dark:text-foreground/70">Top 3 Swing</span>
               <Sparkles className="w-4 h-4 text-primary/50" />
             </div>
             {stats?.top3SwingSongs?.length ? (
@@ -420,7 +420,7 @@ export default function Home() {
         return (
           <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md h-full flex flex-col ${cardColor(key)}`}>
             <div className="flex items-start justify-between mb-2">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a]">Dance Mix</span>
+              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a] dark:text-foreground/70">Dance Mix</span>
               <PieIcon className="w-4 h-4 text-primary/50" />
             </div>
             {pieData.length === 0 ? (

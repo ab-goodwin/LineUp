@@ -3,13 +3,15 @@ import { useLocation } from "wouter";
 import { useProfile, useDeleteData } from "@/hooks/use-profile";
 import { useCreateSong } from "@/hooks/use-songs";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
-  ArrowLeft, Download, Upload, Trash2, FlaskConical, Loader2, CheckCircle2, AlertCircle,
+  ArrowLeft, Download, Upload, Trash2, FlaskConical, Loader2, CheckCircle2, AlertCircle, Trophy, Moon, Sun,
 } from "lucide-react";
+import { useTheme } from "@/context/ThemeContext";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -77,9 +79,20 @@ export default function Settings() {
   const createSong = useCreateSong();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; fail: number } | null>(null);
+
+  const grantAllAchievements = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/dev/grant-all-achievements"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/achievements"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/achievements/unseen"] });
+      toast({ title: "All badges rewarded!", description: "Every achievement has been unlocked." });
+    },
+    onError: () => toast({ title: "Failed to reward badges", variant: "destructive" }),
+  });
 
   const seedData = useMutation({
     mutationFn: () => apiRequest("POST", "/api/dev/seed"),
@@ -271,21 +284,57 @@ export default function Settings() {
         </div>
       </section>
 
+      {/* Theme */}
+      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
+        <h2 className="text-xl font-bold mb-1 font-display text-foreground">Theme</h2>
+        <p className="text-sm text-muted-foreground mb-4">Choose your preferred appearance.</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {theme === "dark" ? (
+              <Moon className="w-5 h-5 text-primary" />
+            ) : (
+              <Sun className="w-5 h-5 text-primary" />
+            )}
+            <div>
+              <p className="font-semibold text-sm text-foreground">{theme === "dark" ? "Dark Mode" : "Light Mode"}</p>
+              <p className="text-xs text-muted-foreground">{theme === "dark" ? "Deep warm charcoal" : "Bright warm western"}</p>
+            </div>
+          </div>
+          <Switch
+            checked={theme === "dark"}
+            onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+            data-testid="toggle-dark-mode"
+          />
+        </div>
+      </section>
+
       {/* Dev Tools — admin only */}
       {profile?.username === "lineupadmin" && (
         <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
           <h2 className="text-xl font-bold mb-1 font-display text-foreground">Developer Tools</h2>
-          <p className="text-sm text-muted-foreground mb-4">Load sample data to preview all stat cards.</p>
-          <Button
-            variant="outline"
-            className="w-full rounded-xl border-2 justify-start gap-2"
-            onClick={() => seedData.mutate()}
-            disabled={seedData.isPending}
-            data-testid="button-seed-data"
-          >
-            {seedData.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
-            {seedData.isPending ? "Loading..." : "Load Test Data"}
-          </Button>
+          <p className="text-sm text-muted-foreground mb-4">Load sample data or unlock all achievements.</p>
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full rounded-xl border-2 justify-start gap-2"
+              onClick={() => seedData.mutate()}
+              disabled={seedData.isPending}
+              data-testid="button-seed-data"
+            >
+              {seedData.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
+              {seedData.isPending ? "Loading..." : "Load Test Data"}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full rounded-xl border-2 justify-start gap-2"
+              onClick={() => grantAllAchievements.mutate()}
+              disabled={grantAllAchievements.isPending}
+              data-testid="button-reward-all-badges"
+            >
+              {grantAllAchievements.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trophy className="w-4 h-4" />}
+              {grantAllAchievements.isPending ? "Rewarding..." : "Reward All Badges"}
+            </Button>
+          </div>
         </section>
       )}
 

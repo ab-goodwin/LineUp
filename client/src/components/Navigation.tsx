@@ -18,7 +18,7 @@ export function Navigation() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t border-border/50 pb-safe z-50">
-      <div className="flex justify-around items-center h-16 max-w-md mx-auto px-2">
+      <div className="flex justify-around items-center h-[77px] max-w-md mx-auto px-2">
         {links.map((link) => {
           const Icon = link.icon;
           const isActive = location === link.href;
@@ -28,17 +28,17 @@ export function Navigation() {
             <Link key={link.href} href={link.href} className="w-full">
               <div
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 w-full h-full p-2 transition-all duration-300 cursor-pointer relative",
+                  "flex flex-col items-center justify-center gap-1.5 w-full h-full p-2 transition-all duration-300 cursor-pointer relative",
                   isActive ? "text-primary scale-110" : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <div className="relative">
-                  <Icon className={cn("w-5 h-5", isActive && "fill-current")} />
+                  <Icon className={cn("w-6 h-6", isActive && "fill-current")} />
                   {showDot && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full" />
                   )}
                 </div>
-                <span className="text-[9px] font-medium tracking-wide uppercase">{link.label}</span>
+                <span className="text-[11px] font-medium tracking-wide uppercase">{link.label}</span>
               </div>
             </Link>
           );

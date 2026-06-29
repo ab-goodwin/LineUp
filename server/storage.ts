@@ -1200,6 +1200,17 @@ export class DatabaseStorage implements IStorage {
         sql`${userAchievements.seenAt} IS NULL`
       ));
   }
+
+  async grantAllAchievements(userId: number): Promise<void> {
+    const existing = await db.select().from(userAchievements).where(eq(userAchievements.userId, userId));
+    const existingIds = new Set(existing.map(e => e.achievementId));
+    const toInsert = ACHIEVEMENT_DEFS
+      .filter(def => !existingIds.has(def.id))
+      .map(def => ({ userId, achievementId: def.id }));
+    if (toInsert.length > 0) {
+      await db.insert(userAchievements).values(toInsert);
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
