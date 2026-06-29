@@ -117,12 +117,38 @@ export default function Settings() {
     downloadCSV("lineup_swing_template.csv", csv);
   };
 
+  const LINE_HEADERS = ["dance name", "song name", "artist", "rating (0-5)"];
+  const SWING_HEADERS = ["song name", "artist", "style (wcs/ecs/csw/two/other)", "rating (0-5)"];
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    // Validate file type
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext !== "csv") {
+      toast({
+        title: "Error: Incorrect file type. Please use the template provided.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const text = await file.text();
     const { headers, rows } = parseCSV(text);
-    const isSwing = headers.some(h => h.includes("style"));
+
+    // Validate exact column headers
+    const isLineDance = headers.length === LINE_HEADERS.length && LINE_HEADERS.every((h, i) => headers[i] === h);
+    const isSwing     = headers.length === SWING_HEADERS.length && SWING_HEADERS.every((h, i) => headers[i] === h);
+
+    if (!isLineDance && !isSwing) {
+      toast({
+        title: "Error: Incorrect format. Please use the template provided.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setImporting(true);
     setImportResult(null);
@@ -157,7 +183,6 @@ export default function Settings() {
 
     setImporting(false);
     setImportResult({ success, fail });
-    if (fileInputRef.current) fileInputRef.current.value = "";
     toast({
       title: `Imported ${success} song${success !== 1 ? "s" : ""}${fail > 0 ? `, ${fail} skipped` : ""}`,
     });
@@ -208,8 +233,11 @@ export default function Settings() {
 
         <div className="border-t border-border pt-5">
           <h3 className="font-semibold text-sm mb-1">Import Songs from CSV</h3>
-          <p className="text-xs text-muted-foreground mb-3">
+          <p className="text-xs text-muted-foreground mb-1">
             Upload a filled template to bulk-add songs. Line vs. Swing is detected from the column headers.
+          </p>
+          <p className="text-xs text-amber-600 font-medium mb-3">
+            Only the provided template should be used to upload songs. Any other sources will not be processed.
           </p>
           <input
             ref={fileInputRef}
