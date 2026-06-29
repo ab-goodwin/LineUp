@@ -107,12 +107,33 @@ function useStyleDistribution() {
   });
 }
 
-// Merge saved prefs with ALL_STAT_KEYS: add any newly-introduced keys at end
-function mergeWithDefaults(saved: string[] | null): string[] {
+// Parse stored format: "!key" = explicitly hidden, "key" = visible
+// New keys not in saved list are appended as visible
+function parseHomepagePrefs(saved: string[] | null): { order: string[]; hidden: Set<string> } {
   const allKeys = ALL_STAT_KEYS.map(s => s.key);
-  if (!saved) return allKeys;
-  const newKeys = allKeys.filter(k => !saved.includes(k));
-  return [...saved, ...newKeys];
+  if (!saved) return { order: allKeys, hidden: new Set() };
+
+  const hidden = new Set<string>();
+  const order: string[] = [];
+
+  for (const entry of saved) {
+    if (entry.startsWith("!")) {
+      const key = entry.slice(1);
+      if (allKeys.includes(key)) { hidden.add(key); order.push(key); }
+    } else {
+      if (allKeys.includes(entry)) order.push(entry);
+    }
+  }
+  // Append truly new keys (added after user last saved) as visible
+  for (const key of allKeys) {
+    if (!order.includes(key)) order.push(key);
+  }
+  return { order, hidden };
+}
+
+function getEnabledStats(saved: string[] | null): string[] {
+  const { order, hidden } = parseHomepagePrefs(saved);
+  return order.filter(k => !hidden.has(k));
 }
 
 function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -120,24 +141,30 @@ function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => v
   const setStats = useSetHomepageStats();
   const { toast } = useToast();
 
-  const merged = mergeWithDefaults(prefData?.stats ?? null);
-  const [enabled, setEnabled] = useState<string[]>(merged);
+  const [order, setOrder] = useState<string[]>([]);
+  const [hiddenSet, setHiddenSet] = useState<Set<string>>(new Set());
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
 
-  // Re-sync local state whenever dialog opens or remote prefs change
   useEffect(() => {
-    if (open) setEnabled(mergeWithDefaults(prefData?.stats ?? null));
-  }, [open, prefData?.stats?.join(",")]);
+    if (open) {
+      const prefs = parseHomepagePrefs(prefData?.stats ?? null);
+      setOrder(prefs.order);
+      setHiddenSet(new Set(prefs.hidden));
+    }
+  }, [open, JSON.stringify(prefData?.stats)]);
 
-  const toggle = (key: string) =>
-    setEnabled(prev =>
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-    );
+  const toggle = (key: string) => {
+    setHiddenSet(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   const handleDragOver = (e: React.DragEvent, targetKey: string) => {
     e.preventDefault();
     if (!draggedKey || draggedKey === targetKey) return;
-    setEnabled(prev => {
+    setOrder(prev => {
       const from = prev.indexOf(draggedKey);
       const to = prev.indexOf(targetKey);
       if (from === -1 || to === -1) return prev;
@@ -149,16 +176,11 @@ function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => v
   };
 
   const handleSave = async () => {
-    await setStats.mutateAsync(enabled);
+    const encoded = order.map(k => hiddenSet.has(k) ? `!${k}` : k);
+    await setStats.mutateAsync(encoded);
     toast({ title: "Homepage updated!" });
     onClose();
   };
-
-  // Enabled items (in saved order) and disabled items (below)
-  const enabledInOrder = enabled
-    .map(key => ALL_STAT_KEYS.find(s => s.key === key)!)
-    .filter(Boolean);
-  const disabledItems = ALL_STAT_KEYS.filter(s => !enabled.includes(s.key));
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -168,41 +190,29 @@ function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => v
         </DialogHeader>
         <p className="text-sm text-muted-foreground -mt-2">Drag to reorder. Toggle to show/hide.</p>
         <div className="space-y-1 max-h-[26rem] overflow-y-auto pr-1">
-          {/* Enabled — draggable */}
-          {enabledInOrder.map(({ key, label }) => (
-            <div
-              key={key}
-              draggable
-              onDragStart={() => setDraggedKey(key)}
-              onDragOver={e => handleDragOver(e, key)}
-              onDragEnd={() => setDraggedKey(null)}
-              className={`flex items-center justify-between rounded-xl px-3 py-2.5 bg-secondary/40 cursor-grab active:cursor-grabbing select-none transition-opacity ${draggedKey === key ? "opacity-40" : "opacity-100"}`}
-            >
-              <div className="flex items-center gap-2">
-                <GripVertical className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
-                <span className="text-sm font-medium">{label}</span>
-              </div>
-              <Switch checked onCheckedChange={() => toggle(key)} />
-            </div>
-          ))}
-
-          {/* Disabled — below, non-draggable */}
-          {disabledItems.length > 0 && (
-            <>
-              <div className="pt-1 pb-0.5 px-1">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-medium">Hidden</p>
-              </div>
-              {disabledItems.map(({ key, label }) => (
-                <div key={key} className="flex items-center justify-between rounded-xl px-3 py-2.5 bg-secondary/20 opacity-60">
-                  <div className="flex items-center gap-2">
-                    <GripVertical className="w-4 h-4 text-muted-foreground/30 flex-shrink-0" />
-                    <span className="text-sm font-medium text-muted-foreground">{label}</span>
-                  </div>
-                  <Switch checked={false} onCheckedChange={() => toggle(key)} />
+          {order.map(key => {
+            const def = ALL_STAT_KEYS.find(s => s.key === key);
+            if (!def) return null;
+            const isHidden = hiddenSet.has(key);
+            return (
+              <div
+                key={key}
+                draggable
+                onDragStart={() => setDraggedKey(key)}
+                onDragOver={e => handleDragOver(e, key)}
+                onDragEnd={() => setDraggedKey(null)}
+                className={`flex items-center justify-between rounded-xl px-3 py-2.5 cursor-grab active:cursor-grabbing select-none transition-all ${
+                  draggedKey === key ? "opacity-40" : isHidden ? "opacity-50 bg-secondary/20" : "opacity-100 bg-secondary/40"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <GripVertical className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
+                  <span className={`text-sm font-medium ${isHidden ? "text-muted-foreground" : ""}`}>{def.label}</span>
                 </div>
-              ))}
-            </>
-          )}
+                <Switch checked={!isHidden} onCheckedChange={() => toggle(key)} />
+              </div>
+            );
+          })}
         </div>
         <div className="flex gap-2 pt-2">
           <Button variant="outline" className="flex-1 rounded-xl" onClick={onClose}>Cancel</Button>
@@ -261,8 +271,7 @@ export default function Home() {
   const [editOpen, setEditOpen] = useState(false);
   const unseenCount = unseenData?.count ?? 0;
 
-  // Merge saved prefs with all keys (auto-adds new keys users haven't seen)
-  const enabledStats = mergeWithDefaults(prefData?.stats ?? null);
+  const enabledStats = getEnabledStats(prefData?.stats ?? null);
 
   const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.07 } } };
   const item = { hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0 } };

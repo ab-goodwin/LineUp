@@ -1,0 +1,55 @@
+The edit homepage section is not functional. While I can move and select different statistics to enable/disable, they do not actually save and translate. It does move them into the proper order. It does not hide the statistic when it's been deselected in the edit homepage menu.
+
+I need input validation for importing songs via .csv files. You can still upload any file you'd like, and if it is a file that is not anticipated (ie; a .csv file) it crashes the program. I need it to ONLY accept .csv files, and refuse to process any file that is not a .csv file. If the file is not a .csv file, it should produce an error saying "Error: Incorrect file type. Please use the template provided."
+
+As well, if it is not in the exact format as the templates, it should NOT process. (for example, an extra column, or the name of the column categories are changed) It should produce an error message saying "Error: Incorrect format. Please use the template provided." You can also add a note that "Only the provided template should be used to upload songs. Any other sources will not be processed." 
+
+Use the following images after a badge is unlocked, continue to use the lock image until the badge is earned. Ensure the image is scaled properly with the current size of the circle placeholder for each badge. images are located in: "client/src/assets/achievements/"
+
+Milestones:
+first_steps.png : First Steps - Log your first dance session
+on_the_floor.png: On The Floor - Log 10 total dances
+boot_scootin.png: Boot Scootin - Log 50 total dances
+dance_machine.png: Dance Machine - Log 100 total dances
+cant_stop_now.png: Can't Stop Now - Log 500 dances
+thousand_stepper.png: Thousand Stepper - Log 1000 dances
+
+Consistency:
+step_streak.png: Step Steak - Dance 3 days in a row
+dance_fever.png: Dance Fever - Dance 5 days in 1 week
+weekend_warrior.png: Weekend Warrior - Dance both friday and saturday in one week
+peak_season.png: Peak Season - Log 100 dances in a single month
+
+Exploration:
+home_turf.png: Home Turf - Dance at the same venue 10 times
+wanderer.png: Wanderer - Dance at 3 different venues
+road_trip.png: Road Trip - Dance at 5 different venues
+bar_regular.png: Bar Regular - Return to the same venue 5 sessions in a row
+dance_passport.png: Dance Passport - Dance at 10 different venues
+
+*reorder Exploration section from left to right on the badges page:
+wanderer, road trip, home turf, bar regular, dance passport*
+
+Variety:
+variety_pack.png: Variety pack - Dance 10 unique dances
+collector.png: Collector - Dance 25 unique dances
+human_jukebox.png: Human Jukebox - Dance 50 unique dances
+crowd_favorite: Crowd Favorite - Repeat the same dance 10 times
+encore.png: Encore - Dance the same dance across 5 different sessions
+
+*reorder variety section from left to right on the badges page:
+variety pack, collector, encore, crowd favorite, human jukebox*
+
+Social:
+competitive_spirit.png: Competitive Spirit - Join 10 showdown sessions
+showdown_winner.png: Showdown Winner - Win your first challenge
+rivalry.png: Rivalry - Compete in 5 head-to-head challenges
+undefeated.png: Undefeated - Win 3 challenges in a row (head-to-head or showdown)
+main_character.png: Main Character - Finish a challenge with 30+ dances logged
+
+Hidden:
+marathon_night.png:  Marathon Night - Dance over 25 dances in a single session 
+night_owl.png: Night Owl - Edit 3 sessions after midnight 
+floor_hopper.png: Floor Hopper - 3 Different venues in in one week 
+back_in_the_saddle.png: Back in the saddle - Start a new streak after 7 days of no sessions. 
+closing_time.png: Closing Time - Edit a session after 1:00am 
