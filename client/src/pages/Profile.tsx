@@ -263,7 +263,7 @@ export default function Profile() {
         <p className="text-xs text-muted-foreground/40 font-display tracking-wide">Honky Tonk Heat</p>
         <p className="text-xs text-transparent select-none">&nbsp;</p>
         <hr className="border-border/20 mt-3" />
-        <div className="flex justify-center mt-2">
+        <div className="flex justify-center my-6 pb-4">
           <img
             src={theme === "dark" ? honkyTonkLogoWhite : honkyTonkLogoBlack}
             alt="Honky Tonk Heat"
