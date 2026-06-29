@@ -7,6 +7,7 @@ import { ACHIEVEMENT_DEFS, ACHIEVEMENT_GROUPS, type AchievementGroup } from "@sh
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useTheme } from "@/context/ThemeContext";
 
 // Load all PNGs from achievements folder at build time
 const achievementImages = import.meta.glob<{ default: string }>(
@@ -20,6 +21,7 @@ function getImgSrc(filename: string): string {
 }
 
 const lockedSrc = getImgSrc("locked.png");
+const lockedDarkSrc = getImgSrc("locked_dark.png");
 
 // Custom display order for specific groups
 const GROUP_ORDER: Partial<Record<AchievementGroup, string[]>> = {
@@ -55,9 +57,11 @@ const GROUP_COLORS: Record<AchievementGroup, string> = {
 function AchievementImage({ id, earned, size = "sm" }: { id: string; earned: boolean; size?: "sm" | "lg" }) {
   const [imgError, setImgError] = useState(false);
   const [lockError, setLockError] = useState(false);
+  const { theme } = useTheme();
   const cls = size === "lg" ? "w-full h-full" : "w-full h-full";
+  const activeLocked = theme === "dark" ? lockedDarkSrc : lockedSrc;
 
-  const src = earned ? getImgSrc(`${id}.png`) : lockedSrc;
+  const src = earned ? getImgSrc(`${id}.png`) : activeLocked;
 
   if (src && !imgError) {
     return (
@@ -69,11 +73,11 @@ function AchievementImage({ id, earned, size = "sm" }: { id: string; earned: boo
       />
     );
   }
-  // Fallback: if locked.png also fails or src is empty, try locking with the earned img, else show icon
-  if (!earned && lockedSrc && !lockError) {
+  // Fallback: if locked image also fails or src is empty, try active locked, else show icon
+  if (!earned && activeLocked && !lockError) {
     return (
       <img
-        src={lockedSrc}
+        src={activeLocked}
         alt="locked"
         className={cn(cls, "object-cover rounded-full opacity-50")}
         onError={() => setLockError(true)}
