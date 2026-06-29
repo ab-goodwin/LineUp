@@ -24,7 +24,7 @@ const lockedSrc = getImgSrc("locked.png");
 // Custom display order for specific groups
 const GROUP_ORDER: Partial<Record<AchievementGroup, string[]>> = {
   Exploration: ["wanderer", "road_trip", "home_turf", "bar_regular", "dance_passport"],
-  Variety:     ["variety_pack", "collector", "encore", "crowd_favorite", "human_jukebox"],
+  Variety:     ["variety_pack", "collector", "crowd_favorite", "encore", "human_jukebox"],
 };
 
 function getGroupDefs(group: AchievementGroup) {

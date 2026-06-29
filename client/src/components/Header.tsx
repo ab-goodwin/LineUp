@@ -1,18 +1,21 @@
 import { Link, useLocation } from "wouter";
 import { useProfile } from "@/hooks/use-profile";
 import logoLong from "@assets/LineUp_tagline_1778180551921.png";
+import logoLongDark from "@assets/LineUp_tagline_darkmode.png";
 import { Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/context/ThemeContext";
 
 export function Header() {
   const { data: profile } = useProfile();
   const [, setLocation] = useLocation();
+  const { theme } = useTheme();
 
   return (
     <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="flex h-20 items-center justify-between px-4 max-w-5xl mx-auto">
         <Link href="/" className="flex items-center cursor-pointer">
-          <img src={logoLong} alt="LineUp" className="h-14 object-contain" />
+          <img src={theme === "dark" ? logoLongDark : logoLong} alt="LineUp" className="h-14 object-contain" />
         </Link>
 
         <div className="flex items-center gap-2">

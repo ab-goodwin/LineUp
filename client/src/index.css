@@ -40,6 +40,37 @@
   --radius: 1rem;
 }
 
+.dark {
+  /* LineUp Dark Mode - Deep warm charcoal */
+  --background: 25 14% 10%;        /* #1C1917 */
+  --foreground: 30 50% 99%;        /* #FDFCFB */
+
+  --primary: 23 100% 41%;          /* #D35400 deep burnt orange */
+  --primary-foreground: 30 20% 98%;
+
+  --secondary: 25 10% 15%;         /* #292524 */
+  --secondary-foreground: 30 20% 90%;
+
+  --muted: 25 10% 20%;
+  --muted-foreground: 15 9% 60%;   /* #A39690 soft taupe */
+
+  --accent: 35 70% 57%;            /* keep gold */
+  --accent-foreground: 25 14% 10%;
+
+  --destructive: 0 84% 55%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 25 8% 22%;
+  --input: 25 8% 20%;
+  --ring: 23 100% 41%;
+
+  --card: 25 10% 15%;              /* #292524 */
+  --card-foreground: 30 50% 99%;
+
+  --popover: 25 10% 15%;
+  --popover-foreground: 30 50% 99%;
+}
+
 @layer base {
   body {
     @apply bg-background text-foreground antialiased;
