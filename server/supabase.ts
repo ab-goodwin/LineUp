@@ -15,14 +15,13 @@ if (!supabaseUrl || !serviceRoleKey) {
 
 // Admin client (service-role). Used for password sign-in and verifying access tokens.
 // Node 20 lacks a native WebSocket, so provide `ws` for the realtime sub-client.
-//export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-  //auth: {
-    //autoRefreshToken: false,
-    //persistSession: false,
-  //},
-  //realtime: {
-    //transport: ws as unknown as typeof WebSocket,
-  //},
-//});
-export const supabaseAdmin = null as any;
-console.log("SUPABASE MODULE LOADED");
+export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+  realtime: {
+    transport: ws as unknown as typeof WebSocket,
+  },
+});
+
