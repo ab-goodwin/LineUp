@@ -6,12 +6,16 @@ console.log("ENV CHECK:", {
 });
 
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+// import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
 const app = express();
 const httpServer = createServer(app);
+
+app.get("/health", (_, res) => {
+  res.json({ ok: true });
+});
 
 declare module "http" {
   interface IncomingMessage {
