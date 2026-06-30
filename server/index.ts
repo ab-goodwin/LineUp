@@ -9,7 +9,7 @@ console.log("FILE STARTED");
 console.log("ENV:", process.env.SUPABASE_URL);
 
 import express, { type Request, Response, NextFunction } from "express";
-// import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
