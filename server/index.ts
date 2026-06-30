@@ -5,8 +5,17 @@ console.log("ENV CHECK:", {
   DATABASE_URL: process.env.DATABASE_URL,
   PORT: process.env.PORT
 });
+
 console.log("FILE STARTED");
 console.log("ENV:", process.env.SUPABASE_URL);
+
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION:", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("UNHANDLED REJECTION:", reason);
+});
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
