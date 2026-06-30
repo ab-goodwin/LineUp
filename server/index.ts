@@ -1,3 +1,10 @@
+console.log("ENV CHECK:", {
+  SUPABASE_URL: process.env.SUPABASE_URL,
+  SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
+  DATABASE_URL: process.env.DATABASE_URL,
+  PORT: process.env.PORT
+});
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
