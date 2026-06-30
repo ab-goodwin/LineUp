@@ -1,0 +1,35 @@
+VERDICT: REJECTED
+The migration is incomplete in a way that breaks core authenticated functionality: most frontend API calls still use raw `fetch` without Supabase bearer tokens, while backend protected routes now require `Authorization: Bearer <access_token>`.
+
+Critical findings / analysis:
+- **Blocking regression:** The task required token-based requests for all API calls and preserving existing app behavior. However, many hooks (`client/src/hooks/use-sessions.ts`, `use-songs.ts`, `use-stats.ts`, `use-profile.ts`, and likely others) still call `fetch(...)` directly and/or use legacy `credentials: "include"`. These calls will now hit `requireAuth` and return 401 because no bearer token is attached.
+- This directly violates “all dance/session/stats/buddies/profile features keep working unchanged” and the architectural requirement to update the shared request path for auth headers.
+- Auth core changes themselves are generally aligned (server-side username→email login, Supabase JWT verification in `requireAuth`, Supabase session hydration on client, reset-password UI/flow).
+
+Security:
+- No serious new security violation observed in the diff.
+- Positive note: response logging now redacts token/password fields.
+
+Next actions (high impact):
+1. **Centralize authenticated requests**: Refactor all client hooks/pages to use `apiRequest` / a single auth-aware fetch helper (or a global wrapper), and remove direct raw `fetch` calls to protected routes.
+2. **Purge legacy cookie assumptions**: Remove remaining `credentials: "include"` usage tied to session auth; ensure every protected request includes bearer auth.
+3. **Run end-to-end smoke for protected features** after login (sessions, songs, stats, profile, buddies, dance-offs) to confirm no 401 regressions.
+
+Current status: Partial completion; auth migration foundation is present, but core app functionality is broken due to missing bearer propagation across existing API calls.VERDICT: REJECTED
+The migration is incomplete in a way that breaks core authenticated functionality: most frontend API calls still use raw `fetch` without Supabase bearer tokens, while backend protected routes now require `Authorization: Bearer <access_token>`.
+
+Critical findings / analysis:
+- **Blocking regression:** The task required token-based requests for all API calls and preserving existing app behavior. However, many hooks (`client/src/hooks/use-sessions.ts`, `use-songs.ts`, `use-stats.ts`, `use-profile.ts`, and likely others) still call `fetch(...)` directly and/or use legacy `credentials: "include"`. These calls will now hit `requireAuth` and return 401 because no bearer token is attached.
+- This directly violates “all dance/session/stats/buddies/profile features keep working unchanged” and the architectural requirement to update the shared request path for auth headers.
+- Auth core changes themselves are generally aligned (server-side username→email login, Supabase JWT verification in `requireAuth`, Supabase session hydration on client, reset-password UI/flow).
+
+Security:
+- No serious new security violation observed in the diff.
+- Positive note: response logging now redacts token/password fields.
+
+Next actions (high impact):
+1. **Centralize authenticated requests**: Refactor all client hooks/pages to use `apiRequest` / a single auth-aware fetch helper (or a global wrapper), and remove direct raw `fetch` calls to protected routes.
+2. **Purge legacy cookie assumptions**: Remove remaining `credentials: "include"` usage tied to session auth; ensure every protected request includes bearer auth.
+3. **Run end-to-end smoke for protected features** after login (sessions, songs, stats, profile, buddies, dance-offs) to confirm no 401 regressions.
+
+Current status: Partial completion; auth migration foundation is present, but core app functionality is broken due to missing bearer propagation across existing API calls.

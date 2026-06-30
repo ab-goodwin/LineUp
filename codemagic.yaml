@@ -1,0 +1,29 @@
+workflows:
+  simulator-workflow:
+    name: iOS Build (Capacitor)
+
+    environment:
+      xcode: latest
+      node: 22
+
+    scripts:
+      - name: Install dependencies
+        script: npm install
+
+      - name: Build web app
+        script: npm run build
+
+      - name: Sync Capacitor
+        script: npx cap sync ios
+
+      - name: Build with workspace (IMPORTANT)
+        script: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            build
+
+    artifacts:
+    - /Users/builder/Library/Developer/Xcode/DerivedData/**/*.app
