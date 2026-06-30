@@ -6,8 +6,8 @@ import { api } from "@shared/routes";
 import { registerSchema, loginSchema, updateProfileSchema, users, danceOffs, danceOffParticipants } from "@shared/schema";
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
-import { passport, requireAuth } from "./auth";
-import bcrypt from "bcryptjs";
+import { requireAuth } from "./auth";
+import { supabaseAdmin } from "./supabase";
 
 declare global {
   namespace Express {
@@ -17,6 +17,9 @@ declare global {
       firstName: string;
       lastName: string;
       location: string;
+    }
+    interface Request {
+      user?: User;
     }
   }
 }
@@ -62,23 +65,39 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
-  // --- Auth Routes ---
+  // --- Auth Routes (Supabase) ---
   app.post("/api/register", async (req, res) => {
     try {
       const input = registerSchema.parse(req.body);
-      const existing = await storage.getUserByUsername(input.username);
-      if (existing) {
+
+      const existingUsername = await storage.getUserByUsername(input.username);
+      if (existingUsername) {
         res.status(409).json({ message: "Username already taken" });
         return;
       }
-      const passwordHash = await bcrypt.hash(input.password, 12);
-      const user = await storage.createAuthUser(input.username, passwordHash, input.firstName, input.lastName);
-      
-      req.login(user, (err) => {
-        if (err) {
-          res.status(500).json({ message: "Login after registration failed" });
-          return;
-        }
+
+      // Create the Supabase auth user (email pre-confirmed so they can sign in immediately)
+      const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email: input.email,
+        password: input.password,
+        email_confirm: true,
+        user_metadata: { username: input.username },
+      });
+      if (createErr || !created?.user) {
+        const msg = createErr?.message || "Registration failed";
+        const status = /already|registered|exists/i.test(msg) ? 409 : 400;
+        res.status(status).json({ message: status === 409 ? "An account with that email already exists" : msg });
+        return;
+      }
+
+      try {
+        const user = await storage.createAuthUser({
+          username: input.username,
+          email: input.email,
+          supabaseAuthId: created.user.id,
+          firstName: input.firstName,
+          lastName: input.lastName,
+        });
         res.status(201).json({
           id: user.id,
           username: user.username,
@@ -86,7 +105,11 @@ export async function registerRoutes(
           lastName: user.lastName,
           location: user.location,
         });
-      });
+      } catch (dbErr) {
+        // Roll back the orphaned Supabase user if the local row could not be created
+        await supabaseAdmin.auth.admin.deleteUser(created.user.id).catch(() => {});
+        throw dbErr;
+      }
     } catch (err) {
       if (err instanceof z.ZodError) {
         res.status(400).json({ message: err.errors[0]?.message || "Invalid input" });
@@ -96,49 +119,48 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
+  app.post("/api/login", async (req, res) => {
+    let input;
     try {
-      loginSchema.parse(req.body);
+      input = loginSchema.parse(req.body);
     } catch {
       res.status(400).json({ message: "Username and password are required" });
       return;
     }
 
-    passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) return next(err);
-      if (!user) {
-        res.status(401).json({ message: info?.message || "Invalid credentials" });
-        return;
-      }
-      req.login(user, (loginErr) => {
-        if (loginErr) return next(loginErr);
-        res.json({
-          id: user.id,
-          username: user.username,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          location: user.location,
-        });
-      });
-    })(req, res, next);
-  });
+    // Resolve email by username server-side to avoid exposing emails
+    const dbUser = await storage.getUserByUsername(input.username);
+    if (!dbUser || !dbUser.email) {
+      res.status(401).json({ message: "Invalid username or password" });
+      return;
+    }
 
-  app.post("/api/logout", (req, res) => {
-    req.logout((err) => {
-      if (err) {
-        res.status(500).json({ message: "Logout failed" });
-        return;
-      }
-      res.json({ success: true });
+    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+      email: dbUser.email,
+      password: input.password,
+    });
+    if (error || !data?.session) {
+      res.status(401).json({ message: "Invalid username or password" });
+      return;
+    }
+
+    res.json({
+      user: {
+        id: dbUser.id,
+        username: dbUser.username,
+        firstName: dbUser.firstName,
+        lastName: dbUser.lastName,
+        location: dbUser.location,
+      },
+      session: {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      },
     });
   });
 
-  app.get("/api/me", async (req, res) => {
-    if (!req.isAuthenticated() || !req.user) {
-      res.status(401).json({ message: "Not authenticated" });
-      return;
-    }
-    const user = await storage.getUser(req.user.id);
+  app.get("/api/me", requireAuth, async (req, res) => {
+    const user = await storage.getUser(req.user!.id);
     res.json({
       id: user.id,
       username: user.username,
@@ -170,62 +192,6 @@ export async function registerRoutes(
     }
     await storage.updatePhone(req.user!.id, phoneNumber.trim());
     res.json({ ok: true });
-  });
-
-  // --- Forgot Password / Username (SMS) ---
-  app.post("/api/auth/forgot-send", async (req, res) => {
-    const { phoneNumber, resetType } = req.body;
-    if (!phoneNumber || !resetType) {
-      res.status(400).json({ message: "phoneNumber and resetType required" }); return;
-    }
-    const user = await storage.getUserByPhone(phoneNumber.trim());
-    if (!user) {
-      res.status(404).json({ message: "No account found with that phone number." }); return;
-    }
-    const code = await storage.createVerificationCode(user.id, resetType);
-    // Send SMS via Twilio
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const fromPhone = process.env.TWILIO_PHONE_NUMBER;
-    if (!accountSid || !authToken || !fromPhone) {
-      res.status(503).json({ message: "SMS service not configured. Contact the app owner." }); return;
-    }
-    try {
-      const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
-      const smsRes = await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-        {
-          method: "POST",
-          headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ From: fromPhone, To: phoneNumber.trim(), Body: `Your LineUp verification code is: ${code}. It expires in 10 minutes.` }).toString(),
-        }
-      );
-      if (!smsRes.ok) {
-        const err = await smsRes.json().catch(() => ({}));
-        console.error("Twilio error:", err);
-        res.status(502).json({ message: "Failed to send SMS. Please try again." }); return;
-      }
-      res.json({ ok: true });
-    } catch (err) {
-      console.error("SMS send error:", err);
-      res.status(500).json({ message: "Failed to send SMS." });
-    }
-  });
-
-  app.post("/api/auth/forgot-reset", async (req, res) => {
-    const { phoneNumber, code, resetType, newValue } = req.body;
-    if (!phoneNumber || !code || !resetType || !newValue) {
-      res.status(400).json({ message: "All fields required" }); return;
-    }
-    try {
-      const success = await storage.verifyAndReset(phoneNumber.trim(), code.trim(), resetType, newValue.trim());
-      if (!success) {
-        res.status(400).json({ message: "Invalid or expired code. Please try again." }); return;
-      }
-      res.json({ ok: true });
-    } catch (err: any) {
-      res.status(409).json({ message: err.message || "Reset failed" });
-    }
   });
 
   // --- Spotify Search ---
@@ -588,9 +554,8 @@ export async function registerRoutes(
     try {
       let [opponent] = await db.select().from(users).where(eq(users.username, 'test_opponent'));
       if (!opponent) {
-        const hash = await bcrypt.hash('opponent123', 10);
         [opponent] = await db.insert(users).values({
-          username: 'test_opponent', passwordHash: hash,
+          username: 'test_opponent',
           firstName: 'Jesse', lastName: 'Maverick', location: 'Nashville, TN',
         }).returning();
       }

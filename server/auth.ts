@@ -1,45 +1,37 @@
-import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
-import bcrypt from "bcryptjs";
+import { supabaseAdmin } from "./supabase";
 import { storage } from "./storage";
 import type { Request, Response, NextFunction } from "express";
 
-passport.use(
-  new LocalStrategy(async (username, password, done) => {
-    try {
-      const user = await storage.getUserByUsername(username);
-      if (!user || !user.passwordHash) {
-        return done(null, false, { message: "Invalid username or password" });
-      }
-      const isValid = await bcrypt.compare(password, user.passwordHash);
-      if (!isValid) {
-        return done(null, false, { message: "Invalid username or password" });
-      }
-      return done(null, user);
-    } catch (err) {
-      return done(err);
-    }
-  })
-);
+// Validates the Supabase JWT from the Authorization header, then resolves the
+// local users-table row via supabase_auth_id and attaches it as req.user.
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
 
-passport.serializeUser((user: any, done) => {
-  done(null, user.id);
-});
-
-passport.deserializeUser(async (id: number, done) => {
   try {
-    const user = await storage.getUserById(id);
-    done(null, user || false);
-  } catch (err) {
-    done(err);
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data?.user) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+    const dbUser = await storage.getUserBySupabaseAuthId(data.user.id);
+    if (!dbUser) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+    req.user = {
+      id: dbUser.id,
+      username: dbUser.username,
+      firstName: dbUser.firstName,
+      lastName: dbUser.lastName,
+      location: dbUser.location,
+    };
+    next();
+  } catch {
+    res.status(401).json({ message: "Unauthorized" });
   }
-});
-
-export { passport };
-
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-  res.status(401).json({ message: "Unauthorized" });
 }

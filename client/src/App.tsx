@@ -16,6 +16,7 @@ import Buddies from "@/pages/Buddies";
 import Achievements from "@/pages/Achievements";
 import Settings from "@/pages/Settings";
 import AuthPage from "@/pages/AuthPage";
+import ResetPassword from "@/pages/ResetPassword";
 import { Loader2, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -137,6 +138,11 @@ function AppInner() {
   const [location] = useLocation();
   const { user, isLoading } = useAuth();
   const showHeader = location === "/";
+
+  // Public route: password recovery link lands here regardless of auth state
+  if (location === "/reset-password") {
+    return <ResetPassword />;
+  }
 
   if (isLoading) {
     return (

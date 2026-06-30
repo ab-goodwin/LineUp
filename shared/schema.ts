@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, varchar, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, varchar, boolean, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -7,7 +7,8 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique(),
-  passwordHash: text("password_hash"),
+  email: text("email").unique(),
+  supabaseAuthId: uuid("supabase_auth_id").unique(),
   firstName: text("first_name").default("Dancer").notNull(),
   lastName: text("last_name").default("").notNull(),
   location: text("location").default("").notNull(),
@@ -126,6 +127,7 @@ export const updateProfileSchema = z.object({
 
 export const registerSchema = z.object({
   username: z.string().min(3).max(50),
+  email: z.string().email(),
   password: z.string().min(6),
   firstName: z.string().min(1).optional(),
   lastName: z.string().optional(),
