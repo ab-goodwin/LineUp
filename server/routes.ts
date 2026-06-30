@@ -85,8 +85,12 @@ export async function registerRoutes(
       });
       if (createErr || !created?.user) {
         const msg = createErr?.message || "Registration failed";
-        const status = /already|registered|exists/i.test(msg) ? 409 : 400;
-        res.status(status).json({ message: status === 409 ? "An account with that email already exists" : msg });
+        const isConflict = /already|registered|exists/i.test(msg);
+        res.status(isConflict ? 409 : 400).json({
+          message: isConflict
+            ? "An account with that email already exists"
+            : "Registration failed. Please check your details and try again.",
+        });
         return;
       }
 

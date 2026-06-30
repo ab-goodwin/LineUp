@@ -7,14 +7,14 @@ LineUp is a personal line dancing tracking app where dancers log sessions, maint
 ## Run & Operate
 - `npm run dev` — starts Express + Vite dev server on port 5000
 - Schema changes: run `psql "$DATABASE_URL" -c "ALTER TABLE ..."` (do NOT use `drizzle-kit push` — it will try to drop `user_sessions`)
-- Required env vars: `SESSION_SECRET`, `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`
-- Optional (SMS recovery): `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
+- Required env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`
+- Supabase dashboard: password reset requires the app URL + `/reset-password` added to Authentication → URL Configuration → Redirect URLs
 
 ## Stack
 - **Frontend**: React 18 + TypeScript, Vite, Wouter, TanStack Query v5, shadcn/ui, Tailwind CSS, Framer Motion
 - **Backend**: Node.js, Express, TypeScript ESM
 - **Database**: PostgreSQL, Drizzle ORM, drizzle-zod
-- **Auth**: passport-local, bcryptjs, express-session via connect-pg-simple (`user_sessions` table)
+- **Auth**: Supabase Auth (`@supabase/supabase-js`). Supabase owns credentials (email + password + UUID); login is by username (looked up to its email server-side). Client holds the Supabase session and sends `Authorization: Bearer <access_token>`; server validates the JWT and resolves the local user by `supabase_auth_id`
 
 ## Where Things Live
 ```
