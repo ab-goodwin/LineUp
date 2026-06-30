@@ -9,7 +9,6 @@ import {
 } from "@shared/schema";
 import { ACHIEVEMENT_DEFS, type AchievementStatus } from "@shared/achievements";
 import { eq, desc, sql, and, or, ilike, ne, inArray } from "drizzle-orm";
-import bcrypt from "bcryptjs";
 
 function getISOWeek(d: Date): string {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -23,7 +22,8 @@ export interface IStorage {
   // Auth
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
-  createAuthUser(username: string, passwordHash: string, firstName?: string, lastName?: string): Promise<User>;
+  getUserBySupabaseAuthId(supabaseAuthId: string): Promise<User | undefined>;
+  createAuthUser(input: { username: string; email: string; supabaseAuthId: string; firstName?: string; lastName?: string }): Promise<User>;
 
   // User Profile (scoped to userId)
   getUser(userId: number): Promise<User>;
@@ -57,8 +57,6 @@ export interface IStorage {
   updateAvatar(userId: number, avatar: string | null): Promise<void>;
   updatePhone(userId: number, phoneNumber: string): Promise<void>;
   getUserByPhone(phone: string): Promise<User | undefined>;
-  createVerificationCode(userId: number, type: string): Promise<string>;
-  verifyAndReset(phone: string, code: string, resetType: string, newValue: string): Promise<boolean>;
 
   // Buddies
   searchUsers(query: string, excludeId: number): Promise<{ id: number; username: string; firstName: string; avatar?: string }[]>;
@@ -101,12 +99,18 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createAuthUser(username: string, passwordHash: string, firstName?: string, lastName?: string): Promise<User> {
+  async getUserBySupabaseAuthId(supabaseAuthId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.supabaseAuthId, supabaseAuthId));
+    return user;
+  }
+
+  async createAuthUser(input: { username: string; email: string; supabaseAuthId: string; firstName?: string; lastName?: string }): Promise<User> {
     const [user] = await db.insert(users).values({
-      username,
-      passwordHash,
-      firstName: firstName || "Dancer",
-      lastName: lastName || "",
+      username: input.username,
+      email: input.email,
+      supabaseAuthId: input.supabaseAuthId,
+      firstName: input.firstName || "Dancer",
+      lastName: input.lastName || "",
       location: "",
     }).returning();
     return user;
@@ -571,42 +575,6 @@ export class DatabaseStorage implements IStorage {
   async getUserByPhone(phone: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.phoneNumber, phone));
     return user;
-  }
-
-  async createVerificationCode(userId: number, type: string): Promise<string> {
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-    // Invalidate old codes for this user/type
-    await db.update(verificationCodes)
-      .set({ used: true })
-      .where(and(eq(verificationCodes.userId, userId), eq(verificationCodes.type, type)));
-    await db.insert(verificationCodes).values({ userId, code, type, expiresAt, used: false });
-    return code;
-  }
-
-  async verifyAndReset(phone: string, code: string, resetType: string, newValue: string): Promise<boolean> {
-    const user = await this.getUserByPhone(phone);
-    if (!user) return false;
-    const [record] = await db.select().from(verificationCodes).where(
-      and(
-        eq(verificationCodes.userId, user.id),
-        eq(verificationCodes.code, code),
-        eq(verificationCodes.type, resetType),
-        eq(verificationCodes.used, false)
-      )
-    );
-    if (!record || record.expiresAt < new Date()) return false;
-    // Mark used
-    await db.update(verificationCodes).set({ used: true }).where(eq(verificationCodes.id, record.id));
-    if (resetType === "password") {
-      const hash = await bcrypt.hash(newValue, 12);
-      await db.update(users).set({ passwordHash: hash }).where(eq(users.id, user.id));
-    } else if (resetType === "username") {
-      const existing = await this.getUserByUsername(newValue);
-      if (existing && existing.id !== user.id) throw new Error("Username already taken");
-      await db.update(users).set({ username: newValue }).where(eq(users.id, user.id));
-    }
-    return true;
   }
 
   async getCurrentStreak(userId: number): Promise<number> {

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 import logoShort from "@assets/LineUp_Stacked_tagline_1778180551921.png";
 
 export default function AuthPage() {
@@ -13,15 +14,20 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
+  const [showForgot, setShowForgot] = useState(false);
 
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [loginError, setLoginError] = useState("");
 
   const [registerForm, setRegisterForm] = useState({
-    firstName: "", lastName: "", username: "", password: "", confirmPassword: "",
+    firstName: "", lastName: "", username: "", email: "", password: "", confirmPassword: "",
   });
   const [registerError, setRegisterError] = useState("");
   const [registerSuccess, setRegisterSuccess] = useState(false);
+
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotError, setForgotError] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,16 +53,35 @@ export default function AuthPage() {
     setRegisterSuccess(false);
     if (!registerForm.firstName.trim()) { setRegisterError("First name is required."); return; }
     if (!registerForm.username.trim() || registerForm.username.trim().length < 3) { setRegisterError("Username must be at least 3 characters."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerForm.email.trim())) { setRegisterError("Please enter a valid email address."); return; }
     if (!registerForm.password || registerForm.password.length < 6) { setRegisterError("Password must be at least 6 characters."); return; }
     if (registerForm.password !== registerForm.confirmPassword) { setRegisterError("Passwords do not match. Please try again."); return; }
     setIsLoading(true);
     try {
-      await register(registerForm.username.trim(), registerForm.password, registerForm.firstName.trim(), registerForm.lastName.trim() || undefined);
+      await register(registerForm.username.trim(), registerForm.email.trim(), registerForm.password, registerForm.firstName.trim(), registerForm.lastName.trim() || undefined);
       setRegisterSuccess(true);
-      setRegisterForm({ firstName: "", lastName: "", username: "", password: "", confirmPassword: "" });
+      setRegisterForm({ firstName: "", lastName: "", username: "", email: "", password: "", confirmPassword: "" });
       setTimeout(() => { setActiveTab("login"); setRegisterSuccess(false); }, 1800);
     } catch (err: any) {
       setRegisterError(err.message || "Registration failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) { setForgotError("Please enter a valid email address."); return; }
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setForgotSent(true);
+    } catch (err: any) {
+      setForgotError(err.message || "Could not send reset email. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -70,6 +95,45 @@ export default function AuthPage() {
         </div>
 
         <div className="bg-card rounded-2xl border border-border shadow-lg p-6 w-full">
+          {showForgot ? (
+            /* FORGOT PASSWORD */
+            <form onSubmit={handleForgot} className="space-y-4">
+              <button
+                type="button"
+                onClick={() => { setShowForgot(false); setForgotError(""); setForgotSent(false); }}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                data-testid="button-forgot-back"
+              >
+                <ArrowLeft className="w-4 h-4" /> Back to sign in
+              </button>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Reset your password</h2>
+                <p className="text-sm text-muted-foreground mt-1">Enter your account email and we'll send you a reset link.</p>
+              </div>
+              {forgotError && (
+                <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5" data-testid="forgot-error">
+                  <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-destructive">{forgotError}</p>
+                </div>
+              )}
+              {forgotSent ? (
+                <div className="flex items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2.5" data-testid="forgot-success">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  <p className="text-sm text-green-700 font-medium">If that email exists, a reset link is on its way.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="forgot-email">Email</Label>
+                    <Input id="forgot-email" data-testid="input-forgot-email" type="email" placeholder="you@example.com" value={forgotEmail} onChange={e => { setForgotEmail(e.target.value); setForgotError(""); }} className="rounded-xl" autoComplete="email" />
+                  </div>
+                  <Button type="submit" data-testid="button-forgot-send" className="w-full rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Reset Link"}
+                  </Button>
+                </>
+              )}
+            </form>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full mb-6 bg-secondary/40 rounded-xl">
               <TabsTrigger value="login" className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm">Sign In</TabsTrigger>
@@ -96,6 +160,14 @@ export default function AuthPage() {
                 <Button type="submit" data-testid="button-login" className="w-full rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25 mt-2" disabled={isLoading}>
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign In"}
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => { setShowForgot(true); setForgotEmail(""); setForgotError(""); setForgotSent(false); }}
+                  className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+                  data-testid="button-forgot-open"
+                >
+                  Forgot password?
+                </button>
               </form>
             </TabsContent>
 
@@ -129,6 +201,10 @@ export default function AuthPage() {
                   <Input id="register-username" data-testid="input-register-username" placeholder="your_username" value={registerForm.username} onChange={e => { setRegisterForm(p => ({ ...p, username: e.target.value })); setRegisterError(""); }} className="rounded-xl" autoComplete="username" />
                 </div>
                 <div className="space-y-1.5">
+                  <Label htmlFor="register-email">Email <span className="text-destructive">*</span></Label>
+                  <Input id="register-email" data-testid="input-register-email" type="email" placeholder="you@example.com" value={registerForm.email} onChange={e => { setRegisterForm(p => ({ ...p, email: e.target.value })); setRegisterError(""); }} className="rounded-xl" autoComplete="email" />
+                </div>
+                <div className="space-y-1.5">
                   <Label htmlFor="register-password">Password <span className="text-destructive">*</span></Label>
                   <Input id="register-password" data-testid="input-register-password" type="password" placeholder="Min. 6 characters" value={registerForm.password} onChange={e => { setRegisterForm(p => ({ ...p, password: e.target.value })); setRegisterError(""); }} className="rounded-xl" autoComplete="new-password" />
                 </div>
@@ -142,6 +218,7 @@ export default function AuthPage() {
               </form>
             </TabsContent>
           </Tabs>
+          )}
         </div>
       </div>
     </div>
