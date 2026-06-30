@@ -1,9 +1,12 @@
+console.log("SERVER START FILE LOADED");
 console.log("ENV CHECK:", {
   SUPABASE_URL: process.env.SUPABASE_URL,
   SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
   DATABASE_URL: process.env.DATABASE_URL,
   PORT: process.env.PORT
 });
+console.log("FILE STARTED");
+console.log("ENV:", process.env.SUPABASE_URL);
 
 import express, { type Request, Response, NextFunction } from "express";
 // import { registerRoutes } from "./routes";
