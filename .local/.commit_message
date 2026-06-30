@@ -1,0 +1,38 @@
+Migrate authentication to Supabase Auth
+
+Replaces Passport-Local + bcrypt + express-session with Supabase Auth.
+Supabase owns credentials (email + password + UUID); the local `users`
+table stays source of truth with its integer id, linked via new
+`email` (unique) and `supabase_auth_id` (uuid, unique) columns.
+
+- Login stays username+password: server resolves username -> email, then
+  signInWithPassword; returns { user, session:{access_token,refresh_token} }.
+- Client holds the Supabase session and sends Authorization: Bearer <token>;
+  server validates the JWT via supabaseAdmin.auth.getUser and resolves the
+  local user by supabase_auth_id (token-based requireAuth, no sessions).
+- Register: admin.createUser (email_confirm:true) then local row, rolling
+  back the Supabase user if the local insert fails.
+- Password reset: resetPasswordForEmail -> new /reset-password page ->
+  updateUser({password}). Route is public (rendered before the auth gate).
+- server/supabase.ts admin client passes `ws` as realtime transport
+  (Node 20 has no native WebSocket).
+
+Security fix from code review: the API request logger now redacts
+sensitive fields (access_token/refresh_token/password/etc) so login
+tokens no longer leak into server logs; register errors are sanitized.
+
+Code-review fix (bearer propagation): a global fetch interceptor
+(client/src/lib/authFetch.ts, installed in main.tsx) attaches the
+Supabase access token to every same-origin /api request, so all
+existing hooks/pages using raw fetch keep working under token auth.
+Verified all protected endpoints return 200 with token / 401 without.
+
+Clean slate per user: all app tables truncated, no legacy/bcrypt fallback.
+Removed deps: passport, passport-local, bcryptjs, connect-pg-simple,
+express-session (+ their @types). replit.md updated (auth + env vars).
+
+Note: user must add <app-url>/reset-password to Supabase Authentication
+-> URL Configuration -> Redirect URLs for password reset to work.
+
+Pre-existing unrelated TS errors remain in server/storage.ts (song
+selects missing isFavorite; Set/Map iteration target) — not in scope.

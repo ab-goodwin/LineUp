@@ -1,0 +1,26 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0K1:25:15 AM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+1:25:25 AM [express] POST /api/register 201 in 991ms :: {"id":3,"username":"t_1782782724","firstName":"Smoke","lastName":"Test","location":""}
+1:25:25 AM [express] POST /api/login 200 in 201ms :: {"user":{"id":3,"username":"t_1782782724","firstName":"Smoke","lastName":"Test","location":""},"session":{"access_token":"[REDACTED]","refresh_token":"[REDACTED]"}}
+1:25:25 AM [express] GET /api/me 200 in 99ms :: {"id":3,"username":"t_1782782724","firstName":"Smoke","lastName":"Test","location":""}
+1:25:25 AM [express] GET /api/me 401 in 0ms :: {"message":"Unauthorized"}
+1:25:25 AM [express] GET /api/songs 200 in 100ms :: []
+1:25:26 AM [express] GET /api/songs 401 in 1ms :: {"message":"Unauthorized"}
+1:25:26 AM [express] GET /api/sessions 200 in 101ms :: []
+1:25:26 AM [express] GET /api/sessions 401 in 1ms :: {"message":"Unauthorized"}
+1:25:26 AM [express] GET /api/stats 200 in 101ms :: {"totalDances":0,"longestStreak":0,"totalDaysDancing":0,"uniqueLocations":0,"mostFrequentLocation":"N/A","mostFrequentLocationCount":0,"mostFrequentSongName":"N/A","mostFrequentDance":"N/A","mostFrequentDanceCount":0,"dancesThisMonth":0,"mostRecentDance":"N/A","mostRecentStyle":"","mostDancedDay":null,"avgDancesPerSession":0,"top3Dances":[],"top3SwingSongs":[],"lineDancesThisYear":0,"swingDancesThisYear":0,"totalDancesThisYear":0,"lineDancesThisMonth":0,"swingDancesThisMonth":0,"totalLineDancesAllTime":0,"totalSwingDancesAllTime":0,"currentFavorite":"N/A"}
+1:25:26 AM [express] GET /api/stats 401 in 1ms :: {"message":"Unauthorized"}
+1:25:26 AM [express] GET /api/buddies 200 in 102ms :: []
+1:25:26 AM [express] GET /api/buddies 401 in 0ms :: {"message":"Unauthorized"}
+1:25:26 AM [express] GET /api/locations 200 in 99ms :: []
+1:25:26 AM [express] GET /api/locations 401 in 0ms :: {"message":"Unauthorized"}
+1:25:26 AM [express] GET /api/danceoffs 200 in 102ms :: []
+1:25:27 AM [express] GET /api/danceoffs 401 in 0ms :: {"message":"Unauthorized"}
+1:25:27 AM [express] GET /api/spotify/search 200 in 505ms :: [{"name":"Testimony","artist":"Terrian","albumArt":"https://i.scdn.co/image/ab67616d000048510b8a88d6f88d595f106cae91"},{"name":"Test & Recognise (Flume Re-work)","artist":"Seekae, Flume","albumArt":"https://i.scdn.co/image/ab67616d00004851b32c686873f16b3adb71f4ac"},{"name":"Test Drive - From How To Train Your Dragon Music From The Motion Picture","artist":"John Powell","albumArt":"https://i.scdn.co/image/ab67616d00004851164edf20ddc765dff82d95cd"},{"name":"TESTIFY","artist":"NEEDTOBREATHE","albumArt":"https://i.scdn.co/image/ab67616d000048512c951214760748a53b3e89f2"},{"name":"Test Of Time","artist":"OSA","albumArt":"https://i.scdn.co/image/ab67616d00004851fd9e512074e5aca7069cc7da"},{"name":"Testify","artist":"Rage Against The Machine","albumArt":"https://i.scdn.co/image/ab67616d000048513c2579a4f8cacd5b95b8fa68"},{"name":"TEST ME (feat. JID)","artist":"Kenny Mason, JID","albumArt":"https://i.scdn.co/image/ab67616d0000485108d663da676a43587c4c239c"},{"name":"Testify To Love","artist":"Ty Herndon, Michael Passons, Melissa Greene","albumArt":"https://i.scdn.co/image/ab67616d0000485108dfc8474d4f23451fb3455c"}]
+1:25:27 AM [express] GET /api/spotify/search 401 in 0ms :: {"message":"Unauthorized"}

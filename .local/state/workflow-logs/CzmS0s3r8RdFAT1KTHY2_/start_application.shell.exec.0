@@ -1,0 +1,14 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+[1G[0K[2m1:17:46 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m Re-optimizing dependencies because lockfile has changed
+1:17:46 AM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+1:18:09 AM [express] POST /api/register 201 in 1250ms :: {"id":1,"username":"t_1782782288","firstName":"Test","lastName":"User","location":""}
+1:18:09 AM [express] POST /api/login 200 in 233ms :: {"user":{"id":1,"username":"t_1782782288","firstName":"Test","lastName":"User","location":""},"session":{"access_token":"eyJhbGciOiJFUzI1NiIsImtpZCI6IjQ4Yjk5MDY1LWIxYjEtNDE1My1iNDY0LTI1YmJkYzdjNjI5ZSIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2lodGZpdWRucHZoZmdrYWhjcHFnLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJiYTkzOTI5MC0xMjdmLTQwZmUtYWQxYi1kMjQxNmQwZWQ4ZGUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzgyNzg1ODg5LCJpYXQiOjE3ODI3ODIyODksImVtYWlsIjoidF8xNzgyNzgyMjg4QGV4YW1wbGUuY29tIiwicGhvbmUiOiIiLCJhcHBfbWV0YWRhdGEiOnsicHJvdmlkZXIiOiJlbWFpbCIsInByb3ZpZGVycyI6WyJlbWFpbCJdfSwidXNlcl9tZXRhZGF0YSI6eyJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwidXNlcm5hbWUiOiJ0XzE3ODI3ODIyODgifSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc4Mjc4MjI4OX1dLCJzZXNzaW9uX2lkIjoiMTAzNTg0MmQtNjRjNC00OGNkLWIwMDYtOGU5ZDA5M2RhN2MwIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.8lapC64fY9xhhoXwETim7Fl8WDrkfa48iA0KoxBlO00RT1Q5vC6V0pAWZ_MNSH98yTgkWwl56WqiTvUQnz46pQ","refresh_token":"3zqdsnhj2jrq"}}
+1:18:09 AM [express] GET /api/me 401 in 1ms :: {"message":"Unauthorized"}
+1:18:10 AM [express] GET /api/me 200 in 223ms :: {"id":1,"username":"t_1782782288","firstName":"Test","lastName":"User","location":""}
+1:18:10 AM [express] POST /api/login 401 in 183ms :: {"message":"Invalid username or password"}
