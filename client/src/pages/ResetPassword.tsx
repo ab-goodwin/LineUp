@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { FadeImg } from "@/components/FadeImg";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,7 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm flex flex-col items-center">
         <div className="mb-8 flex justify-center w-full">
-          <img src={logoShort} alt="LineUp" className="h-56 object-contain" />
+          <FadeImg src={logoShort} alt="LineUp" loading="eager" className="h-56 object-contain" />
         </div>
         <div className="bg-card rounded-2xl border border-border shadow-lg p-6 w-full">
           <h2 className="text-lg font-semibold text-foreground mb-1">Set a new password</h2>

@@ -15,6 +15,8 @@ export interface BuddyPublicStats {
   lineDanceCount: number;
   swingDanceCount: number;
   currentFavoriteSong: string | null;
+  totalSessions: number;
+  topLocation: string;
 }
 
 export interface BuddyRequest {

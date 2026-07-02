@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { FadeImg } from "@/components/FadeImg";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Music, Loader2, X } from "lucide-react";
@@ -133,7 +134,7 @@ export function SpotifySearch({ onSelect, placeholder = "Search Spotify for a so
               className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-secondary/60 transition-colors text-left first:rounded-t-xl last:rounded-b-xl"
             >
               {track.albumArt ? (
-                <img src={track.albumArt} alt={track.name} className="w-9 h-9 rounded object-cover flex-shrink-0" />
+                <FadeImg src={track.albumArt} alt="" className="w-9 h-9 rounded object-cover flex-shrink-0" />
               ) : (
                 <div className="w-9 h-9 rounded bg-secondary flex items-center justify-center flex-shrink-0">
                   <Music className="w-4 h-4 text-muted-foreground" />
