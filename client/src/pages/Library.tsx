@@ -267,7 +267,7 @@ function SongCard({ song, sessions, onEdit, onDelete, sortBy, onFavorite }: {
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="font-bold text-lg truncate font-display text-foreground">
             {title}
-            {titleArtist && <span className="font-normal text-muted-foreground">{titleArtist}</span>}
+            {titleArtist && <span className="font-bold text-muted-foreground" style={{ fontFamily: "var(--font-body)" }}>{titleArtist}</span>}
           </h3>
           <StyleTag style={song.style} styleCustom={song.styleCustom} />
           {count > 0 && (
@@ -344,7 +344,7 @@ export default function Library() {
   return (
     <div className="container px-4 pb-24 pt-8 mx-auto max-w-4xl">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
-        <h1 className="text-3xl font-display font-bold">Song Library</h1>
+        <h1 className="text-3xl font-display font-bold">Dance Library</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" className="rounded-xl border-2" onClick={() => setIsLocationsDialogOpen(true)} data-testid="button-manage-locations">
             <MapPin className="w-4 h-4 mr-2" />Locations

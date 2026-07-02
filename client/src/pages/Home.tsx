@@ -26,55 +26,52 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-const ALL_STAT_KEYS = [
-  { key: "totalDances",         label: "Total Dances" },
-  { key: "longestStreak",       label: "Longest Streak" },
-  { key: "totalDaysDancing",       label: "Days Dancing" },
-  { key: "uniqueLocations",        label: "Locations" },
-  { key: "dancesThisMonth",        label: "Dances This Month" },
-  { key: "avgDancesPerSession",    label: "Avg Dances per Session" },
-  { key: "mostDancedDay",          label: "Most Danced Day" },
-  { key: "mostRecentDance",        label: "Most Recently Added" },
-  { key: "topLocation",            label: "Favorite Location" },
-  { key: "top3Dances",             label: "Top 3 Line Dances" },
-  { key: "top3SwingSongs",         label: "Top 3 Swing Songs" },
-  { key: "favoriteDance",          label: "Most Danced" },
-  { key: "danceMix",               label: "Your Dance Mix" },
-  { key: "favoriteDanceStyle",     label: "Favorite Dance Style" },
-  { key: "totalLineDancesAllTime", label: "Total Line Dances (All Time)" },
-  { key: "totalSwingDancesAllTime", label: "Total Swing Dances (All Time)" },
-  { key: "totalDancesThisYear",    label: "Dances This Year" },
-  { key: "lineDancesThisYear",     label: "Line Dances (This Year)" },
-  { key: "swingDancesThisYear",    label: "Swing Dances (This Year)" },
-  { key: "lineDancesThisMonth",    label: "Line Dances (This Month)" },
-  { key: "swingDancesThisMonth",   label: "Swing Dances (This Month)" },
-  { key: "currentFavorite",        label: "Current Favorite" },
+type CardType = "hero" | "quickStat" | "feature" | "chart";
+
+const ALL_STAT_KEYS: { key: string; label: string; description: string; type: CardType }[] = [
+  { key: "monthlyRecap",           label: "This Month's LineUp",   description: "Monthly dances, days dancing, locations, and average/session.", type: "hero" },
+  { key: "longestStreak",          label: "Longest Streak",        description: "Your longest dancing streak.", type: "quickStat" },
+  { key: "totalDances",            label: "Total Dances",          description: "All-time dance count.", type: "quickStat" },
+  { key: "mostRecentDance",        label: "Recently Added",        description: "The newest dance in your library.", type: "feature" },
+  { key: "mostDancedDay",          label: "Best Night",            description: "Your most active dance day.", type: "feature" },
+  { key: "topLocation",            label: "Top Location",          description: "Where you dance the most.", type: "feature" },
+  { key: "danceMix",               label: "Dance Mix",             description: "Breakdown of line vs swing dances.", type: "chart" },
+  { key: "currentFavorite",        label: "Current Favorite",      description: "The song you're loving right now.", type: "feature" },
+  { key: "favoriteDanceStyle",     label: "Favorite Style",        description: "The dance style you do most.", type: "feature" },
+  { key: "totalDaysDancing",       label: "Days Dancing",          description: "Total days you've danced.", type: "quickStat" },
+  { key: "uniqueLocations",        label: "Locations",             description: "Number of places you've danced.", type: "quickStat" },
+  { key: "avgDancesPerSession",    label: "Avg / Session",         description: "Average dances per session.", type: "quickStat" },
+  { key: "totalLineDancesAllTime", label: "Total Line Dances",     description: "All-time line dance count.", type: "quickStat" },
+  { key: "totalSwingDancesAllTime", label: "Total Swing Dances",   description: "All-time swing dance count.", type: "quickStat" },
+  { key: "totalDancesThisYear",    label: "Dances This Year",      description: "Dances logged so far this year.", type: "quickStat" },
+  { key: "lineDancesThisYear",     label: "Line Dances (This Year)", description: "Line dances logged this year.", type: "quickStat" },
+  { key: "swingDancesThisYear",    label: "Swing (This Year)",     description: "Swing dances logged this year.", type: "quickStat" },
+  { key: "lineDancesThisMonth",    label: "Line Dances (This Month)", description: "Line dances logged this month.", type: "quickStat" },
+  { key: "swingDancesThisMonth",   label: "Swing (This Month)",    description: "Swing dances logged this month.", type: "quickStat" },
+  { key: "top3Dances",             label: "Top 3 Line Dances",     description: "Your 3 most-danced line dances.", type: "feature" },
+  { key: "top3SwingSongs",         label: "Top 3 Swing Songs",     description: "Your 3 most-danced swing songs.", type: "feature" },
 ];
 
+const DEFAULT_VISIBLE = new Set([
+  "monthlyRecap", "longestStreak", "totalDances", "mostRecentDance",
+  "mostDancedDay", "topLocation", "danceMix", "currentFavorite", "favoriteDanceStyle",
+]);
 
-const CARD_COLORS: Record<string, string> = {
-  totalDances:         "bg-[#FDEBD5] dark:bg-[#443B32] border-[#ECC9A8] dark:border-[#5C5242] hover:border-[#D9A87A] dark:hover:border-[#6C6252]",
-  longestStreak:       "bg-[#FDD9D5] dark:bg-[#423537] border-[#F0B5AE] dark:border-[#5A4A4E] hover:border-[#DE9088] dark:hover:border-[#6A5A5E]",
-  totalDaysDancing:    "bg-[#D5EDD6] dark:bg-[#324036] border-[#AACBAB] dark:border-[#4A5A4A] hover:border-[#82AA83] dark:hover:border-[#5A6A5A]",
-  uniqueLocations:     "bg-[#D5E5F5] dark:bg-[#333C4A] border-[#A8C4E0] dark:border-[#4A5264] hover:border-[#7BA3C8] dark:hover:border-[#5A6274]",
-  dancesThisMonth:     "bg-[#FBF0D0] dark:bg-[#423E30] border-[#E8D398] dark:border-[#5A5440] hover:border-[#CDB66A] dark:hover:border-[#6A6450]",
-  avgDancesPerSession: "bg-[#EAD8F8] dark:bg-[#3A334A] border-[#CCACEC] dark:border-[#504564] hover:border-[#A87ED8] dark:hover:border-[#605574]",
-  mostDancedDay:       "bg-[#F8D8E8] dark:bg-[#423537] border-[#ECAED0] dark:border-[#5A4A4E] hover:border-[#D882AF] dark:hover:border-[#6A5A5E]",
-  mostRecentDance:     "bg-[#D5EEE8] dark:bg-[#253F3F] border-[#A5D4CA] dark:border-[#3A5858] hover:border-[#6FBAA8] dark:hover:border-[#4A6868]",
-  topLocation:         "bg-[#FFF5D5] dark:bg-[#423E30] border-[#EDDC98] dark:border-[#5A5440] hover:border-[#D4C064] dark:hover:border-[#6A6450]",
-  top3Dances:          "bg-[#DCE0F8] dark:bg-[#333C4A] border-[#AABAE8] dark:border-[#4A5264] hover:border-[#7A91D4] dark:hover:border-[#5A6274]",
-  top3SwingSongs:      "bg-[#D5F0F8] dark:bg-[#253F3F] border-[#A5D4E8] dark:border-[#3A5858] hover:border-[#6FBAD4] dark:hover:border-[#4A6868]",
-  favoriteDance:       "bg-[#FDE8C0] dark:bg-[#423E30] border-[#EDCA88] dark:border-[#5A5440] hover:border-[#D4A84E] dark:hover:border-[#6A6450]",
-  danceMix:            "bg-[#F5ECD8] dark:bg-[#443B32] border-[#DCCEB0] dark:border-[#5C5242] hover:border-[#C0AB80] dark:hover:border-[#6C6252]",
-  favoriteDanceStyle:  "bg-[#E8D5C8] dark:bg-[#45313A] border-[#CAAED0] dark:border-[#5E4550] hover:border-[#D88098] dark:hover:border-[#6E5560]",
-  totalLineDancesAllTime:  "bg-[#FDEBD5] dark:bg-[#443B32] border-[#ECC9A8] dark:border-[#5C5242] hover:border-[#D9A87A] dark:hover:border-[#6C6252]",
-  totalSwingDancesAllTime: "bg-[#D5E5F5] dark:bg-[#333C4A] border-[#A8C4E0] dark:border-[#4A5264] hover:border-[#7BA3C8] dark:hover:border-[#5A6274]",
-  totalDancesThisYear:     "bg-[#FBF0D0] dark:bg-[#423E30] border-[#E8D398] dark:border-[#5A5440] hover:border-[#CDB66A] dark:hover:border-[#6A6450]",
-  lineDancesThisYear:      "bg-[#D5EDD6] dark:bg-[#324036] border-[#AACBAB] dark:border-[#4A5A4A] hover:border-[#82AA83] dark:hover:border-[#5A6A5A]",
-  swingDancesThisYear:     "bg-[#D5E5F5] dark:bg-[#333C4A] border-[#A8C4E0] dark:border-[#4A5264] hover:border-[#7BA3C8] dark:hover:border-[#5A6274]",
-  lineDancesThisMonth:     "bg-[#D5EDD6] dark:bg-[#324036] border-[#AACBAB] dark:border-[#4A5A4A] hover:border-[#82AA83] dark:hover:border-[#5A6A5A]",
-  swingDancesThisMonth:    "bg-[#D5E5F5] dark:bg-[#333C4A] border-[#A8C4E0] dark:border-[#4A5264] hover:border-[#7BA3C8] dark:hover:border-[#5A6274]",
-  currentFavorite:         "bg-[#FDE8C0] dark:bg-[#423E30] border-[#EDCA88] dark:border-[#5A5440] hover:border-[#D4A84E] dark:hover:border-[#6A6450]",
+const DEFAULT_ORDER = [
+  "monthlyRecap", "longestStreak", "totalDances", "mostRecentDance",
+  "mostDancedDay", "topLocation", "danceMix", "currentFavorite", "favoriteDanceStyle",
+  "totalDaysDancing", "uniqueLocations", "avgDancesPerSession",
+  "totalLineDancesAllTime", "totalSwingDancesAllTime", "totalDancesThisYear",
+  "lineDancesThisYear", "swingDancesThisYear", "lineDancesThisMonth",
+  "swingDancesThisMonth", "top3Dances", "top3SwingSongs",
+];
+
+const TYPE_LABELS: Record<CardType, string> = {
+  hero: "Hero", quickStat: "Quick Stat", feature: "Feature", chart: "Chart",
+};
+
+const TYPE_GROUP_LABELS: Record<CardType, string> = {
+  hero: "Recap Cards", quickStat: "Quick Stats", feature: "Highlights", chart: "Charts",
 };
 
 function useHomepageStats() {
@@ -116,10 +113,13 @@ function useStyleDistribution() {
 }
 
 // Parse stored format: "!key" = explicitly hidden, "key" = visible
-// New keys not in saved list are appended as visible
+// New keys not in saved list are appended using their sensible default visibility
 function parseHomepagePrefs(saved: string[] | null): { order: string[]; hidden: Set<string> } {
   const allKeys = ALL_STAT_KEYS.map(s => s.key);
-  if (!saved) return { order: allKeys, hidden: new Set() };
+  if (!saved) {
+    const hidden = new Set(allKeys.filter(k => !DEFAULT_VISIBLE.has(k)));
+    return { order: [...DEFAULT_ORDER], hidden };
+  }
 
   const hidden = new Set<string>();
   const order: string[] = [];
@@ -132,7 +132,13 @@ function parseHomepagePrefs(saved: string[] | null): { order: string[]; hidden: 
       if (allKeys.includes(entry)) order.push(entry);
     }
   }
-  // Append truly new keys (added after user last saved) as visible
+  // Append truly new keys (added after user last saved) using their sensible default visibility
+  for (const key of DEFAULT_ORDER) {
+    if (!order.includes(key)) {
+      order.push(key);
+      if (!DEFAULT_VISIBLE.has(key)) hidden.add(key);
+    }
+  }
   for (const key of allKeys) {
     if (!order.includes(key)) order.push(key);
   }
@@ -144,15 +150,22 @@ function getEnabledStats(saved: string[] | null): string[] {
   return order.filter(k => !hidden.has(k));
 }
 
+const TYPE_BADGE_CLASSES: Record<CardType, string> = {
+  hero: "bg-[var(--accent-orange)]/15 text-[var(--accent-orange)]",
+  quickStat: "bg-secondary/60 text-muted-foreground",
+  feature: "bg-[var(--accent-gold)]/15 text-[var(--accent-gold)]",
+  chart: "bg-[var(--accent-leather)]/15 text-[var(--accent-leather)]",
+};
+
 function SortableStatItem({
-  id, label, isHidden, onToggle,
-}: { id: string; label: string; isHidden: boolean; onToggle: () => void }) {
+  id, label, description, type, isHidden, onToggle,
+}: { id: string; label: string; description: string; type: CardType; isHidden: boolean; onToggle: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-center justify-between rounded-xl px-3 py-2.5 select-none transition-colors ${
+      className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 select-none transition-colors ${
         isDragging ? "opacity-40 z-50" : isHidden ? "opacity-50 bg-secondary/20" : "opacity-100 bg-secondary/40"
       }`}
     >
@@ -165,7 +178,15 @@ function SortableStatItem({
         >
           <GripVertical className="w-4 h-4 text-muted-foreground/50" />
         </button>
-        <span className={`text-sm font-medium truncate ${isHidden ? "text-muted-foreground" : ""}`}>{label}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`text-sm font-medium truncate ${isHidden ? "text-muted-foreground" : ""}`}>{label}</span>
+            <span className={`text-[9px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${TYPE_BADGE_CLASSES[type]}`}>
+              {TYPE_LABELS[type]}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground truncate">{description}</p>
+        </div>
       </div>
       <Switch checked={!isHidden} onCheckedChange={onToggle} className="shrink-0 ml-2" />
     </div>
@@ -229,17 +250,27 @@ function EditHomepageDialog({ open, onClose }: { open: boolean; onClose: () => v
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={order} strategy={verticalListSortingStrategy}>
             <div className="space-y-1 max-h-[26rem] overflow-y-auto pr-1">
-              {order.map(key => {
+              {order.map((key, idx) => {
                 const def = ALL_STAT_KEYS.find(s => s.key === key);
                 if (!def) return null;
+                const prevDef = idx > 0 ? ALL_STAT_KEYS.find(s => s.key === order[idx - 1]) : null;
+                const showHeader = !prevDef || prevDef.type !== def.type;
                 return (
-                  <SortableStatItem
-                    key={key}
-                    id={key}
-                    label={def.label}
-                    isHidden={hiddenSet.has(key)}
-                    onToggle={() => toggle(key)}
-                  />
+                  <div key={key}>
+                    {showHeader && (
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 px-3 pt-3 pb-1 first:pt-0">
+                        {TYPE_GROUP_LABELS[def.type]}
+                      </p>
+                    )}
+                    <SortableStatItem
+                      id={key}
+                      label={def.label}
+                      description={def.description}
+                      type={def.type}
+                      isHidden={hiddenSet.has(key)}
+                      onToggle={() => toggle(key)}
+                    />
+                  </div>
                 );
               })}
             </div>
@@ -321,153 +352,220 @@ export default function Home() {
     }));
   const favStyle = pieData.reduce<typeof pieData[0] | null>((best, cur) => !best || cur.count > best.count ? cur : best, null);
 
-  const cardColor = (key: string) => CARD_COLORS[key] ?? "bg-secondary/40 border-border";
+  // Default (quick stat) card look — neutral warm surface, orange accent icon
+  const quickStatClass = "bg-[var(--card-default)] border-[var(--card-border)] text-[var(--text-main)]";
+  const featureClass = "bg-[var(--card-secondary)] border-[var(--card-border)]";
+  const sageFeatureClass = "bg-[var(--card-sage)] border-[var(--card-border)]";
 
-  // --- Unified card renderer (all cards go in the 2-col grid) ---
+  // --- Card renderer — different visual treatment per card `type` ---
   const renderCard = (key: string) => {
     switch (key) {
+      case "monthlyRecap":
+        return (
+          <div className="rounded-2xl border p-6 transition-all duration-300 hover:shadow-md"
+            style={{ background: "var(--card-hero)", borderColor: "var(--border-medium)" }}>
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="w-4 h-4" style={{ color: "var(--accent-orange)" }} />
+              <span className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                This Month's LineUp
+              </span>
+            </div>
+            <div className="text-5xl md:text-6xl font-display font-bold leading-none mt-2" style={{ color: "var(--text-main)" }}>
+              {stats?.dancesThisMonth ?? 0}
+            </div>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>dances this month</p>
+            <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t" style={{ borderColor: "var(--border-medium)" }}>
+              <div>
+                <p className="text-lg font-display font-bold" style={{ color: "var(--text-main)" }}>{stats?.totalDaysDancing ?? 0}</p>
+                <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Days Dancing</p>
+              </div>
+              <div>
+                <p className="text-lg font-display font-bold" style={{ color: "var(--text-main)" }}>{stats?.uniqueLocations ?? 0}</p>
+                <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Locations</p>
+              </div>
+              <div>
+                <p className="text-lg font-display font-bold" style={{ color: "var(--text-main)" }}>{stats?.avgDancesPerSession ?? 0}</p>
+                <p className="text-[11px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>Avg/Session</p>
+              </div>
+            </div>
+          </div>
+        );
+
+      // --- Quick stat cards: compact, share the same neutral warm surface ---
       case "totalDances":
-        return <StatCard label="Total Dances (All Time)" value={stats?.totalDances ?? 0} icon={Music2} className={cardColor(key)} />;
+        return <StatCard label="Total Dances (All Time)" value={stats?.totalDances ?? 0} icon={Music2} className={quickStatClass} />;
       case "longestStreak":
-        return <StatCard label="Longest Streak" value={`${stats?.longestStreak ?? 0} Days`} icon={Flame} className={cardColor(key)} />;
+        return <StatCard label="Longest Streak" value={`${stats?.longestStreak ?? 0} Days`} icon={Flame} className={quickStatClass} />;
       case "totalDaysDancing":
-        return <StatCard label="Days Dancing" value={stats?.totalDaysDancing ?? 0} icon={CalendarDays} className={cardColor(key)} />;
+        return <StatCard label="Days Dancing" value={stats?.totalDaysDancing ?? 0} icon={CalendarDays} className={quickStatClass} />;
       case "uniqueLocations":
-        return <StatCard label="Locations" value={stats?.uniqueLocations ?? 0} icon={MapPin} className={cardColor(key)} />;
-      case "dancesThisMonth":
-        return <StatCard label="Dances This Month" value={stats?.dancesThisMonth ?? 0} icon={TrendingUp} className={cardColor(key)} />;
+        return <StatCard label="Locations" value={stats?.uniqueLocations ?? 0} icon={MapPin} className={quickStatClass} />;
       case "avgDancesPerSession":
-        return <StatCard label="Avg / Session" value={stats?.avgDancesPerSession ?? 0} icon={Zap} className={cardColor(key)} />;
-      case "mostDancedDay":
-        return <StatCard label="Most Danced Day" value={mostDancedDayLabel} icon={BarChart2} className={cardColor(key)} />;
+        return <StatCard label="Avg / Session" value={stats?.avgDancesPerSession ?? 0} icon={Zap} className={quickStatClass} />;
+      case "totalLineDancesAllTime":
+        return <StatCard label="Total Line Dances" value={stats?.totalLineDancesAllTime ?? 0} icon={Music2} className={quickStatClass} />;
+      case "totalSwingDancesAllTime":
+        return <StatCard label="Total Swing Dances" value={stats?.totalSwingDancesAllTime ?? 0} icon={Sparkles} className={quickStatClass} />;
+      case "totalDancesThisYear":
+        return <StatCard label="Dances This Year" value={stats?.totalDancesThisYear ?? 0} icon={CalendarDays} className={quickStatClass} />;
+      case "lineDancesThisYear":
+        return <StatCard label="Line Dances (This Year)" value={stats?.lineDancesThisYear ?? 0} icon={CalendarDays} className={quickStatClass} />;
+      case "swingDancesThisYear":
+        return <StatCard label="Swing (This Year)" value={stats?.swingDancesThisYear ?? 0} icon={CalendarDays} className={quickStatClass} />;
+      case "lineDancesThisMonth":
+        return <StatCard label="Line Dances (This Month)" value={stats?.lineDancesThisMonth ?? 0} icon={TrendingUp} className={quickStatClass} />;
+      case "swingDancesThisMonth":
+        return <StatCard label="Swing (This Month)" value={stats?.swingDancesThisMonth ?? 0} icon={TrendingUp} className={quickStatClass} />;
+
+      // --- Feature cards: full-width, richer layout ---
       case "mostRecentDance":
         return (
-          <StatCard
-            label="Recently Added"
-            value={stats?.mostRecentDance || "—"}
-            description={stats?.mostRecentStyle && stats.mostRecentStyle !== "LINE"
-              ? STYLE_INFO[stats.mostRecentStyle as StyleOption]?.short
-              : stats?.mostRecentStyle === "LINE" ? "Line Dance" : undefined}
-            icon={Clock} className={cardColor(key)} />
+          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md flex items-center gap-4 ${featureClass}`}>
+            <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--accent-orange)" }}>
+              <Clock className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Recently Added</p>
+              <p className="text-xl font-display font-bold truncate" style={{ color: "var(--text-main)" }}>{stats?.mostRecentDance || "—"}</p>
+              {(stats?.mostRecentStyle) && (
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  {stats.mostRecentStyle === "LINE" ? "Line Dance" : STYLE_INFO[stats.mostRecentStyle as StyleOption]?.short}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      case "mostDancedDay":
+        return (
+          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md flex items-center gap-4 ${featureClass}`}>
+            <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--accent-orange)" }}>
+              <BarChart2 className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Best Night</p>
+              <p className="text-xl font-display font-bold truncate" style={{ color: "var(--text-main)" }}>{mostDancedDayLabel}</p>
+            </div>
+          </div>
         );
       case "topLocation":
         return (
-          <StatCard label="Top Location" value={stats?.mostFrequentLocation || "—"}
-            description={stats?.mostFrequentLocationCount ? `${stats.mostFrequentLocationCount} visits` : undefined}
-            icon={Trophy} className={cardColor(key)} />
+          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md flex items-center gap-4 ${sageFeatureClass}`}>
+            <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--accent-orange)" }}>
+              <MapPin className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Top Location</p>
+              <p className="text-xl font-display font-bold truncate" style={{ color: "var(--text-main)" }}>{stats?.mostFrequentLocation || "—"}</p>
+              {stats?.mostFrequentLocationCount ? (
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>{stats.mostFrequentLocationCount} visits</p>
+              ) : null}
+            </div>
+          </div>
         );
-      case "favoriteDance":
+      case "currentFavorite":
         return (
-          <StatCard
-            label="Most Danced"
-            value={
-              stats?.mostFrequentSongName && stats.mostFrequentSongName !== "N/A"
-                ? stats.mostFrequentSongName
-                : stats?.mostFrequentDance && stats.mostFrequentDance !== "N/A"
-                  ? stats.mostFrequentDance
-                  : "—"
-            }
-            description={stats?.mostFrequentDance && stats.mostFrequentDance !== "N/A" && stats.mostFrequentDanceCount
-              ? `${stats.mostFrequentDance} · ${stats.mostFrequentDanceCount}x`
-              : undefined}
-            icon={Star} className={cardColor(key)} />
+          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md flex items-center gap-4 ${featureClass}`}>
+            <div className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "var(--accent-orange)" }}>
+              <Heart className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Current Favorite</p>
+              <p className="text-xl font-display font-bold truncate" style={{ color: "var(--text-main)" }}>
+                {stats?.currentFavorite && stats.currentFavorite !== "N/A" ? stats.currentFavorite : "—"}
+              </p>
+            </div>
+          </div>
         );
       case "favoriteDanceStyle":
         return (
-          <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col justify-between ${cardColor(key)}`}>
-            <div className="flex items-start justify-between mb-2">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a] dark:text-foreground/70">Favorite Style</span>
-              <Heart className="w-4 h-4 text-primary/50" />
+          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md ${featureClass}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Favorite Style</span>
+              <Star className="w-4 h-4" style={{ color: "var(--accent-orange)" }} />
             </div>
             {favStyle ? (() => {
               const info = STYLE_INFO[favStyle.style as StyleOption];
               return (
                 <div>
-                  <p className="text-2xl font-display font-bold leading-tight" style={{ color: info?.color }}>
+                  <p className="text-2xl font-display font-bold leading-tight" style={{ color: info?.color ?? "var(--text-main)" }}>
                     {info?.label ?? favStyle.style}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">{favStyle.pct}% of dances</p>
+                  <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{favStyle.pct}% of dances</p>
                 </div>
               );
             })() : (
-              <p className="text-2xl font-display font-bold text-foreground">—</p>
+              <p className="text-2xl font-display font-bold" style={{ color: "var(--text-main)" }}>—</p>
             )}
           </div>
         );
-
-      // List cards — compact for half-width
       case "top3Dances":
         return (
-          <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col ${cardColor(key)}`}>
-            <div className="flex items-start justify-between mb-2">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a] dark:text-foreground/70">Top 3 Line</span>
-              <Footprints className="w-4 h-4 text-primary/50" />
+          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md ${featureClass}`}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Top 3 Line Dances</span>
+              <Footprints className="w-4 h-4" style={{ color: "var(--accent-orange)" }} />
             </div>
             {stats?.top3Dances?.length ? (
-              <div className="space-y-1.5 flex-1">
+              <div className="space-y-2">
                 {stats.top3Dances.map((dance, idx) => (
-                  <div key={`${dance.danceName}-${idx}`} className="flex items-center gap-1.5">
-                    {idx === 0 && <Trophy className="w-3 h-3 text-yellow-500 flex-shrink-0" />}
-                    {idx === 1 && <Trophy className="w-3 h-3 text-slate-400 flex-shrink-0" />}
-                    {idx === 2 && <Trophy className="w-3 h-3 text-amber-600 flex-shrink-0" />}
-                    <span className="font-semibold text-foreground font-display text-sm leading-tight truncate flex-1">{dance.danceName}</span>
-                    <span className="text-xs text-muted-foreground flex-shrink-0">{dance.count}x</span>
+                  <div key={`${dance.danceName}-${idx}`} className="flex items-center gap-2">
+                    <span className="text-xs font-bold w-4" style={{ color: "var(--accent-orange)" }}>{idx + 1}.</span>
+                    <span className="font-semibold font-display text-sm leading-tight truncate flex-1" style={{ color: "var(--text-main)" }}>{dance.danceName}</span>
+                    <span className="text-xs flex-shrink-0" style={{ color: "var(--text-muted)" }}>{dance.count}x</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-2xl font-display font-bold text-foreground">—</p>
+              <p className="text-2xl font-display font-bold" style={{ color: "var(--text-main)" }}>—</p>
             )}
           </div>
         );
       case "top3SwingSongs":
         return (
-          <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md hover:-translate-y-1 h-full flex flex-col ${cardColor(key)}`}>
-            <div className="flex items-start justify-between mb-2">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a] dark:text-foreground/70">Top 3 Swing</span>
-              <Sparkles className="w-4 h-4 text-primary/50" />
+          <div className={`rounded-2xl border p-5 transition-all duration-300 hover:shadow-md ${featureClass}`}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Top 3 Swing Songs</span>
+              <Sparkles className="w-4 h-4" style={{ color: "var(--accent-orange)" }} />
             </div>
             {stats?.top3SwingSongs?.length ? (
-              <div className="space-y-1.5 flex-1">
-                {stats.top3SwingSongs.map((song, idx) => {
-                  const info = STYLE_INFO[song.style as StyleOption];
-                  return (
-                    <div key={`${song.songName}-${idx}`} className="flex items-center gap-1.5">
-                      {idx === 0 && <Trophy className="w-3 h-3 text-yellow-500 flex-shrink-0" />}
-                      {idx === 1 && <Trophy className="w-3 h-3 text-slate-400 flex-shrink-0" />}
-                      {idx === 2 && <Trophy className="w-3 h-3 text-amber-600 flex-shrink-0" />}
-                      <span className="font-semibold text-foreground font-display text-sm leading-tight truncate flex-1">{song.songName}</span>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">{song.count}x</span>
-                    </div>
-                  );
-                })}
+              <div className="space-y-2">
+                {stats.top3SwingSongs.map((song, idx) => (
+                  <div key={`${song.songName}-${idx}`} className="flex items-center gap-2">
+                    <span className="text-xs font-bold w-4" style={{ color: "var(--accent-orange)" }}>{idx + 1}.</span>
+                    <span className="font-semibold font-display text-sm leading-tight truncate flex-1" style={{ color: "var(--text-main)" }}>{song.songName}</span>
+                    <span className="text-xs flex-shrink-0" style={{ color: "var(--text-muted)" }}>{song.count}x</span>
+                  </div>
+                ))}
               </div>
             ) : (
-              <p className="text-2xl font-display font-bold text-foreground">—</p>
+              <p className="text-2xl font-display font-bold" style={{ color: "var(--text-main)" }}>—</p>
             )}
           </div>
         );
+
+      // --- Chart card ---
       case "danceMix":
         return (
-          <div className={`rounded-2xl border p-4 transition-all duration-300 hover:shadow-md h-full flex flex-col ${cardColor(key)}`}>
-            <div className="flex items-start justify-between mb-2">
-              <span className="text-sm font-medium uppercase tracking-wider text-[#5c473a] dark:text-foreground/70">Dance Mix</span>
-              <PieIcon className="w-4 h-4 text-primary/50" />
+          <div className="rounded-2xl border p-5 transition-all duration-300 hover:shadow-md"
+            style={{ background: "var(--card-default)", borderColor: "var(--card-border)" }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Dance Mix</span>
+              <PieIcon className="w-4 h-4" style={{ color: "var(--accent-leather)" }} />
             </div>
             {pieData.length === 0 ? (
-              <p className="text-2xl font-display font-bold text-foreground">—</p>
+              <p className="text-2xl font-display font-bold" style={{ color: "var(--text-main)" }}>—</p>
             ) : (
-              <div className="flex flex-col items-center gap-2 flex-1">
+              <div className="flex items-center gap-5">
                 <DonutChart data={pieData} size={88} />
-                <div className="space-y-1 w-full">
+                <div className="space-y-1.5 flex-1">
                   {[...pieData].sort((a, b) => b.count - a.count).map(entry => {
                     const info = STYLE_INFO[entry.style as StyleOption];
                     return (
                       <div key={entry.style} className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full flex-shrink-0"
                           style={{ backgroundColor: info?.color ?? "#888" }} />
-                        <span className="text-xs font-medium truncate flex-1">{info?.short ?? entry.style}</span>
-                        <span className="text-xs text-muted-foreground">{entry.pct}%</span>
+                        <span className="text-xs font-medium truncate flex-1" style={{ color: "var(--text-main)" }}>{info?.short ?? entry.style}</span>
+                        <span className="text-xs" style={{ color: "var(--text-muted)" }}>{entry.pct}%</span>
                       </div>
                     );
                   })}
@@ -476,35 +574,26 @@ export default function Home() {
             )}
           </div>
         );
-      case "totalLineDancesAllTime":
-        return <StatCard label="Total Line Dances" value={stats?.totalLineDancesAllTime ?? 0} icon={Music2} className={cardColor(key)} />;
-      case "totalSwingDancesAllTime":
-        return <StatCard label="Total Swing Dances" value={stats?.totalSwingDancesAllTime ?? 0} icon={Sparkles} className={cardColor(key)} />;
-      case "totalDancesThisYear":
-        return <StatCard label="Dances This Year" value={stats?.totalDancesThisYear ?? 0} icon={CalendarDays} className={cardColor(key)} />;
-      case "lineDancesThisYear":
-        return <StatCard label="Line Dances (This Year)" value={stats?.lineDancesThisYear ?? 0} icon={CalendarDays} className={cardColor(key)} />;
-      case "swingDancesThisYear":
-        return <StatCard label="Swing (This Year)" value={stats?.swingDancesThisYear ?? 0} icon={CalendarDays} className={cardColor(key)} />;
-      case "lineDancesThisMonth":
-        return <StatCard label="Line Dances (This Month)" value={stats?.lineDancesThisMonth ?? 0} icon={TrendingUp} className={cardColor(key)} />;
-      case "swingDancesThisMonth":
-        return <StatCard label="Swing (This Month)" value={stats?.swingDancesThisMonth ?? 0} icon={TrendingUp} className={cardColor(key)} />;
-      case "currentFavorite":
-        return <StatCard label="Current Favorite" value={stats?.currentFavorite && stats.currentFavorite !== "N/A" ? stats.currentFavorite : "—"} icon={Star} className={cardColor(key)} />;
       default:
         return null;
     }
   };
 
-  // Build 2-col rows from ordered enabledStats — all cards pair up, lone card is centered
-  const layoutRows: { keys: string[] }[] = [];
+  // Build layout: quickStat cards pair up 2-per-row; hero/feature/chart cards render full-width
+  const cardTypeOf = (key: string) => ALL_STAT_KEYS.find(s => s.key === key)?.type;
+  type LayoutRow = { keys: string[]; fullWidth: boolean };
+  const layoutRows: LayoutRow[] = [];
   let buf: string[] = [];
   for (const key of enabledStats) {
-    buf.push(key);
-    if (buf.length === 2) { layoutRows.push({ keys: [...buf] }); buf = []; }
+    if (cardTypeOf(key) === "quickStat") {
+      buf.push(key);
+      if (buf.length === 2) { layoutRows.push({ keys: [...buf], fullWidth: false }); buf = []; }
+    } else {
+      if (buf.length) { layoutRows.push({ keys: [...buf], fullWidth: false }); buf = []; }
+      layoutRows.push({ keys: [key], fullWidth: true });
+    }
   }
-  if (buf.length) layoutRows.push({ keys: buf });
+  if (buf.length) layoutRows.push({ keys: buf, fullWidth: false });
 
   return (
     <div className="container px-4 pb-28 pt-8 mx-auto max-w-5xl">
@@ -533,7 +622,7 @@ export default function Home() {
         ) : (
           <motion.h1 initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
             className="text-3xl md:text-4xl font-display font-bold text-foreground">
-            Hi, {profile?.firstName || "Dancer"}
+            Howdy, {profile?.firstName || "Dancer"}
           </motion.h1>
         )}
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
@@ -550,6 +639,15 @@ export default function Home() {
       ) : (
         <motion.div variants={container} initial="hidden" animate="show" className="space-y-4">
           {layoutRows.map((row, rowIdx) => {
+            if (row.fullWidth) {
+              const card = renderCard(row.keys[0]);
+              if (!card) return null;
+              return (
+                <motion.div key={`row-${rowIdx}`} variants={item}>
+                  {card}
+                </motion.div>
+              );
+            }
             if (row.keys.length === 1) {
               const card = renderCard(row.keys[0]);
               if (!card) return null;

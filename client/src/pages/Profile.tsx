@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { FadeImg } from "@/components/FadeImg";
 import honkyTonkLogoBlack from "@assets/HonkyTonk_Cropped_(Black)_1778181896344.png";
 import honkyTonkLogoWhite from "@assets/HonkyTonk_Cropped_(White).png";
 import { useLocation } from "wouter";
@@ -147,7 +148,7 @@ export default function Profile() {
           <div className="relative flex-shrink-0">
             <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center overflow-hidden border-2 border-border">
               {profile?.avatar ? (
-                <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                <FadeImg src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
               ) : (
                 <span className="font-display font-bold text-primary text-3xl">
                   {profile?.firstName?.charAt(0) || "D"}

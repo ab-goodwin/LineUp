@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { FadeImg } from "@/components/FadeImg";
 import {
   useBuddies, useBuddyRequests, useSearchUsers,
   useSendBuddyRequest, useRespondToBuddyRequest,
@@ -24,7 +25,7 @@ function AvatarCircle({ firstName, avatar, size = "md" }: { firstName: string; a
   return (
     <div className={`${sizeClass} rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 overflow-hidden border border-border/50`}>
       {avatar ? (
-        <img src={avatar} alt={firstName} className="w-full h-full object-cover" />
+        <FadeImg src={avatar} alt="" className="w-full h-full object-cover" />
       ) : (
         <span className="font-display font-bold text-primary">{firstName.charAt(0).toUpperCase()}</span>
       )}
@@ -67,9 +68,9 @@ function BuddyCard({ buddy, rank, onRemove }: { buddy: BuddyPublicStats & { song
         </Button>
       </div>
       <div className="grid grid-cols-3 gap-2 mb-3">
-        <StatPill label="In Library" value={(buddy as any).songCount ?? buddy.totalDances} />
-        <StatPill label="Line Dances" value={buddy.lineDanceCount ?? 0} highlight />
-        <StatPill label="Swing Dances" value={buddy.swingDanceCount ?? 0} />
+        <StatPill label="Dances" value={buddy.totalDances} highlight />
+        <StatPill label="Sessions" value={buddy.totalSessions ?? 0} />
+        <StatPill label="Top Spot" value={buddy.topLocation && buddy.topLocation !== "N/A" ? buddy.topLocation : "—"} />
       </div>
       {buddy.currentStreak > 0 && (
         <div className="flex items-center gap-1.5 text-sm text-orange-500 font-medium mb-2">
@@ -322,7 +323,7 @@ function ChallengesTab({ buddyList, currentUserId }: { buddyList: (BuddyPublicSt
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground font-medium">Choose a buddy:</p>
                   {buddyList.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No buddies yet.</p>
+                    <p className="text-sm text-muted-foreground">Still Ridin' Solo.</p>
                   ) : (
                     <div className="space-y-1.5 max-h-36 overflow-y-auto">
                       {buddyList.map(b => (
@@ -478,7 +479,7 @@ export default function Buddies() {
   return (
     <div className="container px-4 pb-24 pt-8 mx-auto max-w-2xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-display font-bold text-foreground">Dancing Buddies</h1>
+        <h1 className="text-3xl font-display font-bold text-foreground">Dance Crew</h1>
         <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-primary rounded-xl"
           onClick={() => window.location.reload()} data-testid="button-refresh-buddies">
           <RefreshCw className="w-4 h-4" />
@@ -515,7 +516,7 @@ export default function Buddies() {
       <Tabs defaultValue="buddies" className="space-y-4">
         <TabsList className="w-full bg-secondary/40 rounded-xl">
           <TabsTrigger value="buddies" className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm">
-            Buddies {buddyList.length > 0 && <span className="ml-1.5 text-xs bg-primary/15 text-primary rounded-full px-1.5">{buddyList.length}</span>}
+            Crew {buddyList.length > 0 && <span className="ml-1.5 text-xs bg-primary/15 text-primary rounded-full px-1.5">{buddyList.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="challenges" className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm">
             Challenges
@@ -529,8 +530,8 @@ export default function Buddies() {
           ) : rankedBuddies.length === 0 ? (
             <div className="text-center py-16 bg-secondary/20 rounded-2xl border-2 border-dashed border-border">
               <UserPlus className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-              <p className="font-medium text-foreground">No buddies yet</p>
-              <p className="text-sm text-muted-foreground mt-1">Go to Find to add dancing partners!</p>
+              <p className="font-medium text-foreground">Still Ridin' Solo</p>
+              <p className="text-sm text-muted-foreground mt-1">Use the 'Find' menu to add friends to your crew!</p>
             </div>
           ) : (
             <AnimatePresence mode="popLayout">

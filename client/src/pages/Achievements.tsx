@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Lock, Star, Flame, MapPin, Music2, Users, HelpCircle } from "lucide-react";
+import { Star, Flame, MapPin, Music2, Users, HelpCircle } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAchievements, useMarkAchievementsSeen } from "@/hooks/use-achievements";
 import { ACHIEVEMENT_DEFS, ACHIEVEMENT_GROUPS, type AchievementGroup } from "@shared/achievements";
@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useTheme } from "@/context/ThemeContext";
+import { FadeImg } from "@/components/FadeImg";
 
 // Load all PNGs from achievements folder at build time
 const achievementImages = import.meta.glob<{ default: string }>(
@@ -54,37 +55,21 @@ const GROUP_COLORS: Record<AchievementGroup, string> = {
   Hidden:      "text-muted-foreground",
 };
 
-function AchievementImage({ id, earned, size = "sm" }: { id: string; earned: boolean; size?: "sm" | "lg" }) {
-  const [imgError, setImgError] = useState(false);
-  const [lockError, setLockError] = useState(false);
+function AchievementImage({ id, earned }: { id: string; earned: boolean; size?: "sm" | "lg" }) {
   const { theme } = useTheme();
-  const cls = size === "lg" ? "w-full h-full" : "w-full h-full";
   const activeLocked = theme === "dark" ? lockedDarkSrc : lockedSrc;
-
   const src = earned ? getImgSrc(`${id}.png`) : activeLocked;
 
-  if (src && !imgError) {
-    return (
-      <img
-        src={src}
-        alt={earned ? id : "locked"}
-        className={cn(cls, "object-cover rounded-full")}
-        onError={() => setImgError(true)}
-      />
-    );
-  }
-  // Fallback: if locked image also fails or src is empty, try active locked, else show icon
-  if (!earned && activeLocked && !lockError) {
-    return (
-      <img
-        src={activeLocked}
-        alt="locked"
-        className={cn(cls, "object-cover rounded-full opacity-50")}
-        onError={() => setLockError(true)}
-      />
-    );
-  }
-  return <Lock className={size === "lg" ? "w-10 h-10 text-muted-foreground/30" : "w-5 h-5 text-muted-foreground/40"} />;
+  if (!src) return null;
+
+  return (
+    <FadeImg
+      src={src}
+      alt=""
+      loading="lazy"
+      className="w-full h-full object-contain"
+    />
+  );
 }
 
 export default function Achievements() {
@@ -107,7 +92,7 @@ export default function Achievements() {
   return (
     <div className="min-h-screen bg-background pb-28">
       <div className="container px-4 pb-0 pt-8 mx-auto max-w-xl">
-        <h1 className="text-3xl font-display font-bold text-foreground">Your Badges</h1>
+        <h1 className="text-3xl font-display font-bold text-foreground">Buckles</h1>
         {!isLoading && (
           <p className="text-muted-foreground mt-1">{earnedCount} of {ACHIEVEMENT_DEFS.length} earned</p>
         )}
@@ -115,10 +100,10 @@ export default function Achievements() {
 
       <div className="px-4 pt-6 space-y-8 max-w-xl mx-auto">
         {isLoading ? (
-          <div className="grid grid-cols-4 gap-3">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="flex flex-col items-center gap-1.5">
-                <Skeleton className="w-16 h-16 rounded-full" />
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <div key={i} className="flex flex-col items-center gap-1">
+                <Skeleton className="w-full aspect-[930/758] rounded-xl" />
                 <Skeleton className="h-3 w-12 rounded" />
               </div>
             ))}
@@ -134,7 +119,7 @@ export default function Achievements() {
                   <GroupIcon className={cn("w-4 h-4", GROUP_COLORS[group])} />
                   <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">{group}</h2>
                 </div>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   {groupDefs.map(def => {
                     const status = statusById[def.id];
                     const earned = status?.earned ?? false;
@@ -144,20 +129,20 @@ export default function Achievements() {
                       <motion.button
                         key={def.id}
                         data-testid={`badge-${def.id}`}
-                        whileTap={{ scale: 0.92 }}
+                        whileTap={{ scale: 0.96 }}
                         onClick={() => setSelected(def.id)}
                         className="flex flex-col items-center gap-1.5 focus:outline-none"
                       >
                         <div className={cn(
-                          "w-16 h-16 rounded-full flex items-center justify-center border-2 overflow-hidden transition-all",
+                          "w-full aspect-[930/758] rounded-xl flex items-center justify-center border-2 overflow-hidden transition-all p-1",
                           earned
-                            ? "border-primary/60 shadow-md shadow-primary/20"
+                            ? "border-primary/60 shadow-md shadow-primary/20 bg-secondary/20"
                             : "border-border/50 bg-secondary/40"
                         )}>
                           <AchievementImage id={def.id} earned={earned} size="sm" />
                         </div>
                         <span className={cn(
-                          "text-[10px] text-center leading-tight line-clamp-2 w-full px-0.5",
+                          "text-xs text-center leading-tight line-clamp-2 w-full px-0.5",
                           earned ? "text-foreground font-medium" : "text-muted-foreground/60"
                         )}>
                           {isHidden && !earned ? "???" : def.name}
@@ -177,11 +162,11 @@ export default function Achievements() {
         <DialogContent className="rounded-2xl max-w-xs mx-auto border-border/60">
           {selectedDef && (
             <div className="flex flex-col items-center gap-3 pt-2 pb-1">
-              {/* Badge visual */}
+              {/* Buckle visual */}
               <div className={cn(
-                "w-24 h-24 rounded-full flex items-center justify-center border-2 overflow-hidden",
+                "w-52 aspect-[930/758] rounded-xl flex items-center justify-center border-2 overflow-hidden p-2",
                 selectedStatus?.earned
-                  ? "border-primary/60 shadow-lg shadow-primary/20"
+                  ? "border-primary/60 shadow-lg shadow-primary/20 bg-secondary/20"
                   : "border-border/50 bg-secondary/40"
               )}>
                 <AchievementImage id={selectedDef.id} earned={selectedStatus?.earned ?? false} size="lg" />

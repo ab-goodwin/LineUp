@@ -9,8 +9,9 @@ import { queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
-  ArrowLeft, Download, Upload, Trash2, FlaskConical, Loader2, CheckCircle2, AlertCircle, Trophy, Moon, Sun,
+  ArrowLeft, Download, Upload, Trash2, FlaskConical, Loader2, CheckCircle2, AlertCircle, Trophy, Moon, Sun, BookOpen,
 } from "lucide-react";
+import { WALKTHROUGH_EVENT } from "@/components/OnboardingCarousel";
 import { useTheme } from "@/context/ThemeContext";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -306,6 +307,21 @@ export default function Settings() {
             data-testid="toggle-dark-mode"
           />
         </div>
+      </section>
+
+      {/* App Walkthrough */}
+      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
+        <h2 className="text-xl font-bold mb-1 font-display text-foreground">App Walkthrough</h2>
+        <p className="text-sm text-muted-foreground mb-4">Re-open the onboarding carousel to revisit the app guide.</p>
+        <Button
+          variant="outline"
+          className="w-full rounded-xl border-2 justify-start gap-2"
+          onClick={() => window.dispatchEvent(new CustomEvent(WALKTHROUGH_EVENT))}
+          data-testid="button-view-walkthrough"
+        >
+          <BookOpen className="w-4 h-4" />
+          View App Walkthrough
+        </Button>
       </section>
 
       {/* Dev Tools — admin only */}

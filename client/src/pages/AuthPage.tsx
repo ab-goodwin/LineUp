@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FadeImg } from "@/components/FadeImg";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -91,7 +92,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm flex flex-col items-center">
         <div className="mb-8 flex justify-center w-full">
-          <img src={logoShort} alt="LineUp" className="h-56 object-contain" />
+          <FadeImg src={logoShort} alt="LineUp" loading="eager" className="h-56 object-contain" />
         </div>
 
         <div className="bg-card rounded-2xl border border-border shadow-lg p-6 w-full">

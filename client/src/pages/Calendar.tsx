@@ -35,8 +35,7 @@ export default function CalendarPage() {
 
   return (
     <div className="container px-4 pb-24 pt-8 mx-auto max-w-4xl">
-      <h1 className="text-3xl font-display font-bold mb-6">Calendar</h1>
-
+      <h1 className="text-3xl md:text-4x1 font-display font-bold mb-6">Calendar</h1>
       <div className="grid md:grid-cols-2 gap-8 items-start">
         {/* Calendar Card */}
         <div className="bg-card rounded-2xl p-4 shadow-lg border border-border">
