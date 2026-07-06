@@ -37,6 +37,26 @@ export function useUpdateProfile() {
   });
 }
 
+export function useUpdateSuggestionsOptIn() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (optIn: boolean) => {
+      const res = await fetch("/api/profile/suggestions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ optIn }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to update suggestions setting");
+      return res.json() as Promise<{ ok: boolean; appearInSuggestions: boolean }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.profile.get.path] });
+      queryClient.invalidateQueries({ queryKey: ["/api/buddies/suggested"] });
+    },
+  });
+}
+
 export function useDeleteData() {
   const queryClient = useQueryClient();
   return useMutation({

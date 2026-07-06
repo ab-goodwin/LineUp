@@ -2,21 +2,24 @@ import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown, MapPin, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, MapPin, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLocations, useCreateLocation } from "@/hooks/use-locations";
+import { useLocations, useCreateLocation, usePlaceSearch } from "@/hooks/use-locations";
+import type { NormalizedPlace } from "@shared/schema";
 
 interface LocationComboboxProps {
   value: string;
   onChange: (value: string) => void;
+  onSelectPlace?: (place: NormalizedPlace | null) => void;
   placeholder?: string;
 }
 
-export function LocationCombobox({ value, onChange, placeholder = "Select or type a location..." }: LocationComboboxProps) {
+export function LocationCombobox({ value, onChange, onSelectPlace, placeholder = "Select or type a location..." }: LocationComboboxProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const { data: locations = [] } = useLocations();
   const createLocation = useCreateLocation();
+  const placeSearch = usePlaceSearch(inputValue);
 
   const filtered = locations.filter(l =>
     l.name.toLowerCase().includes(inputValue.toLowerCase())
@@ -25,8 +28,19 @@ export function LocationCombobox({ value, onChange, placeholder = "Select or typ
   const exactMatch = locations.some(l => l.name.toLowerCase() === inputValue.toLowerCase());
   const showAddOption = inputValue.trim().length > 0 && !exactMatch;
 
+  const providerConfigured = placeSearch.data?.configured ?? false;
+  const placeResults = placeSearch.data?.results ?? [];
+
   const handleSelect = (name: string) => {
     onChange(name);
+    onSelectPlace?.(null);
+    setInputValue("");
+    setOpen(false);
+  };
+
+  const handleSelectPlace = (place: NormalizedPlace) => {
+    onChange(place.name);
+    onSelectPlace?.(place);
     setInputValue("");
     setOpen(false);
   };
@@ -36,6 +50,7 @@ export function LocationCombobox({ value, onChange, placeholder = "Select or typ
     if (!name) return;
     await createLocation.mutateAsync(name);
     onChange(name);
+    onSelectPlace?.(null);
     setInputValue("");
     setOpen(false);
   };
@@ -63,25 +78,25 @@ export function LocationCombobox({ value, onChange, placeholder = "Select or typ
           align="start"
           sideOffset={4}
         >
-          <Command>
+          <Command shouldFilter={false}>
             <CommandInput
-              placeholder="Search or type new location..."
+              placeholder={providerConfigured ? "Search places or type a location..." : "Search or type new location..."}
               value={inputValue}
               onValueChange={setInputValue}
               data-testid="input-location-search"
             />
             <CommandList>
-              {filtered.length === 0 && !showAddOption && (
+              {filtered.length === 0 && placeResults.length === 0 && !showAddOption && (
                 <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
                   No saved locations. Type to add one.
                 </CommandEmpty>
               )}
               {filtered.length > 0 && (
-                <CommandGroup className="bg-[#ffffff]">
+                <CommandGroup heading="Saved" className="bg-[#ffffff]">
                   {filtered.map(loc => (
                     <CommandItem
                       key={loc.id}
-                      value={loc.name}
+                      value={`saved-${loc.id}`}
                       onSelect={() => handleSelect(loc.name)}
                       data-testid={`location-option-${loc.id}`}
                     >
@@ -90,6 +105,31 @@ export function LocationCombobox({ value, onChange, placeholder = "Select or typ
                     </CommandItem>
                   ))}
                 </CommandGroup>
+              )}
+              {providerConfigured && placeResults.length > 0 && (
+                <CommandGroup heading="Places">
+                  {placeResults.map(place => (
+                    <CommandItem
+                      key={`${place.provider}-${place.placeId}`}
+                      value={`place-${place.provider}-${place.placeId}`}
+                      onSelect={() => handleSelectPlace(place)}
+                      data-testid={`place-option-${place.placeId}`}
+                    >
+                      <MapPin className="mr-2 w-4 h-4 flex-shrink-0 text-primary" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate font-medium">{place.name}</span>
+                        {place.formattedAddress && (
+                          <span className="truncate text-xs text-muted-foreground">{place.formattedAddress}</span>
+                        )}
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+              {providerConfigured && placeSearch.isFetching && (
+                <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Searching places…
+                </div>
               )}
               {showAddOption && (
                 <CommandGroup>

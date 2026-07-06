@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { LocationCombobox } from "@/components/LocationCombobox";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { insertSessionSchema, STYLE_INFO, STYLE_OPTIONS, type StyleOption } from "@shared/schema";
+import { insertSessionSchema, STYLE_INFO, STYLE_OPTIONS, type StyleOption, type NormalizedPlace } from "@shared/schema";
 import { useCreateSession, useUpdateSession, useDeleteSession } from "@/hooks/use-sessions";
 import { useSongs, useCreateSong } from "@/hooks/use-songs";
 import { format } from "date-fns";
@@ -42,6 +41,13 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddingSong, setIsAddingSong] = useState(false);
   const [danceType, setDanceType] = useState<"line" | "swing">("line");
+  const [selectedPlace, setSelectedPlace] = useState<NormalizedPlace | null>(null);
+  const [placeTouched, setPlaceTouched] = useState(false);
+
+  const handleSelectPlace = (place: NormalizedPlace | null) => {
+    setSelectedPlace(place);
+    setPlaceTouched(true);
+  };
 
   // Line quick-add state
   const [newLine, setNewLine] = useState({ danceName: "", songName: "", artist: "" });
@@ -83,6 +89,8 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
     setNewSwing({ songName: "", artist: "", style: "WCS", styleCustom: "" });
     setDanceType("line");
     setSearchQuery("");
+    setSelectedPlace(null);
+    setPlaceTouched(false);
   }, [existingSession, date, isOpen]);
 
   const handleQuickAddLine = async () => {
@@ -117,10 +125,11 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
   const onSubmit = async (values: FormValues) => {
     try {
+      const payload = placeTouched ? { ...values, place: selectedPlace } : { ...values };
       if (existingSession) {
-        await updateSession.mutateAsync({ id: existingSession.id, ...values });
+        await updateSession.mutateAsync({ id: existingSession.id, ...payload });
       } else {
-        await createSession.mutateAsync(values);
+        await createSession.mutateAsync(payload);
       }
       onOpenChange(false);
     } catch (e) { console.error(e); }
@@ -145,19 +154,34 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 flex-1 overflow-hidden flex flex-col">
-            <FormField control={form.control} name="location" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Location</FormLabel>
-                <FormControl>
-                  <LocationCombobox value={field.value} onChange={field.onChange} placeholder="Select or type a location..." />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-1 overflow-hidden flex flex-col">
+            {/* Song search bar — below the date, above the location field */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search dances…" className="h-10 pl-9 rounded-xl"
+                value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                data-testid="input-song-search" />
+            </div>
+
+            {/* Add Song button + Location field (location to the right of the add button) */}
+            <div className="flex items-start gap-2">
+              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 flex-shrink-0"
+                onClick={() => setIsAddingSong(v => !v)} data-testid="button-toggle-add-song"
+                aria-label="Add song">
+                <PlusCircle className={`w-5 h-5 ${danceType === "swing" ? "text-blue-500" : "text-primary"}`} />
+              </Button>
+              <FormField control={form.control} name="location" render={({ field }) => (
+                <FormItem className="flex-1 min-w-0">
+                  <FormControl>
+                    <LocationCombobox value={field.value} onChange={field.onChange} onSelectPlace={handleSelectPlace} placeholder="Select or type a location..." />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
 
             <div className="flex-1 overflow-hidden flex flex-col min-h-[300px]">
-              {/* Header row: label + Line/Swing toggle + add button + search */}
+              {/* Header row: Dances label + Line/Swing toggle */}
               <div className="flex items-center justify-between mb-2 gap-2">
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <FormLabel className="mb-0">Dances</FormLabel>
@@ -168,17 +192,6 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                     <button type="button"
                       className={`px-2.5 py-1 font-medium transition-colors ${danceType === "swing" ? "bg-blue-500 text-white" : "bg-background text-muted-foreground hover:bg-secondary"}`}
                       onClick={() => { setDanceType("swing"); setIsAddingSong(false); }}>Swing</button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8"
-                    onClick={() => setIsAddingSong(v => !v)} data-testid="button-toggle-add-song">
-                    <PlusCircle className={`w-4 h-4 ${danceType === "swing" ? "text-blue-500" : "text-primary"}`} />
-                  </Button>
-                  <div className="relative w-28">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                    <Input placeholder="Search…" className="h-8 pl-7 text-xs rounded-lg"
-                      value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -239,7 +252,11 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
               )}
 
               {/* Song list */}
-              <ScrollArea className="flex-1 border-2 border-border/50 rounded-xl p-3 bg-secondary/20">
+              <div
+                className="flex-1 min-h-0 overflow-y-auto border-2 border-border/50 rounded-xl p-3 bg-secondary/20"
+                style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
+                data-testid="list-song-library"
+              >
                 <FormField control={form.control} name="danceIds" render={() => (
                   <div className="space-y-2">
                     {filteredSongs.length === 0 ? (
@@ -275,7 +292,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                     ))}
                   </div>
                 )} />
-              </ScrollArea>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-2">

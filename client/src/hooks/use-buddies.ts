@@ -44,6 +44,58 @@ export interface Challenge {
   challengedStreak: number;
 }
 
+export type CrewRelationship = "self" | "notCrew" | "requestPending" | "alreadyCrew";
+
+export interface PublicProfile {
+  userId: number;
+  username: string;
+  firstName: string;
+  lastName: string;
+  location: string;
+  avatar?: string;
+  relationship: CrewRelationship;
+  stats: {
+    totalDances: number;
+    lineDanceCount: number;
+    swingDanceCount: number;
+    longestStreak: number;
+    currentStreak: number;
+    favoriteDance: string;
+    topLocation: string;
+  };
+}
+
+export function usePublicProfile(userId: number | null) {
+  return useQuery<PublicProfile>({
+    queryKey: ["/api/users", userId, "profile"],
+    enabled: userId !== null,
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${userId}/profile`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch profile");
+      return res.json();
+    },
+  });
+}
+
+export interface SuggestedCrewMember {
+  userId: number;
+  username: string;
+  firstName: string;
+  avatar?: string;
+  reason: string;
+}
+
+export function useSuggestedCrew() {
+  return useQuery<SuggestedCrewMember[]>({
+    queryKey: [BUDDIES_KEY + "/suggested"],
+    queryFn: async () => {
+      const res = await fetch(BUDDIES_KEY + "/suggested", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch suggestions");
+      return res.json();
+    },
+  });
+}
+
 export function useBuddies() {
   return useQuery<BuddyPublicStats[]>({
     queryKey: [BUDDIES_KEY],

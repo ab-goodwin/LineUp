@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { useProfile, useDeleteData } from "@/hooks/use-profile";
+import { useProfile, useDeleteData, useUpdateSuggestionsOptIn } from "@/hooks/use-profile";
 import { useCreateSong } from "@/hooks/use-songs";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -9,7 +9,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
-  ArrowLeft, Download, Upload, Trash2, FlaskConical, Loader2, CheckCircle2, AlertCircle, Trophy, Moon, Sun, BookOpen,
+  ArrowLeft, Download, Upload, Trash2, FlaskConical, Loader2, CheckCircle2, AlertCircle, Trophy, Moon, Sun, BookOpen, MapPin,
 } from "lucide-react";
 import { WALKTHROUGH_EVENT } from "@/components/OnboardingCarousel";
 import { useTheme } from "@/context/ThemeContext";
@@ -77,6 +77,7 @@ function parseCSV(text: string): { headers: string[]; rows: string[][] } {
 export default function Settings() {
   const { data: profile } = useProfile();
   const deleteData = useDeleteData();
+  const updateSuggestionsOptIn = useUpdateSuggestionsOptIn();
   const createSong = useCreateSong();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -305,6 +306,32 @@ export default function Settings() {
             checked={theme === "dark"}
             onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
             data-testid="toggle-dark-mode"
+          />
+        </div>
+      </section>
+
+      {/* Location Privacy */}
+      <section className="bg-card rounded-2xl p-6 border border-border shadow-sm mb-6">
+        <h2 className="text-xl font-bold mb-1 font-display text-foreground">Location Privacy</h2>
+        <p className="text-sm text-muted-foreground mb-4">Control whether other dancers can discover you nearby.</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MapPin className="w-5 h-5 text-primary" />
+            <div>
+              <p className="font-semibold text-sm text-foreground">Appear in Suggested Crew</p>
+              <p className="text-xs text-muted-foreground">Let dancers in your area find you as a suggested buddy.</p>
+            </div>
+          </div>
+          <Switch
+            checked={profile?.appearInSuggestions ?? true}
+            disabled={updateSuggestionsOptIn.isPending || !profile}
+            onCheckedChange={(checked) => {
+              updateSuggestionsOptIn.mutate(checked, {
+                onSuccess: () => toast({ title: checked ? "You're discoverable" : "You're hidden from suggestions" }),
+                onError: () => toast({ title: "Failed to update setting", variant: "destructive" }),
+              });
+            }}
+            data-testid="toggle-appear-in-suggestions"
           />
         </div>
       </section>

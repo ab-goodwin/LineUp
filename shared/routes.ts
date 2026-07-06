@@ -7,6 +7,7 @@ import {
   insertSongSchema,
   insertSessionSchema,
   updateProfileSchema,
+  normalizedPlaceSchema,
 } from './schema';
 
 // ============================================
@@ -118,6 +119,7 @@ export const api = {
       path: '/api/sessions',
       input: insertSessionSchema.extend({
         danceIds: z.array(z.number()),
+        place: normalizedPlaceSchema.nullable().optional(),
       }),
       responses: {
         201: z.custom<typeof sessions.$inferSelect & { dances: typeof songs.$inferSelect[] }>(),
@@ -129,6 +131,7 @@ export const api = {
       path: '/api/sessions/:id',
       input: insertSessionSchema.partial().extend({
         danceIds: z.array(z.number()).optional(),
+        place: normalizedPlaceSchema.nullable().optional(),
       }),
       responses: {
         200: z.custom<typeof sessions.$inferSelect & { dances: typeof songs.$inferSelect[] }>(),

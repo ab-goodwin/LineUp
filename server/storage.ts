@@ -5,10 +5,24 @@ import {
   type User, type InsertUser,
   type Song, type InsertSong, type CreateSongRequest, type UpdateSongRequest,
   type Session, type InsertSession, type CreateSessionRequest, type UpdateSessionRequest, type SessionResponse,
-  type StatsResponse, type Location
+  type StatsResponse, type Location, type NormalizedPlace, type SessionLocationDetail
 } from "@shared/schema";
 import { ACHIEVEMENT_DEFS, type AchievementStatus } from "@shared/achievements";
 import { eq, desc, sql, and, or, ilike, ne, inArray } from "drizzle-orm";
+
+// Great-circle distance in miles between two lat/lng points.
+function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (x: number) => (x * Math.PI) / 180;
+  const R = 3958.8; // Earth radius in miles
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+const NEARBY_RADIUS_MILES = 50;
 
 function getISOWeek(d: Date): string {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -34,6 +48,11 @@ export interface IStorage {
   getLocations(userId: number): Promise<Location[]>;
   createLocation(userId: number, name: string): Promise<Location>;
   deleteLocation(id: number, userId: number): Promise<void>;
+  resolveLocation(userId: number, place: NormalizedPlace): Promise<number>;
+
+  // Nearby crew suggestions
+  setAppearInSuggestions(userId: number, optIn: boolean): Promise<void>;
+  getSuggestedCrew(userId: number): Promise<{ userId: number; username: string; firstName: string; avatar?: string; reason: string }[]>;
 
   // Songs (scoped to userId)
   getSongs(userId: number): Promise<Song[]>;
@@ -66,6 +85,7 @@ export interface IStorage {
   respondToBuddyRequest(id: number, userId: number, action: "accept" | "decline"): Promise<void>;
   removeBuddy(userId: number, buddyUserId: number): Promise<void>;
   getBuddyPublicStats(buddyUserId: number): Promise<any>;
+  getPublicProfile(targetUserId: number, currentUserId: number): Promise<any | null>;
   getCurrentStreak(userId: number): Promise<number>;
 
   // Challenges
@@ -169,6 +189,43 @@ export class DatabaseStorage implements IStorage {
     await db.delete(locations).where(and(eq(locations.id, id), eq(locations.userId, userId)));
   }
 
+  // Resolve a structured place selection to a locations row id. Structured
+  // places are deduped globally by (provider, placeId) so nearby-crew matching
+  // can compare shared locationIds across users.
+  async resolveLocation(userId: number, place: NormalizedPlace): Promise<number> {
+    const [existing] = await db.select().from(locations)
+      .where(and(eq(locations.provider, place.provider), eq(locations.placeId, place.placeId)))
+      .limit(1);
+    if (existing) {
+      await db.update(locations)
+        .set({
+          name: place.name,
+          formattedAddress: place.formattedAddress ?? existing.formattedAddress,
+          city: place.city ?? existing.city,
+          state: place.state ?? existing.state,
+          country: place.country ?? existing.country,
+          latitude: place.latitude ?? existing.latitude,
+          longitude: place.longitude ?? existing.longitude,
+          updatedAt: new Date(),
+        })
+        .where(eq(locations.id, existing.id));
+      return existing.id;
+    }
+    const [created] = await db.insert(locations).values({
+      userId,
+      name: place.name,
+      formattedAddress: place.formattedAddress ?? null,
+      city: place.city ?? null,
+      state: place.state ?? null,
+      country: place.country ?? null,
+      latitude: place.latitude ?? null,
+      longitude: place.longitude ?? null,
+      provider: place.provider,
+      placeId: place.placeId,
+    }).returning();
+    return created.id;
+  }
+
   // --- Songs ---
   async getSongs(userId: number): Promise<Song[]> {
     return await db.select().from(songs).where(eq(songs.userId, userId)).orderBy(desc(songs.id));
@@ -204,6 +261,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(sessions.userId, userId))
       .orderBy(desc(sessions.date));
 
+    const locationIds = Array.from(
+      new Set(allSessions.map(s => s.locationId).filter((id): id is number => id != null))
+    );
+    const locationMap = new Map<number, SessionLocationDetail>();
+    if (locationIds.length > 0) {
+      const locs = await db.select({
+        id: locations.id, name: locations.name, formattedAddress: locations.formattedAddress,
+        city: locations.city, state: locations.state,
+      }).from(locations).where(inArray(locations.id, locationIds));
+      for (const l of locs) locationMap.set(l.id, l);
+    }
+
     const results: SessionResponse[] = [];
     for (const s of allSessions) {
       const dances = await db
@@ -222,9 +291,18 @@ export class DatabaseStorage implements IStorage {
         .innerJoin(songs, eq(sessionDances.songId, songs.id))
         .where(eq(sessionDances.sessionId, s.id));
       
-      results.push({ ...s, dances });
+      results.push({ ...s, dances, locationDetail: s.locationId != null ? locationMap.get(s.locationId) ?? null : null });
     }
     return results;
+  }
+
+  private async getLocationDetail(locationId: number | null): Promise<SessionLocationDetail | null> {
+    if (locationId == null) return null;
+    const [l] = await db.select({
+      id: locations.id, name: locations.name, formattedAddress: locations.formattedAddress,
+      city: locations.city, state: locations.state,
+    }).from(locations).where(eq(locations.id, locationId));
+    return l ?? null;
   }
 
   async getSession(id: number, userId: number): Promise<SessionResponse | undefined> {
@@ -248,11 +326,14 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(songs, eq(sessionDances.songId, songs.id))
       .where(eq(sessionDances.sessionId, session.id));
 
-    return { ...session, dances };
+    return { ...session, dances, locationDetail: await this.getLocationDetail(session.locationId) };
   }
 
   async createSession(userId: number, req: CreateSessionRequest): Promise<SessionResponse> {
-    const { danceIds, ...sessionData } = req;
+    const { danceIds, place, ...sessionData } = req;
+    if (place) {
+      sessionData.locationId = await this.resolveLocation(userId, place);
+    }
     const [session] = await db.insert(sessions).values({ ...sessionData, userId }).returning();
     
     if (danceIds && danceIds.length > 0) {
@@ -265,7 +346,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSession(id: number, userId: number, req: UpdateSessionRequest): Promise<SessionResponse> {
-    const { danceIds, ...sessionData } = req;
+    const { danceIds, place, ...sessionData } = req;
+    if (place) {
+      sessionData.locationId = await this.resolveLocation(userId, place);
+    } else if (place === null) {
+      sessionData.locationId = null;
+    }
     
     if (Object.keys(sessionData).length > 0) {
       await db.update(sessions).set(sessionData).where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
@@ -626,6 +712,10 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     const currentFavoriteSong = favSong ? (favSong.danceName || favSong.songName) : null;
 
+    const [sessionCountResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(sessions).where(eq(sessions.userId, buddyUserId));
+    const totalSessions = Number(sessionCountResult?.count || 0);
+
     return {
       userId: user.id,
       username: user.username || "",
@@ -640,6 +730,64 @@ export class DatabaseStorage implements IStorage {
       lineDanceCount,
       swingDanceCount,
       currentFavoriteSong,
+      totalSessions,
+      topLocation: stats.mostFrequentLocation,
+    };
+  }
+
+  async getPublicProfile(targetUserId: number, currentUserId: number): Promise<any | null> {
+    const user = await this.getUserById(targetUserId);
+    if (!user) return null;
+
+    // Derive relationship between current user and target
+    let relationship: "self" | "notCrew" | "requestPending" | "alreadyCrew" = "notCrew";
+    if (targetUserId === currentUserId) {
+      relationship = "self";
+    } else {
+      const [rel] = await db
+        .select()
+        .from(buddies)
+        .where(or(
+          and(eq(buddies.requesterId, currentUserId), eq(buddies.recipientId, targetUserId)),
+          and(eq(buddies.requesterId, targetUserId), eq(buddies.recipientId, currentUserId))
+        ));
+      if (rel) {
+        if (rel.status === "accepted") relationship = "alreadyCrew";
+        else if (rel.status === "pending") relationship = "requestPending";
+        else relationship = "notCrew";
+      }
+    }
+
+    const stats = await this.getStats(targetUserId);
+    const currentStreak = await this.getCurrentStreak(targetUserId);
+
+    const [lineDanceCountResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(songs)
+      .where(and(eq(songs.userId, targetUserId), eq(songs.style, 'LINE')));
+    const lineDanceCount = Number(lineDanceCountResult?.count || 0);
+
+    const [swingDanceCountResult] = await db.select({ count: sql<number>`count(*)` })
+      .from(songs)
+      .where(and(eq(songs.userId, targetUserId), ne(songs.style, 'LINE')));
+    const swingDanceCount = Number(swingDanceCountResult?.count || 0);
+
+    return {
+      userId: user.id,
+      username: user.username || "",
+      firstName: user.firstName,
+      lastName: user.lastName,
+      location: user.location || "",
+      avatar: user.avatar ?? undefined,
+      relationship,
+      stats: {
+        totalDances: stats.totalDances,
+        lineDanceCount,
+        swingDanceCount,
+        longestStreak: stats.longestStreak,
+        currentStreak,
+        favoriteDance: stats.mostFrequentDance,
+        topLocation: stats.mostFrequentLocation,
+      },
     };
   }
 
@@ -715,6 +863,120 @@ export class DatabaseStorage implements IStorage {
       }
     }
     await db.insert(buddies).values({ requesterId, recipientId, status: "pending" });
+  }
+
+  async setAppearInSuggestions(userId: number, optIn: boolean): Promise<void> {
+    await db.update(users).set({ appearInSuggestions: optIn }).where(eq(users.id, userId));
+  }
+
+  // Nearby crew: other dancers who share a venue with the current user, matched
+  // by structured locationId or by normalized legacy location text, and (when
+  // both sides have geocoded coordinates) within NEARBY_RADIUS_MILES. Excludes
+  // self, existing crew, pending requests (either direction), and anyone who has
+  // opted out of suggestions. Reasons are intentionally location-vague.
+  async getSuggestedCrew(userId: number): Promise<{ userId: number; username: string; firstName: string; avatar?: string; reason: string }[]> {
+    const me = await this.getUserById(userId);
+    if (!me) return [];
+
+    // Users to exclude: self + any accepted/pending relationship (either direction).
+    const relations = await db.select().from(buddies).where(
+      or(eq(buddies.requesterId, userId), eq(buddies.recipientId, userId))
+    );
+    const excluded = new Set<number>([userId]);
+    for (const r of relations) {
+      if (r.status === "accepted" || r.status === "pending") {
+        excluded.add(r.requesterId === userId ? r.recipientId : r.requesterId);
+      }
+    }
+
+    const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+
+    // Build the current user's location footprint.
+    const mySessions = await db.select({ location: sessions.location, locationId: sessions.locationId })
+      .from(sessions).where(eq(sessions.userId, userId));
+    const myLocationIds = new Set<number>();
+    const myTexts = new Set<string>();
+    for (const s of mySessions) {
+      if (s.locationId != null) myLocationIds.add(s.locationId);
+      const t = norm(s.location);
+      if (t) myTexts.add(t);
+    }
+
+    // Coordinates the current user dances at (from structured locations).
+    const myCoords: { lat: number; lng: number }[] = [];
+    if (myLocationIds.size > 0) {
+      const locs = await db.select({ latitude: locations.latitude, longitude: locations.longitude })
+        .from(locations).where(inArray(locations.id, Array.from(myLocationIds)));
+      for (const l of locs) if (l.latitude != null && l.longitude != null) myCoords.push({ lat: l.latitude, lng: l.longitude });
+    }
+
+    if (myLocationIds.size === 0 && myTexts.size === 0) return [];
+
+    // Candidate users: everyone opted-in and not excluded.
+    const candidates = await db.select({ id: users.id, username: users.username, firstName: users.firstName, avatar: users.avatar })
+      .from(users).where(eq(users.appearInSuggestions, true));
+
+    type Scored = { userId: number; username: string; firstName: string; avatar?: string; reason: string; exact: boolean; distance: number; shared: number };
+    const scored: Scored[] = [];
+
+    for (const c of candidates) {
+      if (excluded.has(c.id)) continue;
+
+      const theirSessions = await db.select({ location: sessions.location, locationId: sessions.locationId })
+        .from(sessions).where(eq(sessions.userId, c.id));
+      if (theirSessions.length === 0) continue;
+
+      const theirLocationIds = new Set<number>();
+      const theirTexts = new Set<string>();
+      for (const s of theirSessions) {
+        if (s.locationId != null) theirLocationIds.add(s.locationId);
+        const t = norm(s.location);
+        if (t) theirTexts.add(t);
+      }
+
+      // Exact overlap: shared structured location OR shared normalized text.
+      let sharedCount = 0;
+      for (const id of theirLocationIds) if (myLocationIds.has(id)) sharedCount++;
+      for (const t of theirTexts) if (myTexts.has(t)) sharedCount++;
+      const exact = sharedCount > 0;
+
+      // Geo proximity (dormant unless both sides have coordinates).
+      let distance = Number.POSITIVE_INFINITY;
+      if (theirLocationIds.size > 0 && myCoords.length > 0) {
+        const theirLocs = await db.select({ latitude: locations.latitude, longitude: locations.longitude })
+          .from(locations).where(inArray(locations.id, Array.from(theirLocationIds)));
+        for (const l of theirLocs) {
+          if (l.latitude == null || l.longitude == null) continue;
+          for (const m of myCoords) {
+            const d = haversineMiles(m.lat, m.lng, l.latitude, l.longitude);
+            if (d < distance) distance = d;
+          }
+        }
+      }
+      const nearby = distance <= NEARBY_RADIUS_MILES;
+
+      if (!exact && !nearby) continue;
+
+      scored.push({
+        userId: c.id,
+        username: c.username || "",
+        firstName: c.firstName,
+        avatar: c.avatar ?? undefined,
+        reason: "You both dance around this area",
+        exact,
+        distance,
+        shared: sharedCount,
+      });
+    }
+
+    // Sort: exact matches first, then by distance, then by shared-venue count.
+    scored.sort((a, b) => {
+      if (a.exact !== b.exact) return a.exact ? -1 : 1;
+      if (a.distance !== b.distance) return a.distance - b.distance;
+      return b.shared - a.shared;
+    });
+
+    return scored.slice(0, 20).map(({ userId, username, firstName, avatar, reason }) => ({ userId, username, firstName, avatar, reason }));
   }
 
   async getStyleDistribution(userId: number): Promise<{ style: string; count: number }[]> {

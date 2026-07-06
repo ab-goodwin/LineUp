@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { FadeImg } from "@/components/FadeImg";
+import { UserProfileModal } from "@/components/UserProfileModal";
 import {
   useBuddies, useBuddyRequests, useSearchUsers,
   useSendBuddyRequest, useRespondToBuddyRequest,
-  useRemoveBuddy,
+  useRemoveBuddy, useSuggestedCrew,
   type BuddyPublicStats,
 } from "@/hooks/use-buddies";
 import { useDanceOffs, useCreateDanceOff, useJoinDanceOff, useClearDanceOffResults, useDeleteDanceOffResult, type DanceOffResult } from "@/hooks/use-danceoffs";
@@ -12,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Search, UserPlus, UserCheck, UserX, Flame, X, RefreshCw, Trophy, Swords, Users, Copy, Clock, Heart } from "lucide-react";
+import { Loader2, Search, UserPlus, UserCheck, UserX, Flame, X, RefreshCw, Trophy, Swords, Users, Copy, Clock, Heart, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -49,19 +50,20 @@ function RankBadge({ rank }: { rank: number }) {
   return <span className="text-sm font-bold text-muted-foreground w-5 text-center flex-shrink-0">{rank}.</span>;
 }
 
-function BuddyCard({ buddy, rank, onRemove }: { buddy: BuddyPublicStats & { songCount?: number }; rank: number; onRemove: (userId: number) => void }) {
+function BuddyCard({ buddy, rank, onRemove, onOpenProfile }: { buddy: BuddyPublicStats & { songCount?: number }; rank: number; onRemove: (userId: number) => void; onOpenProfile: (userId: number) => void }) {
   return (
     <motion.div layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
       className="bg-card rounded-2xl border border-border p-4 shadow-sm" data-testid={`buddy-card-${buddy.userId}`}>
       <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex items-center gap-3">
+        <button type="button" className="flex items-center gap-3 text-left rounded-xl -m-1 p-1 hover:bg-secondary/40 transition-colors"
+          onClick={() => onOpenProfile(buddy.userId)} data-testid={`button-open-profile-${buddy.userId}`}>
           <RankBadge rank={rank} />
           <AvatarCircle firstName={buddy.firstName} avatar={buddy.avatar} />
           <div>
             <p className="font-bold text-base">{buddy.firstName}</p>
             <p className="text-xs text-muted-foreground">@{buddy.username}</p>
           </div>
-        </div>
+        </button>
         <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive"
           onClick={() => onRemove(buddy.userId)} data-testid={`button-remove-buddy-${buddy.userId}`}>
           <X className="w-3.5 h-3.5" />
@@ -99,7 +101,7 @@ function formatMs(ms: number) {
   return `${s}s`;
 }
 
-function DanceOffCard({ danceOff, currentUserId, onDelete }: { danceOff: DanceOffResult; currentUserId?: number; onDelete?: () => void }) {
+function DanceOffCard({ danceOff, currentUserId, onDelete, onOpenProfile }: { danceOff: DanceOffResult; currentUserId?: number; onDelete?: () => void; onOpenProfile: (userId: number) => void }) {
   const [msLeft, setMsLeft] = useState(danceOff.msRemaining);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -208,11 +210,12 @@ function DanceOffCard({ danceOff, currentUserId, onDelete }: { danceOff: DanceOf
             return (
               <div key={p.userId} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${rowBg}`}>
                 <RankBadge rank={idx + 1} />
-                <div className="flex-1 min-w-0">
+                <button type="button" className="flex-1 min-w-0 text-left rounded-lg hover:opacity-70 transition-opacity"
+                  onClick={() => onOpenProfile(p.userId)} data-testid={`button-open-profile-participant-${p.userId}`}>
                   <span className="font-semibold text-sm">{p.firstName}</span>
                   {isMe && <span className="text-xs text-primary ml-1">(you)</span>}
                   <span className="text-xs text-muted-foreground ml-1">@{p.username}</span>
-                </div>
+                </button>
                 <span className="font-bold text-base tabular-nums">{count}</span>
                 <span className="text-xs text-muted-foreground">dances</span>
               </div>
@@ -225,7 +228,7 @@ function DanceOffCard({ danceOff, currentUserId, onDelete }: { danceOff: DanceOf
   );
 }
 
-function ChallengesTab({ buddyList, currentUserId }: { buddyList: (BuddyPublicStats & { songCount?: number })[]; currentUserId?: number }) {
+function ChallengesTab({ buddyList, currentUserId, onOpenProfile }: { buddyList: (BuddyPublicStats & { songCount?: number })[]; currentUserId?: number; onOpenProfile: (userId: number) => void }) {
   const { data: danceOffs = [], isLoading } = useDanceOffs();
   const createDanceOff = useCreateDanceOff();
   const joinDanceOff = useJoinDanceOff();
@@ -376,7 +379,7 @@ function ChallengesTab({ buddyList, currentUserId }: { buddyList: (BuddyPublicSt
         <div className="space-y-3">
           <p className="text-sm font-semibold text-foreground flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> Active</p>
           <AnimatePresence mode="popLayout">
-            {activeChallenges.map(d => <DanceOffCard key={d.id} danceOff={d} currentUserId={currentUserId} />)}
+            {activeChallenges.map(d => <DanceOffCard key={d.id} danceOff={d} currentUserId={currentUserId} onOpenProfile={onOpenProfile} />)}
           </AnimatePresence>
         </div>
       )}
@@ -387,7 +390,7 @@ function ChallengesTab({ buddyList, currentUserId }: { buddyList: (BuddyPublicSt
           <p className="text-sm font-semibold text-foreground flex items-center gap-2"><Trophy className="w-4 h-4 text-yellow-500" /> Results</p>
           <AnimatePresence mode="popLayout">
             {completedChallenges.map(d => (
-              <DanceOffCard key={d.id} danceOff={d} currentUserId={currentUserId} onDelete={async () => {
+              <DanceOffCard key={d.id} danceOff={d} currentUserId={currentUserId} onOpenProfile={onOpenProfile} onDelete={async () => {
                 try {
                   await deleteResult.mutateAsync(d.id);
                 } catch {
@@ -435,11 +438,13 @@ export default function Buddies() {
   const sendRequest = useSendBuddyRequest();
   const respondRequest = useRespondToBuddyRequest();
   const removeBuddy = useRemoveBuddy();
+  const { data: suggestedCrew = [], isLoading: suggestedLoading } = useSuggestedCrew();
   const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{ id: number; username: string; firstName: string; avatar?: string }[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [profileUserId, setProfileUserId] = useState<number | null>(null);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -536,14 +541,14 @@ export default function Buddies() {
           ) : (
             <AnimatePresence mode="popLayout">
               {rankedBuddies.map((buddy, idx) => (
-                <BuddyCard key={buddy.userId} buddy={buddy} rank={idx + 1} onRemove={handleRemove} />
+                <BuddyCard key={buddy.userId} buddy={buddy} rank={idx + 1} onRemove={handleRemove} onOpenProfile={setProfileUserId} />
               ))}
             </AnimatePresence>
           )}
         </TabsContent>
 
         <TabsContent value="challenges" className="mt-2">
-          <ChallengesTab buddyList={rankedBuddies} currentUserId={user?.id} />
+          <ChallengesTab buddyList={rankedBuddies} currentUserId={user?.id} onOpenProfile={setProfileUserId} />
         </TabsContent>
 
         <TabsContent value="find" className="space-y-4 mt-2">
@@ -566,13 +571,14 @@ export default function Buddies() {
               return (
                 <motion.div key={u.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
                   className="flex items-center justify-between bg-card rounded-xl border border-border px-4 py-3 shadow-sm" data-testid={`search-result-${u.id}`}>
-                  <div className="flex items-center gap-3">
+                  <button type="button" className="flex items-center gap-3 text-left rounded-xl -m-1 p-1 hover:bg-secondary/40 transition-colors"
+                    onClick={() => setProfileUserId(u.id)} data-testid={`button-open-profile-${u.id}`}>
                     <AvatarCircle firstName={u.firstName} avatar={u.avatar} size="sm" />
                     <div>
                       <p className="font-medium text-sm">{u.firstName}</p>
                       <p className="text-xs text-muted-foreground">@{u.username}</p>
                     </div>
-                  </div>
+                  </button>
                   {alreadyBuddy ? (
                     <span className="text-xs text-muted-foreground flex items-center gap-1"><UserCheck className="w-3.5 h-3.5" /> Buddies</span>
                   ) : pendingFromThem ? (
@@ -590,8 +596,62 @@ export default function Buddies() {
           {hasSearched && searchResults.length === 0 && (
             <p className="text-center text-sm text-muted-foreground py-6">No users found for "{searchQuery}"</p>
           )}
+
+          {/* Suggested Crew — dancers near you */}
+          <div className="pt-2">
+            <div className="flex items-center gap-2 mb-3">
+              <MapPin className="w-4 h-4 text-primary" />
+              <p className="font-semibold text-sm">Suggested Crew</p>
+            </div>
+            {suggestedLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+            ) : suggestedCrew.length === 0 ? (
+              <div className="text-center py-8 bg-secondary/20 rounded-2xl border-2 border-dashed border-border">
+                <MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
+                <p className="text-sm text-muted-foreground" data-testid="text-no-suggestions">No nearby dancers yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <AnimatePresence mode="popLayout">
+                  {suggestedCrew.map(s => {
+                    const alreadyBuddy = buddyUserIds.has(s.userId);
+                    const pendingFromThem = pendingIds.has(s.userId);
+                    return (
+                      <motion.div key={s.userId} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                        className="flex items-center justify-between bg-card rounded-xl border border-border px-4 py-3 shadow-sm" data-testid={`suggested-crew-${s.userId}`}>
+                        <button type="button" className="flex items-center gap-3 text-left rounded-xl -m-1 p-1 hover:bg-secondary/40 transition-colors min-w-0"
+                          onClick={() => setProfileUserId(s.userId)} data-testid={`button-open-profile-${s.userId}`}>
+                          <AvatarCircle firstName={s.firstName} avatar={s.avatar} size="sm" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{s.firstName}</p>
+                            <p className="text-xs text-muted-foreground truncate">{s.reason}</p>
+                          </div>
+                        </button>
+                        {alreadyBuddy ? (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1 flex-shrink-0"><UserCheck className="w-3.5 h-3.5" /> Buddies</span>
+                        ) : pendingFromThem ? (
+                          <span className="text-xs text-muted-foreground flex-shrink-0">Incoming request</span>
+                        ) : (
+                          <Button size="sm" className="rounded-lg h-8 bg-primary text-primary-foreground gap-1 flex-shrink-0"
+                            onClick={() => handleSendRequest(s.userId, s.firstName)} disabled={sendRequest.isPending} data-testid={`button-add-suggested-${s.userId}`}>
+                            <UserPlus className="w-3.5 h-3.5" /> Add
+                          </Button>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
+
+      <UserProfileModal
+        userId={profileUserId}
+        isOpen={profileUserId !== null}
+        onClose={() => setProfileUserId(null)}
+      />
     </div>
   );
 }

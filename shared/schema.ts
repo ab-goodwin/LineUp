@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, varchar, boolean, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, varchar, boolean, uuid, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -15,6 +15,7 @@ export const users = pgTable("users", {
   phoneNumber: text("phone_number"),
   avatar: text("avatar"),
   homepageStats: text("homepage_stats"),
+  appearInSuggestions: boolean("appear_in_suggestions").default(true).notNull(),
 });
 
 export const verificationCodes = pgTable("verification_codes", {
@@ -47,13 +48,26 @@ export const sessions = pgTable("sessions", {
   userId: integer("user_id"),
   date: timestamp("date").notNull(),
   location: text("location").notNull(),
+  locationId: integer("location_id"),
 });
 
-// Saved Locations
+// Locations — doubles as per-user saved location names (legacy) and structured
+// real-world places. Structured rows carry provider + placeId (deduped by the
+// partial unique index) plus geocoding fields for nearby-crew matching.
 export const locations = pgTable("locations", {
   id: serial("id").primaryKey(),
   userId: integer("user_id"),
   name: text("name").notNull(),
+  formattedAddress: text("formatted_address"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  provider: text("provider"),
+  placeId: text("place_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Buddy connections (friend requests)
@@ -140,6 +154,21 @@ export const loginSchema = z.object({
 
 export const insertLocationSchema = createInsertSchema(locations).omit({ id: true, userId: true });
 
+// A normalized place returned by the place-search proxy and sent back when a
+// session is saved with a structured location selected.
+export const normalizedPlaceSchema = z.object({
+  provider: z.string(),
+  placeId: z.string(),
+  name: z.string().min(1),
+  formattedAddress: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
+});
+export type NormalizedPlace = z.infer<typeof normalizedPlaceSchema>;
+
 export const insertSongSchema = createInsertSchema(songs).omit({ id: true, userId: true });
 export const insertSessionSchema = createInsertSchema(sessions).omit({ id: true, userId: true });
 export const insertSessionDanceSchema = createInsertSchema(sessionDances).omit({ id: true });
@@ -170,15 +199,27 @@ export type UpdateSongRequest = Partial<Omit<InsertSong, 'publicId'>>;
 
 export type CreateSessionRequest = InsertSession & {
   danceIds: number[];
+  place?: NormalizedPlace | null;
 };
 export type UpdateSessionRequest = Partial<InsertSession> & {
   danceIds?: number[];
+  place?: NormalizedPlace | null;
+};
+
+// Structured location detail attached to a session response when locationId is set
+export type SessionLocationDetail = {
+  id: number;
+  name: string;
+  formattedAddress: string | null;
+  city: string | null;
+  state: string | null;
 };
 
 // Response Types
 export type SongResponse = Song;
 export type SessionResponse = Session & {
   dances: Song[];
+  locationDetail?: SessionLocationDetail | null;
 };
 export type StatsResponse = {
   totalDances: number;

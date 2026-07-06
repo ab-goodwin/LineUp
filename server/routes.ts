@@ -8,6 +8,7 @@ import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { supabaseAdmin } from "./supabase";
+import { searchPlaces } from "./services/places/index.js";
 
 declare global {
   namespace Express {
@@ -249,6 +250,16 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
+  // --- Place Search Proxy ---
+  // Delegates to the configured provider adapter (geoapify or google).
+  // Returns { configured: false, results: [] } when no provider is set up
+  // so the client gracefully falls back to manual text entry.
+  app.get("/api/places/search", requireAuth, async (req, res) => {
+    const q = String(req.query.q || "").trim();
+    const result = await searchPlaces(q);
+    res.json(result);
+  });
+
   // --- Profile Routes ---
   app.get(api.profile.get.path, requireAuth, async (req, res) => {
     const user = await storage.getUser(req.user!.id);
@@ -267,6 +278,16 @@ export async function registerRoutes(
       }
       throw err;
     }
+  });
+
+  app.put("/api/profile/suggestions", requireAuth, async (req, res) => {
+    const { optIn } = req.body;
+    if (typeof optIn !== "boolean") {
+      res.status(400).json({ message: "optIn (boolean) is required" });
+      return;
+    }
+    await storage.setAppearInSuggestions(req.user!.id, optIn);
+    res.json({ ok: true, appearInSuggestions: optIn });
   });
 
   app.post(api.profile.deleteData.path, requireAuth, async (req, res) => {
@@ -399,9 +420,26 @@ export async function registerRoutes(
     res.json(results);
   });
 
+  app.get("/api/users/:id/profile", requireAuth, async (req, res) => {
+    const targetId = Number(req.params.id);
+    if (!Number.isInteger(targetId)) {
+      res.status(400).json({ message: "Invalid user id" }); return;
+    }
+    const profile = await storage.getPublicProfile(targetId, req.user!.id);
+    if (!profile) {
+      res.status(404).json({ message: "User not found" }); return;
+    }
+    res.json(profile);
+  });
+
   app.get("/api/buddies", requireAuth, async (req, res) => {
     const list = await storage.getBuddies(req.user!.id);
     res.json(list);
+  });
+
+  app.get("/api/buddies/suggested", requireAuth, async (req, res) => {
+    const suggested = await storage.getSuggestedCrew(req.user!.id);
+    res.json(suggested);
   });
 
   app.get("/api/buddies/requests", requireAuth, async (req, res) => {

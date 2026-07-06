@@ -8,8 +8,18 @@ import { Plus, MapPin, Music } from "lucide-react";
 import "react-day-picker/dist/style.css";
 import { StyleTag } from "@/lib/style-tags";
 
+function getDefaultCalendarDate(): Date {
+  const now = new Date();
+  if (now.getHours() < 3) {
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    return yesterday;
+  }
+  return now;
+}
+
 export default function CalendarPage() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(getDefaultCalendarDate());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<any>(null);
 
@@ -79,17 +89,50 @@ export default function CalendarPage() {
                         Session {idx + 1}
                       </p>
                     )}
-                    <div className="flex items-center gap-2 text-foreground/80 mb-3">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      <span className="font-medium">{session.location}</span>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2 text-foreground/80 min-w-0">
+                        <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
+                        <div className="min-w-0">
+                          <span className="font-medium truncate block" data-testid={`text-session-location-${session.id}`}>
+                            {(session as any).locationDetail?.name || session.location}
+                          </span>
+                          {(session as any).locationDetail?.formattedAddress && (
+                            <span className="text-xs text-muted-foreground truncate block">
+                              {(session as any).locationDetail.formattedAddress}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => openEdit(session)}
+                        className="rounded-lg flex-shrink-0"
+                        variant="outline"
+                        size="sm"
+                        data-testid={`button-edit-session-${session.id}`}
+                      >
+                        Edit Session
+                      </Button>
                     </div>
 
-                    <div className="bg-secondary/30 rounded-xl p-3 border border-border/30 mb-3">
+                    <div className="bg-secondary/30 rounded-xl p-3 border border-border/30">
                       <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground uppercase tracking-wide font-semibold">
                         <Music className="w-3 h-3" />
                         <span>Dances ({session.dances.length})</span>
                       </div>
-                      <ul className="space-y-1.5">
+                      <ul
+                        className="space-y-1.5"
+                        style={
+                          session.dances.length > 10
+                            ? {
+                                maxHeight: "17rem",
+                                overflowY: "auto",
+                                WebkitOverflowScrolling: "touch",
+                                touchAction: "pan-y",
+                              }
+                            : undefined
+                        }
+                        data-testid={`list-session-dances-${session.id}`}
+                      >
                         {session.dances.map((dance) => (
                           <li key={dance.id} className="text-sm font-medium flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
@@ -99,15 +142,6 @@ export default function CalendarPage() {
                         ))}
                       </ul>
                     </div>
-
-                    <Button
-                      onClick={() => openEdit(session)}
-                      className="w-full rounded-xl"
-                      variant="outline"
-                      data-testid={`button-edit-session-${session.id}`}
-                    >
-                      Edit Session
-                    </Button>
                   </div>
                 ))}
 
