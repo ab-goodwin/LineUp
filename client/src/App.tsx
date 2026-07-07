@@ -19,6 +19,7 @@ import AuthPage from "@/pages/AuthPage";
 import ResetPassword from "@/pages/ResetPassword";
 import { Loader2 } from "lucide-react";
 import { OnboardingCarousel } from "@/components/OnboardingCarousel";
+import { InstallLineUpPrompt } from "@/components/InstallLineUpPrompt";
 
 function AnimatedRoutes() {
   return (
@@ -54,7 +55,13 @@ function AppInner() {
   }
 
   if (!user) {
-    return <AuthPage />;
+    return (
+    <>
+    <AuthPage />
+    <InstallLineUpPrompt />
+    <Toaster />
+    </>
+    );
   }
 
   return (

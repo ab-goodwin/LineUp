@@ -1,0 +1,25 @@
+{
+  "name": "LineUp",
+  "short_name": "LineUp",
+  "description": "Track Dance Sessions, Compete with Friends, Find your Dance Statistics, and more!",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F8F1E8",
+  "theme_color": "#E45524",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
