@@ -68,12 +68,10 @@ function AppInner() {
   return (
   <div className="min-h-screen bg-background font-sans">
     <OnboardingCarousel userId={user.id} />
-
-    <main className="app-main">
-      {showHeader && <Header />}
+    {showHeader && <Header />}
+    <main>
       <AnimatedRoutes />
     </main>
-
     <Navigation />
     <Toaster />
   </div>

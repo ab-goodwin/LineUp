@@ -187,3 +187,13 @@
     padding-top: calc(env(safe-area-inset-top) + 14px);
   }
 }
+
+.safe-header {
+  padding-top: 0;
+}
+
+@media (display-mode: standalone) {
+  .safe-header {
+    padding-top: calc(env(safe-area-inset-top) + 8px);
+  }
+}
