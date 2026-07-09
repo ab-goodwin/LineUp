@@ -13,7 +13,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectRegister: "script",
       manifestFilename: "manifest.json",
-      includeAssets: ["favicon.png", "icons/icon-192.png", "icons/icon-512.png"],
+      includeAssets: ["favicon.png", "icons/icon-192.png", "icons/icon-192-maskable.png",
+        "icons/icon-512-maskable.png", "icons/icon-512.png,", "icons/apple-touch-icon.png",],
       manifest: {
         name: "LineUp",
         short_name: "LineUp",
@@ -25,20 +26,32 @@ export default defineConfig({
         orientation: "portrait",
         background_color: "#F8F1E8",
         theme_color: "#E45524",
-        icons: [
-          {
-            src: "/icons/icon-192.png",
-            sizes: "192x192",
-            type: "image/png",
-            purpose: "any maskable",
-          },
-          {
-            src: "/icons/icon-512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "any maskable",
-          },
-        ],
+       icons: [
+  {
+    src: "/icons/icon-192.png",
+    sizes: "192x192",
+    type: "image/png",
+    purpose: "any",
+  },
+  {
+    src: "/icons/icon-512.png",
+    sizes: "512x512",
+    type: "image/png",
+    purpose: "any",
+  },
+  {
+    src: "/icons/icon-192-maskable.png",
+    sizes: "192x192",
+    type: "image/png",
+    purpose: "maskable",
+  },
+  {
+    src: "/icons/icon-512-maskable.png",
+    sizes: "512x512",
+    type: "image/png",
+    purpose: "maskable",
+  },
+],
       },
       workbox: {
         navigateFallback: "/index.html",
