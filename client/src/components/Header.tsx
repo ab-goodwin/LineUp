@@ -26,7 +26,7 @@ export function Header() {
     <header
       className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-border/50"
       style={{
-        paddingTop: isPwa ? "80px" : 0,
+        paddingTop: isPwa ? "calc(env(safe-area-inset-top, 0px) + 14px)" : 0,
       }}
     >
       <div className="flex h-20 items-center justify-between px-4 max-w-5xl mx-auto">
