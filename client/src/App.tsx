@@ -46,6 +46,7 @@ function AppInner() {
     return <ResetPassword />;
   }
 
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -65,16 +66,18 @@ function AppInner() {
   }
 
   return (
-    <div className="min-h-screen bg-background font-sans">
-      <OnboardingCarousel userId={user.id} />
+  <div className="min-h-screen bg-background font-sans">
+    <OnboardingCarousel userId={user.id} />
+
+    <main className="app-main">
       {showHeader && <Header />}
-      <main>
-        <AnimatedRoutes />
-      </main>
-      <Navigation />
-      <Toaster />
-    </div>
-  );
+      <AnimatedRoutes />
+    </main>
+
+    <Navigation />
+    <Toaster />
+  </div>
+);
 }
 
 function App() {

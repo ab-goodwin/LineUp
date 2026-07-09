@@ -177,3 +177,13 @@
 .rdp-day_selected {
   background-color: hsl(var(--primary)) !important;
 }
+
+.app-main {
+  padding-top: 0;
+}
+
+@media (display-mode: standalone) {
+  .app-main {
+    padding-top: calc(env(safe-area-inset-top) + 14px);
+  }
+}
