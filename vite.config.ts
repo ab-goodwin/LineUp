@@ -2,11 +2,49 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   plugins: [
     react(),
     runtimeErrorOverlay(),
+
+    VitePWA({
+      registerType: "autoUpdate",
+      injectRegister: "script",
+      manifestFilename: "manifest.json",
+      includeAssets: ["favicon.png", "icons/icon-192.png", "icons/icon-512.png"],
+      manifest: {
+        name: "LineUp",
+        short_name: "LineUp",
+        description:
+          "Track Dance Sessions, Compete with Friends, Find your Dance Statistics, and more!",
+        start_url: "/",
+        scope: "/",
+        display: "standalone",
+        orientation: "portrait",
+        background_color: "#F8F1E8",
+        theme_color: "#E45524",
+        icons: [
+          {
+            src: "/icons/icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any maskable",
+          },
+          {
+            src: "/icons/icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable",
+          },
+        ],
+      },
+      workbox: {
+        navigateFallback: "/index.html",
+      },
+    }),
+
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -25,17 +63,10 @@ export default defineConfig({
       "@shared": path.resolve(import.meta.dirname, "shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
-    dedupe: ["react", "react-dom"],
   },
   root: path.resolve(import.meta.dirname, "client"),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-  },
-  server: {
-    fs: {
-      strict: true,
-      deny: ["**/.*"],
-    },
   },
 });
