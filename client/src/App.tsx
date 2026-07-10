@@ -41,11 +41,10 @@ function AppInner() {
   const { user, isLoading } = useAuth();
   const showHeader = location === "/";
 
-  // Public route: password recovery link lands here regardless of auth state
+  // Public route: password recovery link lands here regardless of auth state.
   if (location === "/reset-password") {
     return <ResetPassword />;
   }
-
 
   if (isLoading) {
     return (
@@ -57,25 +56,28 @@ function AppInner() {
 
   if (!user) {
     return (
-    <>
-    <AuthPage />
-    <InstallLineUpPrompt />
-    <Toaster />
-    </>
+      <>
+        <AuthPage />
+        <InstallLineUpPrompt />
+        <Toaster />
+      </>
     );
   }
 
   return (
-  <div className="min-h-screen bg-background font-sans">
-    <OnboardingCarousel userId={user.id} />
-    {showHeader && <Header />}
-    <main>
-      <AnimatedRoutes />
-    </main>
-    <Navigation />
-    <Toaster />
-  </div>
-);
+    <div className="min-h-screen bg-background font-sans">
+      <OnboardingCarousel userId={user.id} />
+
+      {showHeader && <Header />}
+
+      <main>
+        <AnimatedRoutes />
+      </main>
+
+      <Navigation />
+      <Toaster />
+    </div>
+  );
 }
 
 function App() {

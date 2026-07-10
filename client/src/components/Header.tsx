@@ -6,29 +6,14 @@ import { Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/context/ThemeContext";
 import { FadeImg } from "@/components/FadeImg";
-import { useEffect, useState } from "react";
 
 export function Header() {
   const { data: profile } = useProfile();
   const [, setLocation] = useLocation();
   const { theme } = useTheme();
-  const [isPwa, setIsPwa] = useState(false);
-
-  useEffect(() => {
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
-
-    setIsPwa(standalone);
-  }, []);
 
   return (
-    <header
-      className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-border/50"
-      style={{
-        paddingTop: isPwa ? "env(safe-area-inset-top, 0px)" : 0,
-      }}
-    >
+    <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="flex h-20 items-center justify-between px-4 max-w-5xl mx-auto">
         <Link href="/" className="flex items-center cursor-pointer">
           <FadeImg

@@ -126,42 +126,52 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
+    margin: 0;
     font-family: var(--font-body);
+
     /* Prevent long-press text selection and callout on mobile */
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
   }
 
-  @media (display-mode: standalone) {
-    body {
-      padding-top: calc(env(safe-area-inset-top) + 10px);
-      padding-bottom: calc(env(safe-area-inset-bottom) + 3px);
-    }
-  }
-
   /* Re-enable selection inside form controls */
-  input, textarea, [contenteditable] {
+  input,
+  textarea,
+  [contenteditable] {
     -webkit-user-select: text;
     user-select: text;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
     @apply tracking-wide text-foreground;
   }
 
-  /* Prevent image save / copy callout on all images */
+  /* Prevent image save/copy callout on all images */
   img {
     -webkit-touch-callout: none;
     -webkit-user-drag: none;
     pointer-events: none;
   }
 
-  /* Re-enable pointer events on images that need interaction (avatars, links) */
-  a img, button img, [role="button"] img {
+  /* Re-enable pointer events on interactive images */
+  a img,
+  button img,
+  [role="button"] img {
     pointer-events: auto;
   }
 }
