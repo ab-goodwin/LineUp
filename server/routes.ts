@@ -255,10 +255,37 @@ export async function registerRoutes(
   // Returns { configured: false, results: [] } when no provider is set up
   // so the client gracefully falls back to manual text entry.
   app.get("/api/places/search", requireAuth, async (req, res) => {
-    const q = String(req.query.q || "").trim();
+  const q = String(req.query.q || "").trim();
+
+  // Cost control: do not call Geoapify/Google for very short searches
+  if (q.length < 3) {
+    res.json({ configured: true, results: [] });
+    return;
+  }
+
+  // Cost control: allow frontend to request a limit, but cap it server-side
+  const requestedLimit = Number(req.query.limit);
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.min(Math.max(requestedLimit, 1), 10)
+    : 6;
+
+  try {
     const result = await searchPlaces(q);
-    res.json(result);
-  });
+
+    res.json({
+      configured: result.configured,
+      results: (result.results || []).slice(0, limit),
+    });
+  } catch (err) {
+    console.error("[places/search] failed:", err);
+
+    res.status(500).json({
+      configured: true,
+      results: [],
+      message: "Place search failed",
+    });
+  }
+});
 
   // --- Profile Routes ---
   app.get(api.profile.get.path, requireAuth, async (req, res) => {

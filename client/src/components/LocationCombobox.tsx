@@ -21,15 +21,15 @@ export function LocationCombobox({ value, onChange, onSelectPlace, placeholder =
   const createLocation = useCreateLocation();
   const placeSearch = usePlaceSearch(inputValue);
 
-  const filtered = locations.filter(l =>
-    l.name.toLowerCase().includes(inputValue.toLowerCase())
-  );
+  const filtered = locations
+  .filter(l => l.name.toLowerCase().includes(inputValue.toLowerCase()))
+  .slice(0, 6);
 
   const exactMatch = locations.some(l => l.name.toLowerCase() === inputValue.toLowerCase());
   const showAddOption = inputValue.trim().length > 0 && !exactMatch;
 
   const providerConfigured = placeSearch.data?.configured ?? false;
-  const placeResults = placeSearch.data?.results ?? [];
+  const placeResults = (placeSearch.data?.results ?? []).slice(0, 6);
 
   const handleSelect = (name: string) => {
     onChange(name);

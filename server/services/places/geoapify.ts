@@ -4,7 +4,7 @@ export class GeoapifyAdapter implements PlacesAdapter {
   constructor(private apiKey: string) {}
 
   async search(q: string): Promise<NormalizedPlaceResult[]> {
-    const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(q)}&limit=8&apiKey=${this.apiKey}`;
+    const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(q)}&limit=6&apiKey=${this.apiKey}`;
     const resp = await fetch(url);
     if (!resp.ok) return [];
     const data: any = await resp.json();

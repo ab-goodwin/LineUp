@@ -13,16 +13,27 @@ interface PlaceSearchResponse {
 // configured, `configured` is false and the UI falls back to manual text entry.
 export function usePlaceSearch(query: string) {
   const [debounced, setDebounced] = useState(query);
+
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(query), 300);
+    const t = setTimeout(() => setDebounced(query.trim()), 400);
     return () => clearTimeout(t);
   }, [query]);
 
   return useQuery<PlaceSearchResponse>({
     queryKey: ["/api/places/search", debounced],
-    enabled: debounced.trim().length >= 2,
+    enabled: debounced.length >= 3,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
     queryFn: async () => {
-      const res = await fetch(`/api/places/search?q=${encodeURIComponent(debounced.trim())}`, { credentials: "include" });
+      const params = new URLSearchParams({
+        q: debounced,
+        limit: "6",
+      });
+
+      const res = await fetch(`/api/places/search?${params.toString()}`, {
+        credentials: "include",
+      });
+
       if (!res.ok) throw new Error("Place search failed");
       return res.json();
     },
