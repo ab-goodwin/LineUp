@@ -65,7 +65,7 @@ function AppInner() {
   }
 
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <div className="app-shell min-h-screen bg-background font-sans">
       <OnboardingCarousel userId={user.id} />
 
       {showHeader && <Header />}

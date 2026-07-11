@@ -13,7 +13,7 @@ export function Header() {
   const { theme } = useTheme();
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-md border-b border-border/50">
+    <header className="app-header sticky z-40 w-full bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="flex h-20 items-center justify-between px-4 max-w-5xl mx-auto">
         <Link href="/" className="flex items-center cursor-pointer">
           <FadeImg
