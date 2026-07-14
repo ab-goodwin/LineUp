@@ -8,7 +8,6 @@ import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "./auth";
 import { supabaseAdmin } from "./supabase";
-import { searchPlaces } from "./services/places/index.js";
 
 declare global {
   namespace Express {
@@ -229,63 +228,121 @@ export async function registerRoutes(
     }
   });
 
-  // --- Location Routes ---
+  // --- Global Location Routes ---
+
+  // With no search text, return the current user's favorites first and then
+  // their most recently used dance locations.
   app.get("/api/locations", requireAuth, async (req, res) => {
-    const locs = await storage.getLocations(req.user!.id);
-    res.json(locs);
+    const requestedLimit = Number(req.query.limit);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 20)
+      : 6;
+
+    const locations = await storage.getLocations(req.user!.id, limit);
+    res.json(locations);
   });
 
-  app.post("/api/locations", requireAuth, async (req, res) => {
-    const { name } = req.body;
-    if (!name || typeof name !== "string" || !name.trim()) {
-      res.status(400).json({ message: "Name is required" });
+  // Search the shared global location directory. Results are ranked by exact
+  // match, prefix match, aliases, fuzzy similarity, and global usage count.
+  app.get("/api/locations/search", requireAuth, async (req, res) => {
+    const q = String(req.query.q || "").trim();
+
+    const requestedLimit = Number(req.query.limit);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 10)
+      : 6;
+
+    if (!q) {
+      const locations = await storage.getLocations(req.user!.id, limit);
+      res.json({ results: locations });
       return;
     }
-    const loc = await storage.createLocation(req.user!.id, name.trim());
-    res.status(201).json(loc);
+
+    const results = await storage.searchLocations(req.user!.id, q, limit);
+    res.json({ results });
   });
 
+  // Add a new community location. If an exact normalized match already exists,
+  // storage.createLocation reuses it instead of creating a duplicate. The
+  // selected location is also added to the current user's favorites.
+  app.post("/api/locations", requireAuth, async (req, res) => {
+    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+    const city =
+      typeof req.body?.city === "string" && req.body.city.trim()
+        ? req.body.city.trim()
+        : null;
+    const state =
+      typeof req.body?.state === "string" && req.body.state.trim()
+        ? req.body.state.trim()
+        : null;
+
+    if (!name) {
+      res.status(400).json({ message: "Location name is required" });
+      return;
+    }
+
+    if (name.length > 120) {
+      res.status(400).json({ message: "Location name is too long" });
+      return;
+    }
+
+    try {
+      const location = await storage.createLocation(
+        req.user!.id,
+        name,
+        city,
+        state,
+      );
+
+      res.status(201).json(location);
+    } catch (err: any) {
+      console.error("[locations/create] failed:", err);
+      res.status(400).json({
+        message: err?.message || "Could not add location",
+      });
+    }
+  });
+
+  // Add an existing global location to this user's favorites or update its
+  // favorite state.
+  app.put("/api/locations/:id/favorite", requireAuth, async (req, res) => {
+    const locationId = Number(req.params.id);
+    const isFavorite = req.body?.isFavorite;
+
+    if (!Number.isInteger(locationId) || locationId <= 0) {
+      res.status(400).json({ message: "Invalid location id" });
+      return;
+    }
+
+    if (typeof isFavorite !== "boolean") {
+      res.status(400).json({ message: "isFavorite must be a boolean" });
+      return;
+    }
+
+    await storage.saveLocation(req.user!.id, locationId, isFavorite);
+    res.json({ ok: true, locationId, isFavorite });
+  });
+
+  // Remove a location from this user's saved/favorite list. The shared global
+  // location remains available to every user and to existing sessions.
   app.delete("/api/locations/:id", requireAuth, async (req, res) => {
-    await storage.deleteLocation(Number(req.params.id), req.user!.id);
+    const locationId = Number(req.params.id);
+
+    if (!Number.isInteger(locationId) || locationId <= 0) {
+      res.status(400).json({ message: "Invalid location id" });
+      return;
+    }
+
+    await storage.deleteLocation(locationId, req.user!.id);
     res.status(204).send();
   });
 
-  // --- Place Search Proxy ---
-  // Delegates to the configured provider adapter (geoapify or google).
-  // Returns { configured: false, results: [] } when no provider is set up
-  // so the client gracefully falls back to manual text entry.
-  app.get("/api/places/search", requireAuth, async (req, res) => {
-  const q = String(req.query.q || "").trim();
-
-  // Cost control: do not call Geoapify/Google for very short searches
-  if (q.length < 3) {
-    res.json({ configured: true, results: [] });
-    return;
-  }
-
-  // Cost control: allow frontend to request a limit, but cap it server-side
-  const requestedLimit = Number(req.query.limit);
-  const limit = Number.isFinite(requestedLimit)
-    ? Math.min(Math.max(requestedLimit, 1), 10)
-    : 6;
-
-  try {
-    const result = await searchPlaces(q);
-
-    res.json({
-      configured: result.configured,
-      results: (result.results || []).slice(0, limit),
-    });
-  } catch (err) {
-    console.error("[places/search] failed:", err);
-
-    res.status(500).json({
-      configured: true,
-      results: [],
-      message: "Place search failed",
-    });
-  }
-});
+  // Temporary compatibility endpoint. Paid provider search is disabled because
+  // LineUp now searches its community-maintained global location directory.
+  // This may be removed after all clients use /api/locations/search.
+  app.get("/api/places/search", requireAuth, async (_req, res) => {
+    res.json({ configured: false, results: [] });
+  });
 
   // --- Profile Routes ---
   app.get(api.profile.get.path, requireAuth, async (req, res) => {

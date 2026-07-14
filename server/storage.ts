@@ -1,11 +1,12 @@
 import { db } from "./db";
 import { 
-  users, songs, sessions, sessionDances, locations, buddies, streakChallenges, verificationCodes,
-  danceOffs, danceOffParticipants, userAchievements,
+  users, songs, sessions, sessionDances, locations, locationAliases, userSavedLocations,
+  buddies, streakChallenges, verificationCodes, danceOffs, danceOffParticipants, userAchievements,
   type User, type InsertUser,
   type Song, type InsertSong, type CreateSongRequest, type UpdateSongRequest,
   type Session, type InsertSession, type CreateSessionRequest, type UpdateSessionRequest, type SessionResponse,
-  type StatsResponse, type Location, type NormalizedPlace, type SessionLocationDetail
+  type StatsResponse, type Location, type NormalizedPlace, type SessionLocationDetail,
+  type LocationSearchResult, type SavedLocationResponse
 } from "@shared/schema";
 import { ACHIEVEMENT_DEFS, type AchievementStatus } from "@shared/achievements";
 import { eq, desc, sql, and, or, ilike, ne, inArray } from "drizzle-orm";
@@ -23,6 +24,17 @@ function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: number):
 }
 
 const NEARBY_RADIUS_MILES = 50;
+
+function normalizeLocationName(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function getISOWeek(d: Date): string {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -44,9 +56,11 @@ export interface IStorage {
   updateUser(userId: number, updates: { firstName?: string; lastName?: string; location?: string }): Promise<User>;
   deleteData(userId: number, type: 'sessions' | 'songs' | 'all'): Promise<void>;
 
-  // Locations (scoped to userId)
-  getLocations(userId: number): Promise<Location[]>;
-  createLocation(userId: number, name: string): Promise<Location>;
+  // Global locations + per-user favorites/recent history
+  getLocations(userId: number, limit?: number): Promise<SavedLocationResponse[]>;
+  searchLocations(userId: number, query: string, limit?: number): Promise<LocationSearchResult[]>;
+  createLocation(userId: number, name: string, city?: string | null, state?: string | null): Promise<Location>;
+  saveLocation(userId: number, locationId: number, isFavorite?: boolean): Promise<void>;
   deleteLocation(id: number, userId: number): Promise<void>;
   resolveLocation(userId: number, place: NormalizedPlace): Promise<number>;
 
@@ -176,30 +190,285 @@ export class DatabaseStorage implements IStorage {
   }
 
   // --- Locations ---
-  async getLocations(userId: number): Promise<Location[]> {
-    return await db.select().from(locations).where(eq(locations.userId, userId)).orderBy(locations.name);
+  // With no query, return the user's favorites first, followed by their most
+  // recently used session locations. Global locations are only searched after
+  // the user types into the combobox.
+  async getLocations(userId: number, limit = 6): Promise<SavedLocationResponse[]> {
+    const safeLimit = Math.min(Math.max(limit, 1), 20);
+
+    const savedRows = await db
+      .select({
+        id: locations.id,
+        name: locations.name,
+        city: locations.city,
+        state: locations.state,
+        country: locations.country,
+        usageCount: locations.usageCount,
+        isFavorite: userSavedLocations.isFavorite,
+        lastUsedAt: userSavedLocations.lastUsedAt,
+      })
+      .from(userSavedLocations)
+      .innerJoin(locations, eq(userSavedLocations.locationId, locations.id))
+      .where(eq(userSavedLocations.userId, userId))
+      .orderBy(desc(userSavedLocations.isFavorite), desc(userSavedLocations.lastUsedAt), locations.name)
+      .limit(safeLimit * 3);
+
+    const recentRows = await db
+      .select({
+        id: locations.id,
+        name: locations.name,
+        city: locations.city,
+        state: locations.state,
+        country: locations.country,
+        usageCount: locations.usageCount,
+        lastUsedAt: sql<Date>`max(${sessions.date})`,
+      })
+      .from(sessions)
+      .innerJoin(locations, eq(sessions.locationId, locations.id))
+      .where(eq(sessions.userId, userId))
+      .groupBy(
+        locations.id,
+        locations.name,
+        locations.city,
+        locations.state,
+        locations.country,
+        locations.usageCount,
+      )
+      .orderBy(desc(sql`max(${sessions.date})`))
+      .limit(safeLimit * 3);
+
+    const combined = new Map<number, SavedLocationResponse>();
+
+    // Favorites/saved rows remain first because they are inserted first.
+    for (const row of savedRows) {
+      combined.set(row.id, {
+        id: row.id,
+        name: row.name,
+        city: row.city,
+        state: row.state,
+        country: row.country,
+        usageCount: row.usageCount,
+        isFavorite: row.isFavorite,
+        lastUsedAt: row.lastUsedAt,
+      });
+    }
+
+    for (const row of recentRows) {
+      const existing = combined.get(row.id);
+      if (existing) {
+        if (!existing.lastUsedAt || row.lastUsedAt > existing.lastUsedAt) {
+          existing.lastUsedAt = row.lastUsedAt;
+        }
+        continue;
+      }
+
+      combined.set(row.id, {
+        id: row.id,
+        name: row.name,
+        city: row.city,
+        state: row.state,
+        country: row.country,
+        usageCount: row.usageCount,
+        isFavorite: false,
+        lastUsedAt: row.lastUsedAt,
+      });
+    }
+
+    return Array.from(combined.values())
+      .sort((a, b) => {
+        if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
+        const aTime = a.lastUsedAt?.getTime() ?? 0;
+        const bTime = b.lastUsedAt?.getTime() ?? 0;
+        if (aTime !== bTime) return bTime - aTime;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, safeLimit);
   }
 
-  async createLocation(userId: number, name: string): Promise<Location> {
-    const [loc] = await db.insert(locations).values({ userId, name }).returning();
-    return loc;
+  // Search the shared global directory. PostgreSQL trigram similarity catches
+  // close spellings while exact and prefix matches are ranked first.
+  async searchLocations(userId: number, query: string, limit = 6): Promise<LocationSearchResult[]> {
+    const normalized = normalizeLocationName(query);
+    if (!normalized) return [];
+
+    const safeLimit = Math.min(Math.max(limit, 1), 10);
+    const matchScore = sql<number>`GREATEST(
+      similarity(${locations.normalizedName}, ${normalized}),
+      COALESCE(MAX(similarity(${locationAliases.normalizedAlias}, ${normalized})), 0)
+    )`;
+
+    const rows = await db
+      .select({
+        id: locations.id,
+        name: locations.name,
+        city: locations.city,
+        state: locations.state,
+        country: locations.country,
+        isFavorite: sql<boolean>`COALESCE(bool_or(${userSavedLocations.isFavorite}), false)`,
+        lastUsedAt: sql<Date | null>`MAX(${userSavedLocations.lastUsedAt})`,
+        matchScore,
+        usageCount: locations.usageCount,
+      })
+      .from(locations)
+      .leftJoin(locationAliases, eq(locationAliases.locationId, locations.id))
+      .leftJoin(
+        userSavedLocations,
+        and(
+          eq(userSavedLocations.locationId, locations.id),
+          eq(userSavedLocations.userId, userId),
+        ),
+      )
+      .where(or(
+        eq(locations.normalizedName, normalized),
+        ilike(locations.normalizedName, `${normalized}%`),
+        ilike(locations.normalizedName, `%${normalized}%`),
+        eq(locationAliases.normalizedAlias, normalized),
+        ilike(locationAliases.normalizedAlias, `${normalized}%`),
+        ilike(locationAliases.normalizedAlias, `%${normalized}%`),
+        sql`${locations.normalizedName} % ${normalized}`,
+        sql`${locationAliases.normalizedAlias} % ${normalized}`,
+      ))
+      .groupBy(
+        locations.id,
+        locations.name,
+        locations.normalizedName,
+        locations.city,
+        locations.state,
+        locations.country,
+        locations.usageCount,
+      )
+      .orderBy(
+        sql`CASE WHEN ${locations.normalizedName} = ${normalized} THEN 0 ELSE 1 END`,
+        sql`CASE WHEN ${locations.normalizedName} LIKE ${normalized + "%"} THEN 0 ELSE 1 END`,
+        desc(matchScore),
+        desc(locations.usageCount),
+        locations.name,
+      )
+      .limit(safeLimit);
+
+    return rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      city: row.city,
+      state: row.state,
+      country: row.country,
+      isFavorite: Boolean(row.isFavorite),
+      lastUsedAt: row.lastUsedAt,
+      matchScore: Number(row.matchScore),
+    }));
   }
 
-  async deleteLocation(id: number, userId: number): Promise<void> {
-    await db.delete(locations).where(and(eq(locations.id, id), eq(locations.userId, userId)));
+  async saveLocation(userId: number, locationId: number, isFavorite = true): Promise<void> {
+    await db
+      .insert(userSavedLocations)
+      .values({
+        userId,
+        locationId,
+        isFavorite,
+        lastUsedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [userSavedLocations.userId, userSavedLocations.locationId],
+        set: {
+          isFavorite,
+          lastUsedAt: new Date(),
+        },
+      });
   }
 
-  // Resolve a structured place selection to a locations row id. Structured
-  // places are deduped globally by (provider, placeId) so nearby-crew matching
-  // can compare shared locationIds across users.
-  async resolveLocation(userId: number, place: NormalizedPlace): Promise<number> {
-    const [existing] = await db.select().from(locations)
-      .where(and(eq(locations.provider, place.provider), eq(locations.placeId, place.placeId)))
+  // Add a community location. An exact normalized-name match is reused rather
+  // than creating a duplicate. New locations are automatically favorited by
+  // the user who added them.
+  async createLocation(
+    userId: number,
+    name: string,
+    city: string | null = null,
+    state: string | null = null,
+  ): Promise<Location> {
+    const trimmedName = name.trim();
+    const normalizedName = normalizeLocationName(trimmedName);
+    if (!normalizedName) throw new Error("Location name is required");
+
+    const normalizedCity = city?.trim() || null;
+    const normalizedState = state?.trim() || null;
+
+    const [existing] = await db
+      .select()
+      .from(locations)
+      .where(and(
+        eq(locations.normalizedName, normalizedName),
+        normalizedCity ? ilike(locations.city, normalizedCity) : sql`true`,
+        normalizedState ? ilike(locations.state, normalizedState) : sql`true`,
+      ))
       .limit(1);
+
     if (existing) {
-      await db.update(locations)
+      await this.saveLocation(userId, existing.id, true);
+      return existing;
+    }
+
+    const [created] = await db
+      .insert(locations)
+      .values({
+        name: trimmedName,
+        normalizedName,
+        city: normalizedCity,
+        state: normalizedState,
+        country: "United States",
+        createdByUserId: userId,
+        usageCount: 0,
+      })
+      .returning();
+
+    await this.saveLocation(userId, created.id, true);
+    return created;
+  }
+
+  // "Delete" only removes the location from this user's favorites/saved list.
+  // It does not delete the shared global location used by other dancers.
+  async deleteLocation(id: number, userId: number): Promise<void> {
+    await db
+      .delete(userSavedLocations)
+      .where(and(
+        eq(userSavedLocations.locationId, id),
+        eq(userSavedLocations.userId, userId),
+      ));
+  }
+
+  private async markLocationUsed(userId: number, locationId: number, usedAt: Date): Promise<void> {
+    await db
+      .insert(userSavedLocations)
+      .values({
+        userId,
+        locationId,
+        isFavorite: false,
+        lastUsedAt: usedAt,
+      })
+      .onConflictDoUpdate({
+        target: [userSavedLocations.userId, userSavedLocations.locationId],
+        set: { lastUsedAt: usedAt },
+      });
+  }
+
+  // Kept for optional provider-enriched locations. This is no longer required
+  // for ordinary community-created locations, but it remains compatible with
+  // existing Google/Geoapify records.
+  async resolveLocation(userId: number, place: NormalizedPlace): Promise<number> {
+    const [existing] = await db
+      .select()
+      .from(locations)
+      .where(and(
+        eq(locations.provider, place.provider),
+        eq(locations.placeId, place.placeId),
+      ))
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(locations)
         .set({
           name: place.name,
+          normalizedName: normalizeLocationName(place.name),
           formattedAddress: place.formattedAddress ?? existing.formattedAddress,
           city: place.city ?? existing.city,
           state: place.state ?? existing.state,
@@ -209,20 +478,30 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date(),
         })
         .where(eq(locations.id, existing.id));
+
+      await this.saveLocation(userId, existing.id, true);
       return existing.id;
     }
-    const [created] = await db.insert(locations).values({
-      userId,
-      name: place.name,
-      formattedAddress: place.formattedAddress ?? null,
-      city: place.city ?? null,
-      state: place.state ?? null,
-      country: place.country ?? null,
-      latitude: place.latitude ?? null,
-      longitude: place.longitude ?? null,
-      provider: place.provider,
-      placeId: place.placeId,
-    }).returning();
+
+    const [created] = await db
+      .insert(locations)
+      .values({
+        name: place.name,
+        normalizedName: normalizeLocationName(place.name),
+        formattedAddress: place.formattedAddress ?? null,
+        city: place.city ?? null,
+        state: place.state ?? null,
+        country: place.country ?? "United States",
+        latitude: place.latitude ?? null,
+        longitude: place.longitude ?? null,
+        provider: place.provider,
+        placeId: place.placeId,
+        createdByUserId: userId,
+        usageCount: 0,
+      })
+      .returning();
+
+    await this.saveLocation(userId, created.id, true);
     return created.id;
   }
 
@@ -334,7 +613,15 @@ export class DatabaseStorage implements IStorage {
     if (place) {
       sessionData.locationId = await this.resolveLocation(userId, place);
     }
+
     const [session] = await db.insert(sessions).values({ ...sessionData, userId }).returning();
+
+    if (session.locationId != null) {
+      await this.markLocationUsed(userId, session.locationId, session.date);
+      await db.update(locations)
+        .set({ usageCount: sql`${locations.usageCount} + 1`, updatedAt: new Date() })
+        .where(eq(locations.id, session.locationId));
+    }
     
     if (danceIds && danceIds.length > 0) {
       await db.insert(sessionDances).values(
@@ -346,6 +633,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSession(id: number, userId: number, req: UpdateSessionRequest): Promise<SessionResponse> {
+    const [before] = await db.select().from(sessions)
+      .where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
+    if (!before) throw new Error("Session not found");
+
     const { danceIds, place, ...sessionData } = req;
     if (place) {
       sessionData.locationId = await this.resolveLocation(userId, place);
@@ -354,7 +645,9 @@ export class DatabaseStorage implements IStorage {
     }
     
     if (Object.keys(sessionData).length > 0) {
-      await db.update(sessions).set(sessionData).where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
+      await db.update(sessions)
+        .set(sessionData)
+        .where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
     }
 
     if (danceIds) {
@@ -366,12 +659,42 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    const [after] = await db.select().from(sessions)
+      .where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
+
+    if (after?.locationId != null) {
+      await this.markLocationUsed(userId, after.locationId, after.date);
+    }
+
+    if (before.locationId !== after?.locationId) {
+      if (before.locationId != null) {
+        await db.update(locations)
+          .set({ usageCount: sql`GREATEST(${locations.usageCount} - 1, 0)`, updatedAt: new Date() })
+          .where(eq(locations.id, before.locationId));
+      }
+      if (after?.locationId != null) {
+        await db.update(locations)
+          .set({ usageCount: sql`${locations.usageCount} + 1`, updatedAt: new Date() })
+          .where(eq(locations.id, after.locationId));
+      }
+    }
+
     return this.getSession(id, userId) as Promise<SessionResponse>;
   }
 
   async deleteSession(id: number, userId: number): Promise<void> {
+    const [existing] = await db.select({ locationId: sessions.locationId })
+      .from(sessions)
+      .where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
+
     await db.delete(sessionDances).where(eq(sessionDances.sessionId, id));
     await db.delete(sessions).where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
+
+    if (existing?.locationId != null) {
+      await db.update(locations)
+        .set({ usageCount: sql`GREATEST(${locations.usageCount} - 1, 0)`, updatedAt: new Date() })
+        .where(eq(locations.id, existing.locationId));
+    }
   }
 
   // --- Stats ---

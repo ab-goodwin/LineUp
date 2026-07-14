@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { LocationCombobox } from "@/components/LocationCombobox";
-import { insertSessionSchema, STYLE_INFO, STYLE_OPTIONS, type StyleOption, type NormalizedPlace } from "@shared/schema";
+import { insertSessionSchema, STYLE_INFO, STYLE_OPTIONS, type StyleOption } from "@shared/schema";
 import { useCreateSession, useUpdateSession, useDeleteSession } from "@/hooks/use-sessions";
 import { useSongs, useCreateSong } from "@/hooks/use-songs";
 import { format } from "date-fns";
@@ -41,13 +41,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddingSong, setIsAddingSong] = useState(false);
   const [danceType, setDanceType] = useState<"line" | "swing">("line");
-  const [selectedPlace, setSelectedPlace] = useState<NormalizedPlace | null>(null);
-  const [placeTouched, setPlaceTouched] = useState(false);
-
-  const handleSelectPlace = (place: NormalizedPlace | null) => {
-    setSelectedPlace(place);
-    setPlaceTouched(true);
-  };
+  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
 
   // Line quick-add state
   const [newLine, setNewLine] = useState({ danceName: "", songName: "", artist: "" });
@@ -71,26 +65,27 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { location: "", date: date, danceIds: [] },
+    defaultValues: { location: "", locationId: null, date: date, danceIds: [] },
   });
 
   useEffect(() => {
     if (existingSession) {
       form.reset({
         location: existingSession.location,
+        locationId: existingSession.locationId ?? null,
         date: new Date(existingSession.date),
         danceIds: existingSession.dances.map((d: any) => d.id),
       });
+      setSelectedLocationId(existingSession.locationId ?? null);
     } else {
-      form.reset({ location: "", date: date, danceIds: [] });
+      form.reset({ location: "", locationId: null, date: date, danceIds: [] });
+      setSelectedLocationId(null);
     }
     setIsAddingSong(false);
     setNewLine({ danceName: "", songName: "", artist: "" });
     setNewSwing({ songName: "", artist: "", style: "WCS", styleCustom: "" });
     setDanceType("line");
     setSearchQuery("");
-    setSelectedPlace(null);
-    setPlaceTouched(false);
   }, [existingSession, date, isOpen]);
 
   const handleQuickAddLine = async () => {
@@ -125,14 +120,21 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const payload = placeTouched ? { ...values, place: selectedPlace } : { ...values };
+      const payload = {
+        ...values,
+        locationId: selectedLocationId,
+      };
+
       if (existingSession) {
         await updateSession.mutateAsync({ id: existingSession.id, ...payload });
       } else {
         await createSession.mutateAsync(payload);
       }
+
       onOpenChange(false);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleDelete = async () => {
@@ -173,7 +175,19 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
               <FormField control={form.control} name="location" render={({ field }) => (
                 <FormItem className="flex-1 min-w-0">
                   <FormControl>
-                    <LocationCombobox value={field.value} onChange={field.onChange} onSelectPlace={handleSelectPlace} placeholder="Select or type a location..." />
+                    <LocationCombobox
+                      value={field.value}
+                      onChange={(nextValue) => {
+                        field.onChange(nextValue);
+                        form.setValue("locationId", null);
+                        setSelectedLocationId(null);
+                      }}
+                      onSelectLocationId={(locationId) => {
+                        form.setValue("locationId", locationId);
+                        setSelectedLocationId(locationId);
+                      }}
+                      placeholder="Select or type a location..."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

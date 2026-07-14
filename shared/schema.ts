@@ -56,18 +56,40 @@ export const sessions = pgTable("sessions", {
 // partial unique index) plus geocoding fields for nearby-crew matching.
 export const locations = pgTable("locations", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id"),
+
   name: text("name").notNull(),
+  normalizedName: text("normalized_name").notNull(),
+
   formattedAddress: text("formatted_address"),
   city: text("city"),
   state: text("state"),
-  country: text("country"),
+  country: text("country").default("United States"),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),
   provider: text("provider"),
   placeId: text("place_id"),
+  createdByUserId: integer("created_by_user_id"),
+  usageCount: integer("usage_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const locationAliases = pgTable("location_aliases", {
+  id: serial("id").primaryKey(),
+  locationId: integer("location_id").notNull(),
+  alias: text("alias").notNull(),
+  normalizedAlias: text("normalized_alias").notNull(),
+  createdByUserId: integer("created_by_user_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userSavedLocations = pgTable("user_saved_locations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  locationId: integer("location_id").notNull(),
+  isFavorite: boolean("is_favorite").default(true).notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Buddy connections (friend requests)
@@ -152,7 +174,24 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-export const insertLocationSchema = createInsertSchema(locations).omit({ id: true, userId: true });
+export const insertLocationSchema = createInsertSchema(locations).omit({
+  id: true,
+  normalizedName: true,
+  createdByUserId: true,
+  usageCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLocationAliasSchema = createInsertSchema(locationAliases).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserSavedLocationSchema = createInsertSchema(userSavedLocations).omit({
+  id: true,
+  createdAt: true,
+});
 
 // A normalized place returned by the place-search proxy and sent back when a
 // session is saved with a structured location selected.
@@ -180,6 +219,12 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Location = typeof locations.$inferSelect;
 export type InsertLocation = z.infer<typeof insertLocationSchema>;
+
+export type LocationAlias = typeof locationAliases.$inferSelect;
+export type InsertLocationAlias = z.infer<typeof insertLocationAliasSchema>;
+
+export type UserSavedLocation = typeof userSavedLocations.$inferSelect;
+export type InsertUserSavedLocation = z.infer<typeof insertUserSavedLocationSchema>;
 
 export type Song = typeof songs.$inferSelect;
 export type InsertSong = z.infer<typeof insertSongSchema>;
@@ -213,6 +258,21 @@ export type SessionLocationDetail = {
   formattedAddress: string | null;
   city: string | null;
   state: string | null;
+};
+
+export type LocationSearchResult = {
+  id: number;
+  name: string;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  isFavorite: boolean;
+  lastUsedAt: Date | null;
+  matchScore?: number;
+};
+
+export type SavedLocationResponse = LocationSearchResult & {
+  usageCount: number;
 };
 
 // Response Types
