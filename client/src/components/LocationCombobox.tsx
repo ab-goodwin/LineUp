@@ -48,7 +48,9 @@ interface LocationComboboxProps {
   placeholder?: string;
 }
 
-function subtitle(location: Pick<LocationOption, "city" | "state">): string | null {
+function getLocationSubtitle(
+  location: Pick<LocationOption, "city" | "state">,
+): string | null {
   const parts = [location.city, location.state].filter(Boolean);
   return parts.length > 0 ? parts.join(", ") : null;
 }
@@ -80,6 +82,7 @@ export function LocationCombobox({
   const createLocation = useCreateLocation();
 
   const searchResults = (globalSearch.data?.results ?? []).slice(0, 6);
+
   const favorites = savedAndRecent.filter((location) => location.isFavorite);
   const favoriteIds = new Set(favorites.map((location) => location.id));
   const recent = savedAndRecent.filter(
@@ -90,11 +93,13 @@ export function LocationCombobox({
   const exactMatch = searchResults.some(
     (location) => location.name.trim().toLocaleLowerCase() === normalizedInput,
   );
+
   const showAddOption = isSearching && !exactMatch;
 
   function selectLocation(location: LocationOption | LocationDuplicate) {
     onChange(location.name);
     onSelectLocationId?.(location.id);
+
     setInputValue("");
     setOpen(false);
     setAddDialogOpen(false);
@@ -102,7 +107,7 @@ export function LocationCombobox({
     setAddError("");
   }
 
-  function openAddDialog() {
+  function openAddLocationDialog() {
     setNewLocation({
       name: trimmedInput,
       city: "",
@@ -110,6 +115,8 @@ export function LocationCombobox({
     });
     setDuplicates([]);
     setAddError("");
+
+    // Close the dropdown before opening the dialog.
     setOpen(false);
     setAddDialogOpen(true);
   }
@@ -127,18 +134,17 @@ export function LocationCombobox({
     setAddError("");
 
     try {
-      const location = await createLocation.mutateAsync({
+      const created = await createLocation.mutateAsync({
         name,
         city,
         state,
         confirmCreate,
       });
 
-      selectLocation(location);
+      selectLocation(created);
     } catch (error) {
       if (error instanceof LocationApiError && error.status === 409) {
         setDuplicates(error.duplicates);
-        setAddError("");
         return;
       }
 
@@ -177,11 +183,11 @@ export function LocationCombobox({
                   !value && "text-muted-foreground",
                 )}
               >
-                <MapPin className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="truncate">{value || placeholder}</span>
               </span>
 
-              <ChevronsUpDown className="h-4 w-4 flex-shrink-0 opacity-50" />
+              <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
 
@@ -221,15 +227,17 @@ export function LocationCombobox({
                         value={`favorite-${location.id}`}
                         onSelect={() => selectLocation(location)}
                       >
-                        <Star className="mr-2 h-4 w-4 flex-shrink-0 text-primary" />
+                        <Star className="mr-2 h-4 w-4 shrink-0 text-primary" />
+
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium">{location.name}</div>
-                          {subtitle(location) && (
+                          {getLocationSubtitle(location) && (
                             <div className="truncate text-xs text-muted-foreground">
-                              {subtitle(location)}
+                              {getLocationSubtitle(location)}
                             </div>
                           )}
                         </div>
+
                         <Check
                           className={cn(
                             "ml-2 h-4 w-4",
@@ -249,15 +257,17 @@ export function LocationCombobox({
                         value={`recent-${location.id}`}
                         onSelect={() => selectLocation(location)}
                       >
-                        <Clock3 className="mr-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        <Clock3 className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium">{location.name}</div>
-                          {subtitle(location) && (
+                          {getLocationSubtitle(location) && (
                             <div className="truncate text-xs text-muted-foreground">
-                              {subtitle(location)}
+                              {getLocationSubtitle(location)}
                             </div>
                           )}
                         </div>
+
                         <Check
                           className={cn(
                             "ml-2 h-4 w-4",
@@ -284,17 +294,19 @@ export function LocationCombobox({
                         value={`global-${location.id}`}
                         onSelect={() => selectLocation(location)}
                       >
-                        <MapPin className="mr-2 h-4 w-4 flex-shrink-0 text-primary" />
+                        <MapPin className="mr-2 h-4 w-4 shrink-0 text-primary" />
+
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium">{location.name}</div>
-                          {subtitle(location) && (
+                          {getLocationSubtitle(location) && (
                             <div className="truncate text-xs text-muted-foreground">
-                              {subtitle(location)}
+                              {getLocationSubtitle(location)}
                             </div>
                           )}
                         </div>
+
                         {location.isFavorite && (
-                          <Star className="ml-2 h-4 w-4 flex-shrink-0 text-primary" />
+                          <Star className="ml-2 h-4 w-4 shrink-0 text-primary" />
                         )}
                       </CommandItem>
                     ))}
@@ -311,7 +323,7 @@ export function LocationCombobox({
                   <CommandGroup>
                     <CommandItem
                       value={`__add__${trimmedInput}`}
-                      onSelect={openAddDialog}
+                      onSelect={openAddLocationDialog}
                       className="text-primary"
                       data-testid="button-add-location-inline"
                     >
@@ -330,6 +342,7 @@ export function LocationCombobox({
         open={addDialogOpen}
         onOpenChange={(nextOpen) => {
           setAddDialogOpen(nextOpen);
+
           if (!nextOpen) {
             setDuplicates([]);
             setAddError("");
@@ -342,13 +355,14 @@ export function LocationCombobox({
               Add Global Location
             </DialogTitle>
             <DialogDescription>
-              This location will be searchable by everyone using LineUp.
+              This venue will be searchable by everyone using LineUp and added to
+              your favorite locations.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <label className="block space-y-1">
-              <span className="text-sm font-medium">Location name</span>
+              <span className="text-sm font-medium">Venue name</span>
               <Input
                 value={newLocation.name}
                 maxLength={120}
@@ -358,7 +372,8 @@ export function LocationCombobox({
                     name: event.target.value,
                   }))
                 }
-                placeholder="Cowboys Orlando"
+                placeholder="Nashville Palace"
+                data-testid="input-global-location-name"
               />
             </label>
 
@@ -373,7 +388,8 @@ export function LocationCombobox({
                     city: event.target.value,
                   }))
                 }
-                placeholder="Orlando"
+                placeholder="Nashville"
+                data-testid="input-global-location-city"
               />
             </label>
 
@@ -388,7 +404,8 @@ export function LocationCombobox({
                     state: event.target.value,
                   }))
                 }
-                placeholder="Florida or FL"
+                placeholder="TN"
+                data-testid="input-global-location-state"
               />
             </label>
 
@@ -398,8 +415,8 @@ export function LocationCombobox({
                   Possible matches found
                 </p>
                 <p className="mb-3 text-xs text-muted-foreground">
-                  Select an existing location, or add yours anyway if it is
-                  genuinely different.
+                  Select an existing venue, or choose Add Anyway if yours is
+                  different.
                 </p>
 
                 <div className="space-y-2">
@@ -411,14 +428,15 @@ export function LocationCombobox({
                       className="h-auto w-full justify-start rounded-xl px-3 py-2 text-left"
                       onClick={() => selectLocation(location)}
                     >
-                      <MapPin className="mr-2 h-4 w-4 flex-shrink-0 text-primary" />
+                      <MapPin className="mr-2 h-4 w-4 shrink-0 text-primary" />
+
                       <span className="min-w-0">
                         <span className="block truncate font-medium">
                           {location.name}
                         </span>
-                        {subtitle(location) && (
+                        {getLocationSubtitle(location) && (
                           <span className="block truncate text-xs text-muted-foreground">
-                            {subtitle(location)}
+                            {getLocationSubtitle(location)}
                           </span>
                         )}
                       </span>
@@ -448,6 +466,7 @@ export function LocationCombobox({
               type="button"
               disabled={createLocation.isPending}
               onClick={() => submitNewLocation(duplicates.length > 0)}
+              data-testid="button-submit-global-location"
             >
               {createLocation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
