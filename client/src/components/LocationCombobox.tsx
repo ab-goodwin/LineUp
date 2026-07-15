@@ -195,6 +195,7 @@ export function LocationCombobox({
             className="w-[--radix-popover-trigger-width] rounded-xl p-0 !z-[9999]"
             align="start"
             sideOffset={4}
+            onOpenAutoFocus={(event) => event.preventDefault()}
           >
             <Command shouldFilter={false}>
               <CommandInput
@@ -321,15 +322,32 @@ export function LocationCombobox({
 
                 {showAddOption && (
                   <CommandGroup>
-                    <CommandItem
-                      value={`__add__${trimmedInput}`}
-                      onSelect={openAddLocationDialog}
-                      className="text-primary"
+                    <button
+                      type="button"
+                      className="flex w-full touch-manipulation items-center rounded-sm px-2 py-2 text-left text-sm text-primary hover:bg-accent hover:text-accent-foreground"
+                      onPointerDown={(event) => {
+                        event.preventDefault();
+
+                        const venueName = trimmedInput;
+
+                        setNewLocation({
+                          name: venueName,
+                          city: "",
+                          state: "",
+                        });
+                        setDuplicates([]);
+                        setAddError("");
+                        setOpen(false);
+
+                        window.setTimeout(() => {
+                          setAddDialogOpen(true);
+                        }, 50);
+                      }}
                       data-testid="button-add-location-inline"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Add “{trimmedInput}”
-                    </CommandItem>
+                    </button>
                   </CommandGroup>
                 )}
               </CommandList>
