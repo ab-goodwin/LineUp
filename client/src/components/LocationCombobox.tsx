@@ -168,7 +168,7 @@ export function LocationCombobox({
   return (
     <>
       <div className={cn("relative", open && "z-[100]")}>
-        <Popover open={open} onOpenChange={setOpen} modal={false}>
+        <Popover open={open} onOpenChange={setOpen} modal={true}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -192,9 +192,11 @@ export function LocationCombobox({
           </PopoverTrigger>
 
           <PopoverContent
-            className="w-[--radix-popover-trigger-width] rounded-xl p-0 !z-[9999]"
+            className="w-[--radix-popover-trigger-width] rounded-xl p-0 !z-[9999] overscroll-contain"
             align="start"
             sideOffset={4}
+            onWheel={(event) => event.stopPropagation()}
+            onTouchMove={(event) => event.stopPropagation()}
             onOpenAutoFocus={(event) => event.preventDefault()}
           >
             <Command shouldFilter={false}>
@@ -205,7 +207,13 @@ export function LocationCombobox({
                 data-testid="input-location-search"
               />
 
-              <CommandList>
+              <CommandList
+                  className="max-h-[260px] overflow-y-auto overscroll-contain touch-pan-y"
+                  style={{
+                    WebkitOverflowScrolling: "touch",
+                    touchAction: "pan-y",
+                  }}
+                >
                 {!isSearching && isLoadingSaved && (
                   <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
