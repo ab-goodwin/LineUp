@@ -193,20 +193,6 @@ export const insertUserSavedLocationSchema = createInsertSchema(userSavedLocatio
   createdAt: true,
 });
 
-// A normalized place returned by the place-search proxy and sent back when a
-// session is saved with a structured location selected.
-export const normalizedPlaceSchema = z.object({
-  provider: z.string(),
-  placeId: z.string(),
-  name: z.string().min(1),
-  formattedAddress: z.string().nullable().optional(),
-  city: z.string().nullable().optional(),
-  state: z.string().nullable().optional(),
-  country: z.string().nullable().optional(),
-  latitude: z.number().nullable().optional(),
-  longitude: z.number().nullable().optional(),
-});
-export type NormalizedPlace = z.infer<typeof normalizedPlaceSchema>;
 
 export const insertSongSchema = createInsertSchema(songs).omit({ id: true, userId: true });
 export const insertSessionSchema = createInsertSchema(sessions).omit({ id: true, userId: true });
@@ -244,11 +230,9 @@ export type UpdateSongRequest = Partial<Omit<InsertSong, 'publicId'>>;
 
 export type CreateSessionRequest = InsertSession & {
   danceIds: number[];
-  place?: NormalizedPlace | null;
 };
 export type UpdateSessionRequest = Partial<InsertSession> & {
   danceIds?: number[];
-  place?: NormalizedPlace | null;
 };
 
 // Structured location detail attached to a session response when locationId is set
@@ -269,6 +253,15 @@ export type LocationSearchResult = {
   isFavorite: boolean;
   lastUsedAt: Date | null;
   matchScore?: number;
+};
+
+export type LocationDuplicateResult = {
+  id: number;
+  name: string;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  matchScore: number;
 };
 
 export type SavedLocationResponse = LocationSearchResult & {

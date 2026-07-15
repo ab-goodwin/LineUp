@@ -5,8 +5,8 @@ import {
   type User, type InsertUser,
   type Song, type InsertSong, type CreateSongRequest, type UpdateSongRequest,
   type Session, type InsertSession, type CreateSessionRequest, type UpdateSessionRequest, type SessionResponse,
-  type StatsResponse, type Location, type NormalizedPlace, type SessionLocationDetail,
-  type LocationSearchResult, type SavedLocationResponse
+  type StatsResponse, type Location, type SessionLocationDetail,
+  type LocationSearchResult, type LocationDuplicateResult, type SavedLocationResponse
 } from "@shared/schema";
 import { ACHIEVEMENT_DEFS, type AchievementStatus } from "@shared/achievements";
 import { eq, desc, sql, and, or, ilike, ne, inArray } from "drizzle-orm";
@@ -59,10 +59,10 @@ export interface IStorage {
   // Global locations + per-user favorites/recent history
   getLocations(userId: number, limit?: number): Promise<SavedLocationResponse[]>;
   searchLocations(userId: number, query: string, limit?: number): Promise<LocationSearchResult[]>;
-  createLocation(userId: number, name: string, city?: string | null, state?: string | null): Promise<Location>;
+  findLocationDuplicates(name: string, city: string, state: string, limit?: number): Promise<LocationDuplicateResult[]>;
+  createLocation(userId: number, name: string, city: string, state: string): Promise<Location>;
   saveLocation(userId: number, locationId: number, isFavorite?: boolean): Promise<void>;
   deleteLocation(id: number, userId: number): Promise<void>;
-  resolveLocation(userId: number, place: NormalizedPlace): Promise<number>;
 
   // Nearby crew suggestions
   setAppearInSuggestions(userId: number, optIn: boolean): Promise<void>;
@@ -358,6 +358,71 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  async findLocationDuplicates(
+    name: string,
+    city: string,
+    state: string,
+    limit = 5,
+  ): Promise<LocationDuplicateResult[]> {
+    const normalizedName = normalizeLocationName(name);
+    const normalizedCity = city.trim().toLowerCase();
+    const normalizedState = state.trim().toLowerCase();
+
+    if (!normalizedName || !normalizedCity || !normalizedState) return [];
+
+    const safeLimit = Math.min(Math.max(limit, 1), 10);
+    const matchScore = sql<number>`GREATEST(
+      similarity(${locations.normalizedName}, ${normalizedName}),
+      COALESCE(MAX(similarity(${locationAliases.normalizedAlias}, ${normalizedName})), 0)
+    )`;
+
+    const rows = await db
+      .select({
+        id: locations.id,
+        name: locations.name,
+        city: locations.city,
+        state: locations.state,
+        country: locations.country,
+        matchScore,
+      })
+      .from(locations)
+      .leftJoin(locationAliases, eq(locationAliases.locationId, locations.id))
+      .where(and(
+        ilike(locations.city, normalizedCity),
+        ilike(locations.state, normalizedState),
+        or(
+          eq(locations.normalizedName, normalizedName),
+          ilike(locations.normalizedName, `${normalizedName}%`),
+          ilike(locations.normalizedName, `%${normalizedName}%`),
+          eq(locationAliases.normalizedAlias, normalizedName),
+          ilike(locationAliases.normalizedAlias, `${normalizedName}%`),
+          ilike(locationAliases.normalizedAlias, `%${normalizedName}%`),
+          sql`${locations.normalizedName} % ${normalizedName}`,
+          sql`${locationAliases.normalizedAlias} % ${normalizedName}`,
+        ),
+      ))
+      .groupBy(
+        locations.id,
+        locations.name,
+        locations.normalizedName,
+        locations.city,
+        locations.state,
+        locations.country,
+      )
+      .having(sql`${matchScore} >= 0.42`)
+      .orderBy(desc(matchScore), locations.name)
+      .limit(safeLimit);
+
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      city: row.city,
+      state: row.state,
+      country: row.country,
+      matchScore: Number(row.matchScore),
+    }));
+  }
+
   async saveLocation(userId: number, locationId: number, isFavorite = true): Promise<void> {
     await db
       .insert(userSavedLocations)
@@ -376,29 +441,42 @@ export class DatabaseStorage implements IStorage {
       });
   }
 
-  // Add a community location. An exact normalized-name match is reused rather
-  // than creating a duplicate. New locations are automatically favorited by
-  // the user who added them.
+  // Add a community location after server-side validation, duplicate
+  // checking, and per-user creation-rate enforcement.
   async createLocation(
     userId: number,
     name: string,
-    city: string | null = null,
-    state: string | null = null,
+    city: string,
+    state: string,
   ): Promise<Location> {
     const trimmedName = name.trim();
+    const trimmedCity = city.trim();
+    const trimmedState = state.trim();
     const normalizedName = normalizeLocationName(trimmedName);
-    if (!normalizedName) throw new Error("Location name is required");
 
-    const normalizedCity = city?.trim() || null;
-    const normalizedState = state?.trim() || null;
+    if (trimmedName.length < 2 || trimmedName.length > 120 || !normalizedName) {
+      throw new Error("Location name must be between 2 and 120 characters");
+    }
+    if (trimmedCity.length < 2 || trimmedCity.length > 80) {
+      throw new Error("City must be between 2 and 80 characters");
+    }
+    if (trimmedState.length < 2 || trimmedState.length > 40) {
+      throw new Error("State must be between 2 and 40 characters");
+    }
+    if (!/[a-z0-9]/i.test(trimmedName)) {
+      throw new Error("Location name must contain letters or numbers");
+    }
+    if (!/[a-z]/i.test(trimmedCity) || !/[a-z]/i.test(trimmedState)) {
+      throw new Error("City and state must contain letters");
+    }
 
     const [existing] = await db
       .select()
       .from(locations)
       .where(and(
         eq(locations.normalizedName, normalizedName),
-        normalizedCity ? ilike(locations.city, normalizedCity) : sql`true`,
-        normalizedState ? ilike(locations.state, normalizedState) : sql`true`,
+        ilike(locations.city, trimmedCity),
+        ilike(locations.state, trimmedState),
       ))
       .limit(1);
 
@@ -407,13 +485,25 @@ export class DatabaseStorage implements IStorage {
       return existing;
     }
 
+    const [createdToday] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(locations)
+      .where(and(
+        eq(locations.createdByUserId, userId),
+        sql`${locations.createdAt} >= now() - interval '24 hours'`,
+      ));
+
+    if (Number(createdToday?.count ?? 0) >= 10) {
+      throw new Error("You have reached the limit of 10 new locations in 24 hours");
+    }
+
     const [created] = await db
       .insert(locations)
       .values({
         name: trimmedName,
         normalizedName,
-        city: normalizedCity,
-        state: normalizedState,
+        city: trimmedCity,
+        state: trimmedState,
         country: "United States",
         createdByUserId: userId,
         usageCount: 0,
@@ -450,60 +540,6 @@ export class DatabaseStorage implements IStorage {
       });
   }
 
-  // Kept for optional provider-enriched locations. This is no longer required
-  // for ordinary community-created locations, but it remains compatible with
-  // existing Google/Geoapify records.
-  async resolveLocation(userId: number, place: NormalizedPlace): Promise<number> {
-    const [existing] = await db
-      .select()
-      .from(locations)
-      .where(and(
-        eq(locations.provider, place.provider),
-        eq(locations.placeId, place.placeId),
-      ))
-      .limit(1);
-
-    if (existing) {
-      await db
-        .update(locations)
-        .set({
-          name: place.name,
-          normalizedName: normalizeLocationName(place.name),
-          formattedAddress: place.formattedAddress ?? existing.formattedAddress,
-          city: place.city ?? existing.city,
-          state: place.state ?? existing.state,
-          country: place.country ?? existing.country,
-          latitude: place.latitude ?? existing.latitude,
-          longitude: place.longitude ?? existing.longitude,
-          updatedAt: new Date(),
-        })
-        .where(eq(locations.id, existing.id));
-
-      await this.saveLocation(userId, existing.id, true);
-      return existing.id;
-    }
-
-    const [created] = await db
-      .insert(locations)
-      .values({
-        name: place.name,
-        normalizedName: normalizeLocationName(place.name),
-        formattedAddress: place.formattedAddress ?? null,
-        city: place.city ?? null,
-        state: place.state ?? null,
-        country: place.country ?? "United States",
-        latitude: place.latitude ?? null,
-        longitude: place.longitude ?? null,
-        provider: place.provider,
-        placeId: place.placeId,
-        createdByUserId: userId,
-        usageCount: 0,
-      })
-      .returning();
-
-    await this.saveLocation(userId, created.id, true);
-    return created.id;
-  }
 
   // --- Songs ---
   async getSongs(userId: number): Promise<Song[]> {
@@ -565,6 +601,7 @@ export class DatabaseStorage implements IStorage {
           rating: songs.rating,
           style: songs.style,
           styleCustom: songs.styleCustom,
+          isFavorite: songs.isFavorite,
         })
         .from(sessionDances)
         .innerJoin(songs, eq(sessionDances.songId, songs.id))
@@ -600,6 +637,7 @@ export class DatabaseStorage implements IStorage {
         rating: songs.rating,
         style: songs.style,
         styleCustom: songs.styleCustom,
+        isFavorite: songs.isFavorite,
       })
       .from(sessionDances)
       .innerJoin(songs, eq(sessionDances.songId, songs.id))
@@ -609,10 +647,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSession(userId: number, req: CreateSessionRequest): Promise<SessionResponse> {
-    const { danceIds, place, ...sessionData } = req;
-    if (place) {
-      sessionData.locationId = await this.resolveLocation(userId, place);
-    }
+    const { danceIds, ...sessionData } = req;
 
     const [session] = await db.insert(sessions).values({ ...sessionData, userId }).returning();
 
@@ -637,12 +672,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
     if (!before) throw new Error("Session not found");
 
-    const { danceIds, place, ...sessionData } = req;
-    if (place) {
-      sessionData.locationId = await this.resolveLocation(userId, place);
-    } else if (place === null) {
-      sessionData.locationId = null;
-    }
+    const { danceIds, ...sessionData } = req;
     
     if (Object.keys(sessionData).length > 0) {
       await db.update(sessions)

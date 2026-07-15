@@ -262,28 +262,55 @@ export async function registerRoutes(
     res.json({ results });
   });
 
-  // Add a new community location. If an exact normalized match already exists,
-  // storage.createLocation reuses it instead of creating a duplicate. The
-  // selected location is also added to the current user's favorites.
-  app.post("/api/locations", requireAuth, async (req, res) => {
-    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-    const city =
-      typeof req.body?.city === "string" && req.body.city.trim()
-        ? req.body.city.trim()
-        : null;
-    const state =
-      typeof req.body?.state === "string" && req.body.state.trim()
-        ? req.body.state.trim()
-        : null;
+  // Check likely duplicates before creating a community location.
+  app.get("/api/locations/check-duplicates", requireAuth, async (req, res) => {
+    const name = String(req.query.name || "").trim();
+    const city = String(req.query.city || "").trim();
+    const state = String(req.query.state || "").trim();
 
-    if (!name) {
-      res.status(400).json({ message: "Location name is required" });
+    if (!name || !city || !state) {
+      res.status(400).json({
+        message: "Name, city, and state are required",
+        duplicates: [],
+      });
       return;
     }
 
-    if (name.length > 120) {
-      res.status(400).json({ message: "Location name is too long" });
+    const duplicates = await storage.findLocationDuplicates(name, city, state, 5);
+    res.json({ duplicates });
+  });
+
+  // Add a new community location. City and state are required. Potential
+  // duplicates must be reviewed by the client before confirmCreate is sent.
+  app.post("/api/locations", requireAuth, async (req, res) => {
+    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+    const city = typeof req.body?.city === "string" ? req.body.city.trim() : "";
+    const state = typeof req.body?.state === "string" ? req.body.state.trim() : "";
+    const confirmCreate = req.body?.confirmCreate === true;
+
+    if (!name || !city || !state) {
+      res.status(400).json({
+        message: "Location name, city, and state are required",
+      });
       return;
+    }
+
+    if (name.length > 120 || city.length > 80 || state.length > 40) {
+      res.status(400).json({
+        message: "One or more location fields are too long",
+      });
+      return;
+    }
+
+    if (!confirmCreate) {
+      const duplicates = await storage.findLocationDuplicates(name, city, state, 5);
+      if (duplicates.length > 0) {
+        res.status(409).json({
+          message: "Possible matching locations found",
+          duplicates,
+        });
+        return;
+      }
     }
 
     try {
@@ -297,9 +324,9 @@ export async function registerRoutes(
       res.status(201).json(location);
     } catch (err: any) {
       console.error("[locations/create] failed:", err);
-      res.status(400).json({
-        message: err?.message || "Could not add location",
-      });
+      const message = err?.message || "Could not add location";
+      const status = /limit of 10/i.test(message) ? 429 : 400;
+      res.status(status).json({ message });
     }
   });
 
@@ -337,12 +364,6 @@ export async function registerRoutes(
     res.status(204).send();
   });
 
-  // Temporary compatibility endpoint. Paid provider search is disabled because
-  // LineUp now searches its community-maintained global location directory.
-  // This may be removed after all clients use /api/locations/search.
-  app.get("/api/places/search", requireAuth, async (_req, res) => {
-    res.json({ configured: false, results: [] });
-  });
 
   // --- Profile Routes ---
   app.get(api.profile.get.path, requireAuth, async (req, res) => {

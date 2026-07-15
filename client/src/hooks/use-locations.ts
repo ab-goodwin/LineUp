@@ -16,19 +16,45 @@ export interface LocationOption {
   matchScore?: number;
 }
 
+export interface LocationDuplicate {
+  id: number;
+  name: string;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  matchScore: number;
+}
+
 interface LocationSearchResponse {
   results: LocationOption[];
 }
 
 interface CreateLocationInput {
   name: string;
-  city?: string | null;
-  state?: string | null;
+  city: string;
+  state: string;
+  confirmCreate?: boolean;
+}
+
+interface CreateLocationErrorBody {
+  message?: string;
+  duplicates?: LocationDuplicate[];
+}
+
+export class LocationApiError extends Error {
+  status: number;
+  duplicates: LocationDuplicate[];
+
+  constructor(status: number, body: CreateLocationErrorBody) {
+    super(body.message || "Location request failed");
+    this.name = "LocationApiError";
+    this.status = status;
+    this.duplicates = body.duplicates ?? [];
+  }
 }
 
 /**
- * Returns the user's favorite locations first, followed by their most recently
- * used dance locations. This query is used while the search box is empty.
+ * Returns favorites first, followed by recently used session locations.
  */
 export function useLocations(limit = 6) {
   return useQuery<LocationOption[]>({
@@ -50,11 +76,7 @@ export function useLocations(limit = 6) {
 }
 
 /**
- * Debounced search against the shared global location directory.
- *
- * This no longer calls Google or Geoapify. Because it searches LineUp's own
- * database, users can search from the first character without generating API
- * charges.
+ * Debounced search against LineUp's shared global location directory.
  */
 export function useLocationSearch(query: string, limit = 6) {
   const [debounced, setDebounced] = useState(query.trim());
@@ -92,30 +114,37 @@ export function useLocationSearch(query: string, limit = 6) {
 }
 
 /**
- * Adds a new location to the global directory. The backend also saves it as a
- * favorite for the user who created it.
+ * Creates a global location. The server returns 409 with likely duplicates
+ * unless confirmCreate is true.
  */
 export function useCreateLocation() {
   const queryClient = useQueryClient();
 
-  return useMutation<LocationOption, Error, CreateLocationInput | string>({
+  return useMutation<LocationOption, LocationApiError, CreateLocationInput>({
     mutationFn: async (input) => {
-      const payload: CreateLocationInput =
-        typeof input === "string" ? { name: input } : input;
-
       const res = await fetch(LOCATIONS_KEY, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(input),
         credentials: "include",
       });
 
+      const body = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const error = await res.json().catch(() => null);
-        throw new Error(error?.message || "Failed to create location");
+        throw new LocationApiError(res.status, body);
       }
 
-      return res.json();
+      return {
+        id: body.id,
+        name: body.name,
+        city: body.city ?? null,
+        state: body.state ?? null,
+        country: body.country ?? "United States",
+        isFavorite: true,
+        lastUsedAt: null,
+        usageCount: body.usageCount ?? 0,
+      };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [LOCATIONS_KEY] });
@@ -124,10 +153,6 @@ export function useCreateLocation() {
   });
 }
 
-/**
- * Adds an existing global location to the user's favorites, or removes its
- * favorite status while keeping the global location intact.
- */
 export function useSetLocationFavorite() {
   const queryClient = useQueryClient();
 
@@ -158,10 +183,6 @@ export function useSetLocationFavorite() {
   });
 }
 
-/**
- * Removes a location from this user's saved list. It does not delete the
- * shared global location or affect other users' sessions.
- */
 export function useDeleteLocation() {
   const queryClient = useQueryClient();
 

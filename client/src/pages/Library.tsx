@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSongs, useCreateSong, useUpdateSong, useDeleteSong, useToggleFavorite } from "@/hooks/use-songs";
 import { useSessions } from "@/hooks/use-sessions";
-import { useLocations, useCreateLocation, useDeleteLocation } from "@/hooks/use-locations";
+import { useLocations, useDeleteLocation, useSetLocationFavorite } from "@/hooks/use-locations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -12,7 +12,7 @@ import { z } from "zod";
 import { insertSongSchema, STYLE_INFO, STYLE_OPTIONS, type StyleOption } from "@shared/schema";
 import { RatingStars } from "@/components/RatingStars";
 import { SpotifySearch } from "@/components/SpotifySearch";
-import { Search, Plus, Music, Edit2, Trash2, MapPin, Footprints, Heart } from "lucide-react";
+import { Search, Plus, Music, Edit2, Trash2, MapPin, Footprints, Heart, Star, Clock3 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StyleTag } from "@/lib/style-tags";
@@ -89,7 +89,7 @@ function LineSongForm({ initialData, onClose }: { initialData?: any; onClose: ()
             <FormLabel>Rating</FormLabel>
             <FormControl>
               <div className="flex items-center gap-2">
-                <RatingStars rating={field.value} onRate={field.onChange} className="w-6 h-6" />
+                <RatingStars rating={field.value ?? 0} onRate={field.onChange} className="w-6 h-6"/>
               </div>
             </FormControl>
             <FormMessage />
@@ -183,7 +183,7 @@ function SwingSongForm({ initialData, onClose }: { initialData?: any; onClose: (
             <FormLabel>Rating</FormLabel>
             <FormControl>
               <div className="flex items-center gap-2">
-                <RatingStars rating={field.value} onRate={field.onChange} className="w-6 h-6" />
+                <RatingStars rating={field.value ?? 0} onRate={field.onChange} className="w-6 h-6"/>
               </div>
             </FormControl>
             <FormMessage />
@@ -198,15 +198,26 @@ function SwingSongForm({ initialData, onClose }: { initialData?: any; onClose: (
 }
 
 function LocationsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { data: locations = [] } = useLocations();
-  const createLocation = useCreateLocation();
+  const { data: locations = [], isLoading } = useLocations(20);
   const deleteLocation = useDeleteLocation();
-  const [newName, setNewName] = useState("");
+  const setLocationFavorite = useSetLocationFavorite();
 
-  const handleAdd = async () => {
-    if (!newName.trim()) return;
-    await createLocation.mutateAsync(newName.trim());
-    setNewName("");
+  const favorites = locations.filter((location) => location.isFavorite);
+  const favoriteIds = new Set(favorites.map((location) => location.id));
+  const recent = locations.filter(
+    (location) => !favoriteIds.has(location.id) && location.lastUsedAt,
+  );
+
+  const formatLocation = (location: { city: string | null; state: string | null }) => {
+    const parts = [location.city, location.state].filter(Boolean);
+    return parts.length > 0 ? parts.join(", ") : null;
+  };
+
+  const toggleFavorite = async (locationId: number, isFavorite: boolean) => {
+    await setLocationFavorite.mutateAsync({
+      locationId,
+      isFavorite: !isFavorite,
+    });
   };
 
   return (
@@ -214,34 +225,138 @@ function LocationsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
       <DialogContent className="rounded-2xl bg-card max-w-sm">
         <DialogHeader>
           <DialogTitle className="font-display text-xl text-primary flex items-center gap-2">
-            <MapPin className="w-5 h-5" />Saved Locations
+            <MapPin className="w-5 h-5" />
+            Favorite Locations
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-          {locations.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">No saved locations yet.</p>
+
+        <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              Loading locations...
+            </p>
+          ) : favorites.length === 0 && recent.length === 0 ? (
+            <div className="text-center py-6">
+              <MapPin className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-50" />
+              <p className="text-sm font-medium">No locations yet</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Add a location while creating a dance session.
+              </p>
+            </div>
           ) : (
-            <AnimatePresence mode="popLayout">
-              {locations.map(loc => (
-                <motion.div key={loc.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-                  className="flex items-center justify-between bg-secondary/30 rounded-xl px-4 py-2.5" data-testid={`location-item-${loc.id}`}>
-                  <span className="text-sm font-medium">{loc.name}</span>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => deleteLocation.mutateAsync(loc.id)} data-testid={`button-delete-location-${loc.id}`}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            <>
+              {favorites.length > 0 && (
+                <section>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold">Favorites</h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    <AnimatePresence mode="popLayout">
+                      {favorites.map((location) => (
+                        <motion.div
+                          key={`favorite-${location.id}`}
+                          layout
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="flex items-center justify-between gap-2 bg-secondary/30 rounded-xl px-3 py-2.5"
+                          data-testid={`location-item-${location.id}`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{location.name}</p>
+                            {formatLocation(location) && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {formatLocation(location)}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-primary"
+                              onClick={() => toggleFavorite(location.id, true)}
+                              disabled={setLocationFavorite.isPending}
+                              aria-label={`Remove ${location.name} from favorites`}
+                            >
+                              <Star className="w-4 h-4" fill="currentColor" />
+                            </Button>
+
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => deleteLocation.mutateAsync(location.id)}
+                              disabled={deleteLocation.isPending}
+                              data-testid={`button-delete-location-${location.id}`}
+                              aria-label={`Remove ${location.name} from saved locations`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </section>
+              )}
+
+              {recent.length > 0 && (
+                <section>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock3 className="w-4 h-4 text-muted-foreground" />
+                    <h3 className="text-sm font-semibold">Recent</h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    <AnimatePresence mode="popLayout">
+                      {recent.map((location) => (
+                        <motion.div
+                          key={`recent-${location.id}`}
+                          layout
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="flex items-center justify-between gap-2 bg-secondary/20 rounded-xl px-3 py-2.5"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{location.name}</p>
+                            {formatLocation(location) && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {formatLocation(location)}
+                              </p>
+                            )}
+                          </div>
+
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                            onClick={() => toggleFavorite(location.id, false)}
+                            disabled={setLocationFavorite.isPending}
+                            aria-label={`Add ${location.name} to favorites`}
+                          >
+                            <Star className="w-4 h-4" />
+                          </Button>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </section>
+              )}
+            </>
           )}
         </div>
-        <div className="flex gap-2 pt-2 border-t border-border">
-          <Input placeholder="New location name..." className="rounded-xl flex-1" value={newName}
-            onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAdd()} data-testid="input-new-location-name" />
-          <Button onClick={handleAdd} disabled={!newName.trim() || createLocation.isPending} className="rounded-xl px-4" data-testid="button-add-location">
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
+
+        <p className="text-xs text-muted-foreground border-t border-border pt-3">
+          New global locations are added while creating or editing a dance session.
+        </p>
       </DialogContent>
     </Dialog>
   );
