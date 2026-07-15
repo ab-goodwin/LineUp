@@ -124,12 +124,18 @@ export function LocationCombobox({
   async function submitNewLocation(confirmCreate = false) {
     const name = newLocation.name.trim();
     const city = newLocation.city.trim();
-    const state = newLocation.state.trim();
+    const state = newLocation.state.trim().toUpperCase();
 
     if (!name || !city || !state) {
       setAddError("Location name, city, and state are required.");
       return;
     }
+
+    if (!/^[A-Z]{2}$/.test(state)) {
+        setAddError("State must be a two-letter abbreviation.");
+        return;
+      }
+    
 
     setAddError("");
 
@@ -201,7 +207,7 @@ export function LocationCombobox({
           >
             <Command shouldFilter={false}>
               <CommandInput
-                placeholder="Search global locations..."
+                placeholder="Search locations..."
                 value={inputValue}
                 onValueChange={setInputValue}
                 data-testid="input-location-search"
@@ -217,14 +223,13 @@ export function LocationCombobox({
                 {!isSearching && isLoadingSaved && (
                   <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Loading locations…
+                    Loading locations...
                   </div>
                 )}
 
                 {showEmptySavedState && (
                   <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
-                    No favorite or recent locations yet. Type to search the global
-                    list.
+                    No favorite or recent locations yet. Type to search locations.
                   </CommandEmpty>
                 )}
 
@@ -291,7 +296,7 @@ export function LocationCombobox({
                 {isSearching && globalSearch.isFetching && (
                   <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Searching global locations…
+                    Searching locations…
                   </div>
                 )}
 
@@ -378,7 +383,7 @@ export function LocationCombobox({
         <DialogContent className="max-w-sm rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-display text-primary">
-              Add Global Location
+              Add New Location
             </DialogTitle>
             <DialogDescription>
               This venue will be searchable by everyone using LineUp and added to
@@ -398,7 +403,7 @@ export function LocationCombobox({
                     name: event.target.value,
                   }))
                 }
-                placeholder="Nashville Palace"
+                placeholder="Venue"
                 data-testid="input-global-location-name"
               />
             </label>
@@ -414,7 +419,7 @@ export function LocationCombobox({
                     city: event.target.value,
                   }))
                 }
-                placeholder="Nashville"
+                placeholder="City"
                 data-testid="input-global-location-city"
               />
             </label>
@@ -423,14 +428,16 @@ export function LocationCombobox({
               <span className="text-sm font-medium">State</span>
               <Input
                 value={newLocation.state}
-                maxLength={40}
+                maxLength={2}
+                inputMode="text"
+                autoCapitalize="characters"
                 onChange={(event) =>
                   setNewLocation((current) => ({
                     ...current,
                     state: event.target.value,
                   }))
                 }
-                placeholder="TN"
+                placeholder="State (2-letter code)"
                 data-testid="input-global-location-state"
               />
             </label>
