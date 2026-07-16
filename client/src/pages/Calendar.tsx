@@ -33,6 +33,9 @@ export default function CalendarPage() {
 
   const sessionDates = sessions.map(s => parseISO(s.date as any));
 
+  const hasSessionOnDate = (day: Date) =>
+  sessionDates.some((sessionDate) => isSameDay(sessionDate, day));
+
   const openEdit = (session: any) => {
     setEditingSession(session);
     setIsDialogOpen(true);
@@ -50,22 +53,21 @@ export default function CalendarPage() {
         {/* Calendar Card */}
         <div className="bg-card rounded-2xl p-4 shadow-lg border border-border">
           <DayPicker
-            mode="single"
-            selected={selectedDate}
-            onSelect={(date) => date && setSelectedDate(date)}
-            disabled={{ after: new Date() }}
-            modifiers={{ hasSession: sessionDates }}
-            modifiersStyles={{
-              hasSession: {
-                fontWeight: "bold",
-                color: "hsl(var(--primary))",
-                textDecoration: "underline",
-                textDecorationColor: "hsl(var(--primary))",
-                textUnderlineOffset: "4px"
-              }
-            }}
-            className="m-0 w-full flex justify-center"
-          />
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              disabled={{ after: new Date() }}
+              modifiers={{
+                hasSession: sessionDates,
+                selectedHasSession: (day) =>
+                  isSameDay(day, selectedDate) && hasSessionOnDate(day),
+              }}
+              modifiersClassNames={{
+                hasSession: "calendar-has-session",
+                selectedHasSession: "calendar-selected-has-session",
+              }}
+              className="lineup-calendar m-0 w-full flex justify-center"
+            />
         </div>
 
         {/* Selected Day Details */}
@@ -179,6 +181,31 @@ export default function CalendarPage() {
           </div>
         </div>
       </div>
+      <style>{`
+          .lineup-calendar .calendar-has-session {
+            font-weight: 700;
+            color: hsl(var(--primary));
+            text-decoration: underline;
+            text-decoration-color: hsl(var(--primary));
+            text-underline-offset: 4px;
+          }
+
+          .lineup-calendar .rdp-day_selected,
+          .lineup-calendar .rdp-day_selected:hover,
+          .lineup-calendar .rdp-day_selected:focus-visible {
+            background-color: hsl(var(--primary));
+            color: white;
+          }
+
+          .lineup-calendar .calendar-selected-has-session {
+            color: white !important;
+            text-decoration: underline;
+            text-decoration-color: white !important;
+            text-underline-offset: 4px;
+            font-weight: 700;
+          }
+        `}
+        </style>
 
       <SessionDialog
         date={selectedDate}
