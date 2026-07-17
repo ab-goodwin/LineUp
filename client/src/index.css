@@ -193,6 +193,10 @@
   min-height: 100vh;
 }
 
+.app-main {
+  padding-top: 0;
+}
+
 .app-header {
   top: 0;
 }
@@ -206,6 +210,14 @@
   .app-shell {
     min-height: 100dvh;
     padding-top: 0;
+  }
+
+  /*
+   * The sticky header is visually shifted below the iPhone safe area.
+   * This matching padding keeps every page's content below that shift.
+   */
+  .app-main {
+    padding-top: env(safe-area-inset-top, 0px);
   }
 
   .app-safe-area-cover {

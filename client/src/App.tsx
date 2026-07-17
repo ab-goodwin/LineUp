@@ -70,7 +70,7 @@ function AppInner() {
 
       {showHeader && <Header />}
 
-      <main>
+      <main className="app-main">
         <AnimatedRoutes />
       </main>
 
