@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FadeImg } from "@/components/FadeImg";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 import logoShort from "@assets/LineUp_Stacked_tagline_1778180551921.png";
+import logoShortDark from "@assets/LineUp_Stacked_tagline_darkmode.png";
 
 export default function AuthPage() {
   const { login, register } = useAuth();
+  const { theme } = useTheme();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
@@ -92,7 +95,12 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm flex flex-col items-center">
         <div className="mb-8 flex justify-center w-full">
-          <FadeImg src={logoShort} alt="LineUp" loading="eager" className="h-56 object-contain" />
+          <FadeImg
+            src={theme === "dark" ? logoShortDark : logoShort}
+            alt="LineUp"
+            loading="eager"
+            className="h-56 object-contain"
+          />
         </div>
 
         <div className="bg-card rounded-2xl border border-border shadow-lg p-6 w-full">
