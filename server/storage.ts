@@ -1231,105 +1231,248 @@ export class DatabaseStorage implements IStorage {
     const me = await this.getUserById(userId);
     if (!me) return [];
 
-    // Users to exclude: self + any accepted/pending relationship (either direction).
     const relations = await db.select().from(buddies).where(
       or(eq(buddies.requesterId, userId), eq(buddies.recipientId, userId))
     );
+
     const excluded = new Set<number>([userId]);
-    for (const r of relations) {
-      if (r.status === "accepted" || r.status === "pending") {
-        excluded.add(r.requesterId === userId ? r.recipientId : r.requesterId);
+    const myBuddyIds = new Set<number>();
+
+    for (const relation of relations) {
+      const otherId = relation.requesterId === userId
+        ? relation.recipientId
+        : relation.requesterId;
+
+      if (relation.status === "accepted") {
+        excluded.add(otherId);
+        myBuddyIds.add(otherId);
+      } else if (relation.status === "pending") {
+        excluded.add(otherId);
       }
     }
 
-    const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+    const norm = (value: string | null | undefined) =>
+      (value ?? "").trim().toLowerCase();
 
-    // Build the current user's location footprint.
-    const mySessions = await db.select({ location: sessions.location, locationId: sessions.locationId })
-      .from(sessions).where(eq(sessions.userId, userId));
+    const mySessions = await db
+      .select({ location: sessions.location, locationId: sessions.locationId })
+      .from(sessions)
+      .where(eq(sessions.userId, userId));
+
     const myLocationIds = new Set<number>();
     const myTexts = new Set<string>();
-    for (const s of mySessions) {
-      if (s.locationId != null) myLocationIds.add(s.locationId);
-      const t = norm(s.location);
-      if (t) myTexts.add(t);
+
+    for (const session of mySessions) {
+      if (session.locationId != null) myLocationIds.add(session.locationId);
+      const text = norm(session.location);
+      if (text) myTexts.add(text);
     }
 
-    // Coordinates the current user dances at (from structured locations).
+    const myLocationNames = new Map<number, string>();
     const myCoords: { lat: number; lng: number }[] = [];
+
     if (myLocationIds.size > 0) {
-      const locs = await db.select({ latitude: locations.latitude, longitude: locations.longitude })
-        .from(locations).where(inArray(locations.id, Array.from(myLocationIds)));
-      for (const l of locs) if (l.latitude != null && l.longitude != null) myCoords.push({ lat: l.latitude, lng: l.longitude });
+      const rows = await db
+        .select({
+          id: locations.id,
+          name: locations.name,
+          latitude: locations.latitude,
+          longitude: locations.longitude,
+        })
+        .from(locations)
+        .where(inArray(locations.id, Array.from(myLocationIds)));
+
+      for (const row of rows) {
+        myLocationNames.set(row.id, row.name);
+        if (row.latitude != null && row.longitude != null) {
+          myCoords.push({ lat: row.latitude, lng: row.longitude });
+        }
+      }
     }
 
-    if (myLocationIds.size === 0 && myTexts.size === 0) return [];
+    const candidates = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        firstName: users.firstName,
+        avatar: users.avatar,
+      })
+      .from(users)
+      .where(eq(users.appearInSuggestions, true));
 
-    // Candidate users: everyone opted-in and not excluded.
-    const candidates = await db.select({ id: users.id, username: users.username, firstName: users.firstName, avatar: users.avatar })
-      .from(users).where(eq(users.appearInSuggestions, true));
+    type Scored = {
+      userId: number;
+      username: string;
+      firstName: string;
+      avatar?: string;
+      reason: string;
+      priority: number;
+      mutualCount: number;
+      exact: boolean;
+      shared: number;
+      distance: number;
+    };
 
-    type Scored = { userId: number; username: string; firstName: string; avatar?: string; reason: string; exact: boolean; distance: number; shared: number };
     const scored: Scored[] = [];
 
-    for (const c of candidates) {
-      if (excluded.has(c.id)) continue;
+    for (const candidate of candidates) {
+      if (excluded.has(candidate.id)) continue;
 
-      const theirSessions = await db.select({ location: sessions.location, locationId: sessions.locationId })
-        .from(sessions).where(eq(sessions.userId, c.id));
-      if (theirSessions.length === 0) continue;
+      const candidateRelations = await db
+        .select()
+        .from(buddies)
+        .where(and(
+          or(
+            eq(buddies.requesterId, candidate.id),
+            eq(buddies.recipientId, candidate.id),
+          ),
+          eq(buddies.status, "accepted"),
+        ));
+
+      const candidateBuddyIds = new Set<number>();
+      for (const relation of candidateRelations) {
+        candidateBuddyIds.add(
+          relation.requesterId === candidate.id
+            ? relation.recipientId
+            : relation.requesterId
+        );
+      }
+
+      const mutualIds = Array.from(myBuddyIds).filter(id => candidateBuddyIds.has(id));
+      let mutualName: string | null = null;
+
+      if (mutualIds.length > 0) {
+        const [mutual] = await db
+          .select({ firstName: users.firstName, username: users.username })
+          .from(users)
+          .where(eq(users.id, mutualIds[0]))
+          .limit(1);
+
+        mutualName = mutual?.firstName || mutual?.username || "a mutual friend";
+      }
+
+      const theirSessions = await db
+        .select({ location: sessions.location, locationId: sessions.locationId })
+        .from(sessions)
+        .where(eq(sessions.userId, candidate.id));
 
       const theirLocationIds = new Set<number>();
       const theirTexts = new Set<string>();
-      for (const s of theirSessions) {
-        if (s.locationId != null) theirLocationIds.add(s.locationId);
-        const t = norm(s.location);
-        if (t) theirTexts.add(t);
+
+      for (const session of theirSessions) {
+        if (session.locationId != null) theirLocationIds.add(session.locationId);
+        const text = norm(session.location);
+        if (text) theirTexts.add(text);
       }
 
-      // Exact overlap: shared structured location OR shared normalized text.
-      let sharedCount = 0;
-      for (const id of theirLocationIds) if (myLocationIds.has(id)) sharedCount++;
-      for (const t of theirTexts) if (myTexts.has(t)) sharedCount++;
+      const sharedStructuredIds = Array.from(theirLocationIds)
+        .filter(id => myLocationIds.has(id));
+      const sharedTexts = Array.from(theirTexts)
+        .filter(text => myTexts.has(text));
+
+      const sharedCount = sharedStructuredIds.length + sharedTexts.length;
       const exact = sharedCount > 0;
 
-      // Geo proximity (dormant unless both sides have coordinates).
+      let venueName: string | null = null;
+
+      if (sharedStructuredIds.length > 0) {
+        venueName = myLocationNames.get(sharedStructuredIds[0]) ?? null;
+
+        if (!venueName) {
+          const [venue] = await db
+            .select({ name: locations.name })
+            .from(locations)
+            .where(eq(locations.id, sharedStructuredIds[0]))
+            .limit(1);
+          venueName = venue?.name ?? null;
+        }
+      } else if (sharedTexts.length > 0) {
+        const matching = theirSessions.find(
+          session => norm(session.location) === sharedTexts[0]
+        );
+        venueName = matching?.location?.trim() || sharedTexts[0];
+      }
+
       let distance = Number.POSITIVE_INFINITY;
+
       if (theirLocationIds.size > 0 && myCoords.length > 0) {
-        const theirLocs = await db.select({ latitude: locations.latitude, longitude: locations.longitude })
-          .from(locations).where(inArray(locations.id, Array.from(theirLocationIds)));
-        for (const l of theirLocs) {
-          if (l.latitude == null || l.longitude == null) continue;
-          for (const m of myCoords) {
-            const d = haversineMiles(m.lat, m.lng, l.latitude, l.longitude);
-            if (d < distance) distance = d;
+        const theirLocations = await db
+          .select({ latitude: locations.latitude, longitude: locations.longitude })
+          .from(locations)
+          .where(inArray(locations.id, Array.from(theirLocationIds)));
+
+        for (const location of theirLocations) {
+          if (location.latitude == null || location.longitude == null) continue;
+
+          for (const mine of myCoords) {
+            distance = Math.min(
+              distance,
+              haversineMiles(
+                mine.lat,
+                mine.lng,
+                location.latitude,
+                location.longitude,
+              ),
+            );
           }
         }
       }
-      const nearby = distance <= NEARBY_RADIUS_MILES;
 
-      if (!exact && !nearby) continue;
+      const nearby = distance <= NEARBY_RADIUS_MILES;
+      const hasMutual = mutualIds.length > 0;
+
+      if (!hasMutual && !exact && !nearby) continue;
+
+      let reason: string;
+      let priority: number;
+
+      if (hasMutual && mutualName) {
+        if (mutualIds.length === 1) {
+          reason = `Also friends with ${mutualName}`;
+        } else {
+          const others = mutualIds.length - 1;
+          reason = `Also friends with ${mutualName} and ${others} other${others === 1 ? "" : "s"}`;
+        }
+        priority = 1;
+      } else if (exact && venueName) {
+        reason = `Also dances at ${venueName}`;
+        priority = 2;
+      } else {
+        reason = "Dances near places in your LineUp";
+        priority = 3;
+      }
 
       scored.push({
-        userId: c.id,
-        username: c.username || "",
-        firstName: c.firstName,
-        avatar: c.avatar ?? undefined,
-        reason: "You both dance around this area",
+        userId: candidate.id,
+        username: candidate.username || "",
+        firstName: candidate.firstName,
+        avatar: candidate.avatar ?? undefined,
+        reason,
+        priority,
+        mutualCount: mutualIds.length,
         exact,
-        distance,
         shared: sharedCount,
+        distance,
       });
     }
 
-    // Sort: exact matches first, then by distance, then by shared-venue count.
     scored.sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      if (a.mutualCount !== b.mutualCount) return b.mutualCount - a.mutualCount;
       if (a.exact !== b.exact) return a.exact ? -1 : 1;
-      if (a.distance !== b.distance) return a.distance - b.distance;
-      return b.shared - a.shared;
+      if (a.shared !== b.shared) return b.shared - a.shared;
+      return a.distance - b.distance;
     });
 
-    return scored.slice(0, 20).map(({ userId, username, firstName, avatar, reason }) => ({ userId, username, firstName, avatar, reason }));
+    return scored.slice(0, 20).map(
+      ({ userId, username, firstName, avatar, reason }) => ({
+        userId,
+        username,
+        firstName,
+        avatar,
+        reason,
+      }),
+    );
   }
 
   async getStyleDistribution(userId: number): Promise<{ style: string; count: number }[]> {

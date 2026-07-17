@@ -277,7 +277,7 @@ export default function Settings() {
           href="/settings/templates"
           icon={FileDown}
           title="Song Library Templates"
-          description="Download Line Dance and Swing CSV templates"
+          description="Download Line Dance and Swing CSV templates for bulk song import"
         />
         <SettingsRow
           href="/settings/import"
@@ -297,7 +297,7 @@ export default function Settings() {
         />
       </SettingsSection>
 
-      <SettingsSection title="App">
+      <SettingsSection title="Walkthrough">
         <SettingsRow
           href="/settings/walkthrough"
           icon={BookOpen}
@@ -685,10 +685,10 @@ export function WalkthroughSettings() {
           <BookOpen className="h-6 w-6" />
         </div>
 
-        <h2 className="mb-2 text-lg font-semibold">Replay the introduction</h2>
+        <h2 className="mb-2 text-lg font-semibold">Replay the Introduction</h2>
         <p className="mb-5 text-sm text-muted-foreground">
-          Revisit the LineUp walkthrough for a refresher on Recap, Calendar,
-          Library, Crew, and Buckles.
+          Revisit the LineUp walkthrough for a refresher on the Recap, Calendar,
+          Library, Crew, and Buckles pages.
         </p>
 
         <Button
