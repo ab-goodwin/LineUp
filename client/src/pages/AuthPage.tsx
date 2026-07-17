@@ -95,12 +95,11 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm flex flex-col items-center">
         <div className="mb-8 flex justify-center w-full">
-          <FadeImg
-            src={theme === "dark" ? logoShortDark : logoShort}
-            alt="LineUp"
-            loading="eager"
-            className="h-56 object-contain"
-          />
+          <img
+              src={theme === "dark" ? logoShortDark : logoShort}
+              alt="LineUp"
+              className="h-56 object-contain"
+            />
         </div>
 
         <div className="bg-card rounded-2xl border border-border shadow-lg p-6 w-full">
