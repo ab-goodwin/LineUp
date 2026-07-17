@@ -197,28 +197,30 @@
   top: 0;
 }
 
-/* Paint the iPhone status-bar area without moving the header itself. */
 .app-safe-area-cover {
   display: none;
 }
 
+/* Installed PWA only */
 @media (display-mode: standalone) {
   .app-shell {
     min-height: 100dvh;
     padding-top: 0;
   }
 
-  .app-header {
-    top: 0;
-  }
-
   .app-safe-area-cover {
     display: block;
     position: fixed;
-    inset: 0 0 auto 0;
+    top: 0;
+    right: 0;
+    left: 0;
     height: env(safe-area-inset-top, 0px);
     background: hsl(var(--background));
     z-index: 50;
     pointer-events: none;
+  }
+
+  .app-header {
+    top: env(safe-area-inset-top, 0px);
   }
 }
