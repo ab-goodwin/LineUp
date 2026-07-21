@@ -11,10 +11,18 @@ export default defineConfig({
 
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "script",
+      injectRegister: false,
       manifestFilename: "manifest.json",
-      includeAssets: ["favicon.png", "icons/icon-192.png", "icons/icon-192-maskable.png",
-        "icons/icon-512-maskable.png", "icons/icon-512.png,", "icons/apple-touch-icon.png",],
+
+      includeAssets: [
+        "favicon.png",
+        "icons/icon-192.png",
+        "icons/icon-192-maskable.png",
+        "icons/icon-512-maskable.png",
+        "icons/icon-512.png",
+        "icons/apple-touch-icon.png",
+      ],
+
       manifest: {
         name: "LineUp",
         short_name: "LineUp",
@@ -26,35 +34,40 @@ export default defineConfig({
         orientation: "portrait",
         background_color: "#F8F1E8",
         theme_color: "#E45524",
-       icons: [
-  {
-    src: "/icons/icon-192.png",
-    sizes: "192x192",
-    type: "image/png",
-    purpose: "any",
-  },
-  {
-    src: "/icons/icon-512.png",
-    sizes: "512x512",
-    type: "image/png",
-    purpose: "any",
-  },
-  {
-    src: "/icons/icon-192-maskable.png",
-    sizes: "192x192",
-    type: "image/png",
-    purpose: "maskable",
-  },
-  {
-    src: "/icons/icon-512-maskable.png",
-    sizes: "512x512",
-    type: "image/png",
-    purpose: "maskable",
-  },
-],
+
+        icons: [
+          {
+            src: "/icons/icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "/icons/icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "/icons/icon-192-maskable.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "maskable",
+          },
+          {
+            src: "/icons/icon-512-maskable.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
       },
+
       workbox: {
         navigateFallback: "/index.html",
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
     }),
 
