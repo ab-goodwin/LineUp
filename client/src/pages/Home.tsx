@@ -629,7 +629,7 @@ export default function Home() {
         ) : (
           <motion.h1 initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
             className="text-3xl md:text-4xl font-display font-bold text-foreground">
-            Howdy, {profile?.firstName || "Dancer"}
+            Hey, {profile?.firstName || "Dancer"}
           </motion.h1>
         )}
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
