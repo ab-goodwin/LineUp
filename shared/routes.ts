@@ -25,6 +25,11 @@ export const errorSchemas = {
   }),
 };
 
+const sessionDanceInputSchema = z.object({
+  songId: z.number().int().positive(),
+  quantity: z.number().int().min(1),
+});
+
 // ============================================
 // API CONTRACT
 // ============================================
@@ -71,10 +76,13 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/songs',
-      input: insertSongSchema.omit({ publicId: true }),
+      input: insertSongSchema.omit({ publicId: true }).extend({
+        confirmCreate: z.boolean().optional(),
+      }),
       responses: {
         201: z.custom<typeof songs.$inferSelect>(),
         400: errorSchemas.validation,
+        409: z.object({ message: z.string(), duplicate: z.custom<typeof songs.$inferSelect>() }),
       },
     },
     update: {
@@ -102,14 +110,14 @@ export const api = {
       method: 'GET' as const,
       path: '/api/sessions',
       responses: {
-        200: z.array(z.custom<typeof sessions.$inferSelect & { dances: typeof songs.$inferSelect[] }>()),
+        200: z.array(z.custom<typeof sessions.$inferSelect & { dances: (typeof songs.$inferSelect & { quantity: number })[] }>()),
       },
     },
     get: {
       method: 'GET' as const,
       path: '/api/sessions/:id',
       responses: {
-        200: z.custom<typeof sessions.$inferSelect & { dances: typeof songs.$inferSelect[] }>(),
+        200: z.custom<typeof sessions.$inferSelect & { dances: (typeof songs.$inferSelect & { quantity: number })[] }>(),
         404: errorSchemas.notFound,
       },
     },
@@ -117,10 +125,10 @@ export const api = {
       method: 'POST' as const,
       path: '/api/sessions',
       input: insertSessionSchema.extend({
-        danceIds: z.array(z.number()),
+        dances: z.array(sessionDanceInputSchema),
       }),
       responses: {
-        201: z.custom<typeof sessions.$inferSelect & { dances: typeof songs.$inferSelect[] }>(),
+        201: z.custom<typeof sessions.$inferSelect & { dances: (typeof songs.$inferSelect & { quantity: number })[] }>(),
         400: errorSchemas.validation,
       },
     },
@@ -128,10 +136,10 @@ export const api = {
       method: 'PUT' as const,
       path: '/api/sessions/:id',
       input: insertSessionSchema.partial().extend({
-        danceIds: z.array(z.number()).optional(),
+        dances: z.array(sessionDanceInputSchema).optional(),
       }),
       responses: {
-        200: z.custom<typeof sessions.$inferSelect & { dances: typeof songs.$inferSelect[] }>(),
+        200: z.custom<typeof sessions.$inferSelect & { dances: (typeof songs.$inferSelect & { quantity: number })[] }>(),
         404: errorSchemas.notFound,
       },
     },
@@ -176,6 +184,8 @@ export const api = {
           totalLineDancesAllTime: z.number(),
           totalSwingDancesAllTime: z.number(),
           currentFavorite: z.string(),
+          uniqueDancesThisMonth: z.number(),
+          uniqueDancesThisYear: z.number(),
         }),
       },
     },

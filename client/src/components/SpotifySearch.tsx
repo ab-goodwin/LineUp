@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { FadeImg } from "@/components/FadeImg";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Search, Music, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,10 +14,11 @@ interface SpotifySearchProps {
   onSelect: (track: SpotifyTrack) => void;
   placeholder?: string;
   className?: string;
+  initialQuery?: string;
 }
 
-export function SpotifySearch({ onSelect, placeholder = "Search Spotify for a song...", className }: SpotifySearchProps) {
-  const [query, setQuery] = useState("");
+export function SpotifySearch({ onSelect, placeholder = "Search Spotify for a song...", className, initialQuery }: SpotifySearchProps) {
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [results, setResults] = useState<SpotifyTrack[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -34,6 +34,14 @@ export function SpotifySearch({ onSelect, placeholder = "Search Spotify for a so
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Trigger initial search if initialQuery is provided
+  useEffect(() => {
+    if (initialQuery && initialQuery.trim()) {
+      search(initialQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const search = async (q: string) => {

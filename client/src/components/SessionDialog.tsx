@@ -1,28 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { LocationCombobox } from "@/components/LocationCombobox";
-import { insertSessionSchema, STYLE_INFO, STYLE_OPTIONS, type StyleOption } from "@shared/schema";
-import { useCreateSession, useUpdateSession, useDeleteSession } from "@/hooks/use-sessions";
-import { useSongs, useCreateSong } from "@/hooks/use-songs";
-import { format } from "date-fns";
-import { Trash2, Search, PlusCircle } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { SpotifySearch } from "@/components/SpotifySearch";
-import { StyleTag } from "@/lib/style-tags";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LocationCombobox } from "@/components/LocationCombobox";
+import { SpotifySearch } from "@/components/SpotifySearch";
+import { insertSessionSchema, STYLE_INFO, STYLE_OPTIONS, type StyleOption, type Song } from "@shared/schema";
+import { useCreateSession, useUpdateSession, useDeleteSession } from "@/hooks/use-sessions";
+import { useSongs } from "@/hooks/use-songs";
+import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { Trash2, Search, Minus, Plus, CirclePlus } from "lucide-react";
+import { StyleTag } from "@/lib/style-tags";
 
-const formSchema = insertSessionSchema.extend({
-  danceIds: z.array(z.number()),
-});
+const formSchema = insertSessionSchema;
 type FormValues = z.infer<typeof formSchema>;
 
-const SWING_STYLES = STYLE_OPTIONS.filter(s => s !== 'LINE');
+const SWING_STYLES = STYLE_OPTIONS.filter(s => s !== "LINE");
 
 interface SessionDialogProps {
   date: Date;
@@ -33,108 +31,205 @@ interface SessionDialogProps {
 
 export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: SessionDialogProps) {
   const { data: songs = [] } = useSongs();
+  const queryClient = useQueryClient();
   const createSession = useCreateSession();
   const updateSession = useUpdateSession();
   const deleteSession = useDeleteSession();
-  const createSong = useCreateSong();
 
+  const [libTab, setLibTab] = useState<"line" | "swing" | "all">("line");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isAddingSong, setIsAddingSong] = useState(false);
-  const [danceType, setDanceType] = useState<"line" | "swing">("line");
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
+  const [quantities, setQuantities] = useState<Map<number, number>>(new Map());
 
-  // Line quick-add state
-  const [newLine, setNewLine] = useState({ danceName: "", songName: "", artist: "" });
-
-  // Swing quick-add state
-  const [newSwing, setNewSwing] = useState({ songName: "", artist: "", style: "WCS" as StyleOption, styleCustom: "" });
-
-  const SWING_STYLES_SET = new Set(["WCS", "ECS", "CSW", "TWO", "OTHER"]);
-
-  const filteredSongs = songs
-    .filter(s => {
-      const style = (s as any).style || "LINE";
-      return danceType === "line" ? style === "LINE" : SWING_STYLES_SET.has(style);
-    })
-    .filter(s =>
-      s.songName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.danceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.artist && s.artist.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-    .sort((a, b) => a.songName.localeCompare(b.songName));
+  // Inline add-song form
+  const [addFormOpen, setAddFormOpen] = useState(false);
+  const [addMode, setAddMode] = useState<"line" | "swing">("line");
+  const [addDanceName, setAddDanceName] = useState("");
+  const [addSongName, setAddSongName] = useState("");
+  const [addArtist, setAddArtist] = useState("");
+  const [addSwingStyle, setAddSwingStyle] = useState<StyleOption>("WCS");
+  const [addStyleCustom, setAddStyleCustom] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addDuplicate, setAddDuplicate] = useState<Song | null>(null);
+  const [addPendingPayload, setAddPendingPayload] = useState<Record<string, unknown> | null>(null);
+  const [addPending, setAddPending] = useState(false);
+  const [spotifyInitialQuery, setSpotifyInitialQuery] = useState("");
+  const [spotifyResetKey, setSpotifyResetKey] = useState(0);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { location: "", locationId: null, date: date, danceIds: [] },
+    defaultValues: { location: "", locationId: null, date },
   });
 
+  // Sync addMode to libTab when tab changes
   useEffect(() => {
+    if (libTab === "swing") setAddMode("swing");
+    else if (libTab === "line") setAddMode("line");
+  }, [libTab]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSearchQuery("");
+    setLibTab("line");
+    setAddFormOpen(false);
+    resetAddForm();
     if (existingSession) {
       form.reset({
         location: existingSession.location,
         locationId: existingSession.locationId ?? null,
         date: new Date(existingSession.date),
-        danceIds: existingSession.dances.map((d: any) => d.id),
       });
       setSelectedLocationId(existingSession.locationId ?? null);
+      const qMap = new Map<number, number>();
+      for (const d of existingSession.dances) {
+        qMap.set(d.id, (d as any).quantity ?? 1);
+      }
+      setQuantities(qMap);
     } else {
-      form.reset({ location: "", locationId: null, date: date, danceIds: [] });
+      form.reset({ location: "", locationId: null, date });
       setSelectedLocationId(null);
+      setQuantities(new Map());
     }
-    setIsAddingSong(false);
-    setNewLine({ danceName: "", songName: "", artist: "" });
-    setNewSwing({ songName: "", artist: "", style: "WCS", styleCustom: "" });
-    setDanceType("line");
-    setSearchQuery("");
   }, [existingSession, date, isOpen]);
 
-  const handleQuickAddLine = async () => {
-    if (!newLine.danceName || !newLine.songName) return;
-    try {
-      const created = await createSong.mutateAsync({
-        danceName: newLine.danceName, songName: newLine.songName,
-        artist: newLine.artist, rating: 0, style: "LINE",
-      });
-      form.setValue("danceIds", [...form.getValues("danceIds"), created.id]);
-      setNewLine({ danceName: "", songName: "", artist: "" });
-      setIsAddingSong(false);
-    } catch (e) { console.error(e); }
+  const resetAddForm = () => {
+    setAddDanceName(""); setAddSongName(""); setAddArtist("");
+    setAddSwingStyle("WCS"); setAddStyleCustom("");
+    setAddError(null); setAddDuplicate(null); setAddPendingPayload(null);
+    setSpotifyInitialQuery(""); setSpotifyResetKey(k => k + 1);
   };
 
-  const handleQuickAddSwing = async () => {
-    if (!newSwing.songName) return;
-    const styleName = newSwing.style === 'OTHER' && newSwing.styleCustom
-      ? newSwing.styleCustom
-      : STYLE_INFO[newSwing.style].label;
+  const setQty = (songId: number, delta: number) => {
+    setQuantities(prev => {
+      const next = new Map(prev);
+      const newVal = Math.max(0, (next.get(songId) ?? 0) + delta);
+      if (newVal === 0) next.delete(songId); else next.set(songId, newVal);
+      return next;
+    });
+  };
+
+  const toggleSong = (songId: number) => {
+    setQuantities(prev => {
+      const next = new Map(prev);
+      if (next.has(songId)) next.delete(songId); else next.set(songId, 1);
+      return next;
+    });
+  };
+
+  const filteredSongs = songs
+    .filter(s => {
+      const isLine = (s as any).style === "LINE";
+      if (libTab === "line" && !isLine) return false;
+      if (libTab === "swing" && isLine) return false;
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        s.danceName.toLowerCase().includes(q) ||
+        s.songName.toLowerCase().includes(q) ||
+        (s.artist && s.artist.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      const aOn = quantities.has(a.id) ? 1 : 0;
+      const bOn = quantities.has(b.id) ? 1 : 0;
+      if (aOn !== bOn) return bOn - aOn;
+      return a.danceName.localeCompare(b.danceName);
+    });
+
+  const totalDances = Array.from(quantities.values()).reduce((s, q) => s + q, 0);
+  const uniqueDances = quantities.size;
+
+  const doAddSong = async (payload: Record<string, unknown>, confirmCreate: boolean) => {
+    setAddPending(true);
     try {
-      const created = await createSong.mutateAsync({
-        danceName: styleName, songName: newSwing.songName,
-        artist: newSwing.artist, rating: 0, style: newSwing.style,
-        styleCustom: newSwing.style === 'OTHER' ? newSwing.styleCustom || null : null,
+      const res = await fetch("/api/songs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ...payload, ...(confirmCreate ? { confirmCreate: true } : {}) }),
       });
-      form.setValue("danceIds", [...form.getValues("danceIds"), created.id]);
-      setNewSwing({ songName: "", artist: "", style: "WCS", styleCustom: "" });
-      setIsAddingSong(false);
-    } catch (e) { console.error(e); }
+      if (res.status === 409) {
+        const data = await res.json();
+        setAddDuplicate(data.duplicate);
+        setAddPendingPayload(payload);
+        setAddPending(false);
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setAddError(data.message || "Failed to add song.");
+        setAddPending(false);
+        return;
+      }
+      const newSong: Song = await res.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/songs"] });
+      setQuantities(prev => {
+        const next = new Map(prev);
+        next.set(newSong.id, (next.get(newSong.id) ?? 0) + 1);
+        return next;
+      });
+      resetAddForm();
+      setAddFormOpen(false);
+    } catch {
+      setAddError("Failed to add song.");
+    }
+    setAddPending(false);
+  };
+
+  const handleAddSubmit = () => {
+    if (addMode === "line" && !addDanceName.trim() && !addSongName.trim()) {
+      setAddError("Enter a dance name or song name."); return;
+    }
+    if (addMode === "swing" && !addSongName.trim()) {
+      setAddError("Song name is required."); return;
+    }
+    if (addMode === "swing" && addSwingStyle === "OTHER" && !addStyleCustom.trim()) {
+      setAddError("Custom style name is required."); return;
+    }
+    const payload: Record<string, unknown> = addMode === "line"
+      ? {
+          danceName: addDanceName.trim() || addSongName.trim(),
+          songName: addSongName.trim() || addDanceName.trim(),
+          artist: addArtist.trim(),
+          style: "LINE",
+          rating: 0,
+        }
+      : {
+          danceName: addSongName.trim(),
+          songName: addSongName.trim(),
+          artist: addArtist.trim(),
+          style: addSwingStyle,
+          styleCustom: addSwingStyle === "OTHER" ? addStyleCustom.trim() : "",
+          rating: 0,
+        };
+    setAddError(null);
+    setAddDuplicate(null);
+    doAddSong(payload, false);
+  };
+
+  const handleUseExisting = (song: Song) => {
+    setQuantities(prev => {
+      const next = new Map(prev);
+      next.set(song.id, (next.get(song.id) ?? 0) + 1);
+      return next;
+    });
+    resetAddForm();
+    setAddFormOpen(false);
   };
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const payload = {
-        ...values,
-        locationId: selectedLocationId,
-      };
-
+      const dances = Array.from(quantities.entries())
+        .filter(([, qty]) => qty > 0)
+        .map(([songId, quantity]) => ({ songId, quantity }));
+      const payload = { ...values, locationId: selectedLocationId, dances };
       if (existingSession) {
         await updateSession.mutateAsync({ id: existingSession.id, ...payload });
       } else {
         await createSession.mutateAsync(payload);
       }
-
       onOpenChange(false);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   };
 
   const handleDelete = async () => {
@@ -145,179 +240,394 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
   const isSubmitting = createSession.isPending || updateSession.isPending;
 
+  // Color theming based on active tab (or add form mode)
+  const isSwing = libTab === "swing";
+  const accentColor = isSwing ? "#3B82F6" : "#D85C31";
+  const accentBorder = isSwing ? "border-blue-400" : "border-primary/60";
+  const accentBg = isSwing ? "bg-blue-50 dark:bg-blue-950/20" : "bg-primary/5";
+
+  const tabPill = (tab: "line" | "swing" | "all", label: string) => {
+    const active = libTab === tab;
+    const color = tab === "swing" ? "#3B82F6" : "#D85C31";
+    return (
+      <button
+        key={tab}
+        type="button"
+        onClick={() => setLibTab(tab)}
+        className={`px-3 py-0.5 rounded-full text-xs font-semibold border transition-colors ${
+          active
+            ? "text-white border-transparent"
+            : "bg-transparent text-foreground border-border hover:border-foreground/40"
+        }`}
+        style={active ? { background: tab === "all" ? "#D85C31" : color, borderColor: "transparent" } : {}}
+        data-testid={`tab-${tab}`}
+      >
+        {label}
+      </button>
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-full bg-card rounded-2xl sm:rounded-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="font-display text-2xl text-primary">
+      <DialogContent className="max-w-[420px] w-full bg-card rounded-2xl sm:rounded-2xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
+        {/* Header */}
+        <div className="px-4 pt-4 pb-2 text-center">
+          <h2 className="font-display text-2xl text-primary leading-tight">
             {existingSession ? "Edit Session" : "New Session"}
-          </DialogTitle>
-          <p className="text-muted-foreground text-sm">{format(date, "MMMM do, yyyy")}</p>
-        </DialogHeader>
+          </h2>
+          <p className="text-muted-foreground text-sm mt-0.5">{format(date, "MMMM do, yyyy")}</p>
+        </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 flex-1 overflow-hidden flex flex-col">
-            {/* Song search bar — below the date, above the location field */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Search dances…" className="h-10 pl-9 rounded-xl"
-                value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                data-testid="input-song-search" />
-            </div>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="px-5 pt-1 space-y-2">
+              {/* Search bar */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search Your Library..."
+                  className="h-9 pl-8 rounded-xl border-border/60 bg-background text-sm"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  data-testid="input-song-search"
+                />
+              </div>
 
-            {/* Add Song button + Location field (location to the right of the add button) */}
-            <div className="flex items-start gap-2">
-              <Button type="button" variant="ghost" size="icon" className="h-10 w-10 flex-shrink-0"
-                onClick={() => setIsAddingSong(v => !v)} data-testid="button-toggle-add-song"
-                aria-label="Add song">
-                <PlusCircle className={`w-5 h-5 ${danceType === "swing" ? "text-blue-500" : "text-primary"}`} />
-              </Button>
-              <FormField control={form.control} name="location" render={({ field }) => (
-                <FormItem className="flex-1 min-w-0">
-                  <FormControl>
-                    <LocationCombobox
-                      value={field.value}
-                      onChange={(nextValue) => {
-                        field.onChange(nextValue);
-                        form.setValue("locationId", null);
-                        setSelectedLocationId(null);
-                      }}
-                      onSelectLocationId={(locationId) => {
-                        form.setValue("locationId", locationId);
-                        setSelectedLocationId(locationId);
-                      }}
-                      placeholder="Select or type a location..."
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
-
-            <div className="flex-1 overflow-hidden flex flex-col min-h-[300px]">
-              {/* Header row: Dances label + Line/Swing toggle */}
-              <div className="flex items-center justify-between mb-2 gap-2">
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <FormLabel className="mb-0">Dances</FormLabel>
-                  <div className="flex rounded-lg overflow-hidden border border-border text-xs">
-                    <button type="button"
-                      className={`px-2.5 py-1 font-medium transition-colors ${danceType === "line" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-secondary"}`}
-                      onClick={() => { setDanceType("line"); setIsAddingSong(false); }}>Line</button>
-                    <button type="button"
-                      className={`px-2.5 py-1 font-medium transition-colors ${danceType === "swing" ? "bg-blue-500 text-white" : "bg-background text-muted-foreground hover:bg-secondary"}`}
-                      onClick={() => { setDanceType("swing"); setIsAddingSong(false); }}>Swing</button>
-                  </div>
+              {/* Circle-plus + Location row */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setAddFormOpen(v => !v); resetAddForm(); }}
+                  className="flex-shrink-0 p-0.5 rounded-full hover:opacity-80 transition-opacity"
+                  title={addFormOpen ? "Close" : "Add song to library"}
+                  data-testid="button-toggle-add-form"
+                >
+                  <CirclePlus className="w-6 h-6" style={{ color: accentColor }} />
+                </button>
+                <div className="flex-1">
+                  <FormField control={form.control} name="location" render={({ field }) => (
+                    <FormItem className="mb-0">
+                      <FormControl>
+                        <LocationCombobox
+                          value={field.value}
+                          onChange={v => { field.onChange(v); form.setValue("locationId", null); setSelectedLocationId(null); }}
+                          onSelectLocationId={id => { form.setValue("locationId", id); setSelectedLocationId(id); }}
+                          placeholder="Select or type a location..."
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                 </div>
               </div>
 
-              {/* Line dance quick-add */}
-              {isAddingSong && danceType === "line" && (
-                <div className="mb-3 p-3 border-2 border-primary/20 rounded-xl bg-primary/5 space-y-2">
-                  <SpotifySearch placeholder="Search Spotify…"
-                    onSelect={t => setNewLine(p => ({ ...p, songName: t.name, artist: t.artist }))} />
-                  <Input placeholder="Dance Name *" className="h-8 text-xs" value={newLine.danceName}
-                    onChange={e => setNewLine(p => ({ ...p, danceName: e.target.value }))} />
-                  <Input placeholder="Song Name *" className="h-8 text-xs" value={newLine.songName}
-                    onChange={e => setNewLine(p => ({ ...p, songName: e.target.value }))} />
-                  <Input placeholder="Artist (Optional)" className="h-8 text-xs" value={newLine.artist}
-                    onChange={e => setNewLine(p => ({ ...p, artist: e.target.value }))} />
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setIsAddingSong(false)}>Cancel</Button>
-                    <Button type="button" size="sm" className="h-7 text-xs" onClick={handleQuickAddLine}
-                      disabled={createSong.isPending || !newLine.danceName || !newLine.songName}>Add & Select</Button>
+              {/* Inline add-song form */}
+              {addFormOpen && (
+                <div className={`border-2 rounded-xl p-3 space-y-2 ${accentBorder} ${accentBg}`}>
+                  {/* Line / Swing toggle inside form */}
+                  <div className="flex gap-1 p-0.5 bg-secondary/60 rounded-lg text-xs">
+                    <button
+                      type="button"
+                      onClick={() => { setAddMode("line"); setAddError(null); setAddDuplicate(null); }}
+                      className={`flex-1 py-1 rounded-md font-semibold transition-colors ${addMode === "line" ? "bg-background shadow text-primary" : "text-muted-foreground"}`}
+                      data-testid="add-mode-line"
+                    >Line Dance</button>
+                    <button
+                      type="button"
+                      onClick={() => { setAddMode("swing"); setAddError(null); setAddDuplicate(null); }}
+                      className={`flex-1 py-1 rounded-md font-semibold transition-colors ${addMode === "swing" ? "bg-background shadow text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}
+                      data-testid="add-mode-swing"
+                    >Swing</button>
                   </div>
-                </div>
-              )}
 
-              {/* Swing quick-add */}
-              {isAddingSong && danceType === "swing" && (
-                <div className="mb-3 p-3 border-2 border-blue-200 rounded-xl bg-blue-50/50 space-y-2">
-                  <SpotifySearch placeholder="Search Spotify…"
-                    onSelect={t => setNewSwing(p => ({ ...p, songName: t.name, artist: t.artist }))} />
-                  <Input placeholder="Song Name *" className="h-8 text-xs" value={newSwing.songName}
-                    onChange={e => setNewSwing(p => ({ ...p, songName: e.target.value }))} />
-                  <Input placeholder="Artist (Optional)" className="h-8 text-xs" value={newSwing.artist}
-                    onChange={e => setNewSwing(p => ({ ...p, artist: e.target.value }))} />
-                  <Select value={newSwing.style} onValueChange={v => setNewSwing(p => ({ ...p, style: v as StyleOption }))}>
-                    <SelectTrigger className="h-8 text-xs rounded-lg">
-                      <SelectValue placeholder="Style" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SWING_STYLES.map(s => (
-                        <SelectItem key={s} value={s}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold px-1 rounded" style={{ color: STYLE_INFO[s].color }}>{STYLE_INFO[s].short}</span>
-                            {STYLE_INFO[s].label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {newSwing.style === 'OTHER' && (
-                    <Input placeholder="Custom style name" className="h-8 text-xs" value={newSwing.styleCustom}
-                      onChange={e => setNewSwing(p => ({ ...p, styleCustom: e.target.value }))} />
+                  {/* Spotify search */}
+                  <SpotifySearch
+                    key={spotifyResetKey}
+                    placeholder="Search Spotify..."
+                    initialQuery={spotifyInitialQuery}
+                    onSelect={t => {
+                      setAddSongName(t.name);
+                      setAddArtist(t.artist);
+                      setAddError(null); setAddDuplicate(null);
+                    }}
+                  />
+
+                  {/* Line: Dance Name + Song Name + Artist */}
+                  {addMode === "line" && (
+                    <>
+                      <Input
+                        value={addDanceName}
+                        onChange={e => { setAddDanceName(e.target.value); setAddError(null); setAddDuplicate(null); }}
+                        placeholder="Dance Name *"
+                        className="h-9 rounded-lg text-sm bg-background/80"
+                        data-testid="add-dance-name"
+                      />
+                      <Input
+                        value={addSongName}
+                        onChange={e => { setAddSongName(e.target.value); setAddError(null); setAddDuplicate(null); }}
+                        placeholder="Song Name *"
+                        className="h-9 rounded-lg text-sm bg-background/80"
+                        data-testid="add-song-name"
+                      />
+                      <Input
+                        value={addArtist}
+                        onChange={e => setAddArtist(e.target.value)}
+                        placeholder="Artist (Optional)"
+                        className="h-9 rounded-lg text-sm bg-background/80"
+                        data-testid="add-artist"
+                      />
+                    </>
                   )}
-                  <div className="flex justify-end gap-2">
-                    <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setIsAddingSong(false)}>Cancel</Button>
-                    <Button type="button" size="sm" className="h-7 text-xs bg-blue-500 hover:bg-blue-600 text-white" onClick={handleQuickAddSwing}
-                      disabled={createSong.isPending || !newSwing.songName}>Add & Select</Button>
-                  </div>
+
+                  {/* Swing: Song Name + Artist + Style */}
+                  {addMode === "swing" && (
+                    <>
+                      <Input
+                        value={addSongName}
+                        onChange={e => { setAddSongName(e.target.value); setAddError(null); setAddDuplicate(null); }}
+                        placeholder="Song Name *"
+                        className="h-9 rounded-lg text-sm bg-background/80"
+                        data-testid="add-song-name"
+                      />
+                      <Input
+                        value={addArtist}
+                        onChange={e => setAddArtist(e.target.value)}
+                        placeholder="Artist (Optional)"
+                        className="h-9 rounded-lg text-sm bg-background/80"
+                        data-testid="add-artist"
+                      />
+                      <Select value={addSwingStyle} onValueChange={v => setAddSwingStyle(v as StyleOption)}>
+                        <SelectTrigger className="h-9 rounded-lg text-sm bg-background/80">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SWING_STYLES.map(s => (
+                            <SelectItem key={s} value={s}>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold" style={{ color: STYLE_INFO[s].color }}>{STYLE_INFO[s].short}</span>
+                                {STYLE_INFO[s].label}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {addSwingStyle === "OTHER" && (
+                        <Input
+                          value={addStyleCustom}
+                          onChange={e => setAddStyleCustom(e.target.value)}
+                          placeholder="Custom style name *"
+                          className="h-9 rounded-lg text-sm bg-background/80"
+                          data-testid="add-style-custom"
+                        />
+                      )}
+                    </>
+                  )}
+
+                  {/* Error */}
+                  {addError && <p className="text-xs text-destructive">{addError}</p>}
+
+                  {/* Duplicate warning */}
+                  {addDuplicate && (
+                    <div className="rounded-lg border border-amber-400/50 bg-amber-50 dark:bg-amber-950/30 p-2 space-y-1.5">
+                      <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Already in library:</p>
+                      <p className="text-xs text-foreground">
+                        {addDuplicate.danceName}
+                        {addDuplicate.artist ? ` · ${addDuplicate.artist}` : ""}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs rounded-lg flex-1"
+                          onClick={() => handleUseExisting(addDuplicate)} data-testid="button-use-existing">
+                          Use Existing
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs rounded-lg flex-1"
+                          onClick={() => addPendingPayload && doAddSong(addPendingPayload, true)}
+                          disabled={addPending} data-testid="button-add-anyway">
+                          Add Anyway
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cancel / Add & Select */}
+                  {!addDuplicate && (
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => { resetAddForm(); setAddFormOpen(false); }}
+                        className="flex-1 text-sm text-muted-foreground hover:text-foreground font-medium py-1.5"
+                        data-testid="button-add-cancel"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddSubmit}
+                        disabled={addPending}
+                        className="flex-1 py-1.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                        style={{ background: addMode === "line" ? "#D85C31" : "#3B82F6" }}
+                        data-testid="button-add-to-library"
+                      >
+                        {addPending ? "Adding…" : "Add & Select"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Song list */}
-              <div
-                className="flex-1 min-h-0 overflow-y-auto border-2 border-border/50 rounded-xl p-3 bg-secondary/20"
-                style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
-                data-testid="list-song-library"
-              >
-                <FormField control={form.control} name="danceIds" render={() => (
-                  <div className="space-y-2">
-                    {filteredSongs.length === 0 ? (
-                      <div className="text-center text-muted-foreground py-8 text-sm">
-                        {songs.filter(s => danceType === "line"
-                          ? ((s as any).style || "LINE") === "LINE"
-                          : SWING_STYLES_SET.has((s as any).style)).length === 0
-                          ? `No ${danceType === "line" ? "line dances" : "swing songs"} in library yet.`
-                          : "No matching songs found."}
-                      </div>
-                    ) : filteredSongs.map(song => (
-                      <FormField key={song.id} control={form.control} name="danceIds" render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-2.5 hover:bg-secondary/50 transition-colors cursor-pointer"
-                          data-testid={`session-song-item-${song.id}`}>
-                          <FormControl>
-                            <Checkbox checked={field.value?.includes(song.id)}
-                              onCheckedChange={checked => checked
-                                ? field.onChange([...field.value, song.id])
-                                : field.onChange(field.value?.filter(v => v !== song.id))} />
-                          </FormControl>
-                          <div className="leading-none flex-1 min-w-0">
-                            {/* Song name + artist on top line */}
-                            <FormLabel className="font-bold cursor-pointer text-sm flex items-center gap-1.5 flex-wrap">
-                              {song.songName || song.danceName}
-                              {song.artist && <span className="font-normal text-muted-foreground">· {song.artist}</span>}
-                              <StyleTag style={(song as any).style || "LINE"} styleCustom={(song as any).styleCustom} />
-                            </FormLabel>
-                            {/* Dance name below */}
-                            <p className="text-xs text-muted-foreground mt-0.5">{song.danceName}</p>
-                          </div>
-                        </FormItem>
-                      )} />
-                    ))}
-                  </div>
-                )} />
+              {/* Dances label + tab pills + count */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold flex-shrink-0">Dances</span>
+                <div className="flex items-center gap-1">
+                  {tabPill("line", "Line")}
+                  {tabPill("swing", "Swing")}
+                  {tabPill("all", "ALL")}
+                </div>
+                {totalDances > 0 && (
+                  <span className="ml-auto text-xs text-muted-foreground flex-shrink-0">
+                    {totalDances} · {uniqueDances} unique
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            {/* Scrollable library list */}
+            <div
+              className="flex-1 min-h-0 overflow-y-auto mx-4 mt-1 mb-2 rounded-xl border border-border/40 bg-secondary/10"
+              style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
+              data-testid="list-song-library"
+            >
+              {filteredSongs.length === 0 ? (
+                <div className="py-6 px-4 flex flex-col items-center gap-3">
+                  {searchQuery.trim() ? (
+                    <>
+                      <p className="text-sm text-muted-foreground text-center">
+                        No results for "<span className="font-medium text-foreground">{searchQuery}</span>"
+                      </p>
+                      <div className="flex gap-2 w-full">
+                        <button
+                          type="button"
+                          data-testid="button-add-as-dance"
+                          onClick={() => {
+                            resetAddForm();
+                            setAddDanceName(searchQuery);
+                            setAddMode("line");
+                            setAddFormOpen(true);
+                          }}
+                          className="flex-1 py-2 rounded-xl border-2 border-primary/50 text-primary text-sm font-semibold hover:bg-primary/5 transition-colors"
+                        >
+                          Add as Dance
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="button-add-as-song"
+                          onClick={() => {
+                            setAddDanceName(""); setAddSongName(""); setAddArtist("");
+                            setAddSwingStyle("WCS"); setAddStyleCustom("");
+                            setAddError(null); setAddDuplicate(null); setAddPendingPayload(null);
+                            setSpotifyInitialQuery(searchQuery);
+                            setSpotifyResetKey(k => k + 1);
+                            setAddFormOpen(true);
+                          }}
+                          className="flex-1 py-2 rounded-xl border-2 border-border text-foreground text-sm font-semibold hover:bg-secondary/60 transition-colors"
+                        >
+                          Add as Song
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center">
+                      {libTab === "all" ? "No songs in your library yet." : `No ${libTab === "line" ? "line dances" : "swing songs"} yet.`}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {filteredSongs.map(song => {
+                    const qty = quantities.get(song.id) ?? 0;
+                    const isSelected = qty > 0;
+                    return (
+                      <div
+                        key={song.id}
+                        className={`flex items-center gap-2.5 px-3 py-2 transition-colors ${isSelected ? "bg-primary/[0.06]" : ""}`}
+                        data-testid={`session-song-item-${song.id}`}
+                      >
+                        {/* Checkbox */}
+                        <button
+                          type="button"
+                          onClick={() => toggleSong(song.id)}
+                          className={`w-[18px] h-[18px] rounded-[4px] border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                            isSelected
+                              ? "border-primary bg-primary text-white"
+                              : "border-muted-foreground/40 bg-transparent hover:border-primary/50"
+                          }`}
+                          data-testid={`checkbox-song-${song.id}`}
+                        >
+                          {isSelected && (
+                            <svg viewBox="0 0 10 8" className="w-2.5 h-2.5 fill-none stroke-current" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M1 4l3 3 5-6" />
+                            </svg>
+                          )}
+                        </button>
+
+                        {/* Song info — matches reference: DanceName · Artist [tag] / SongName */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1 flex-wrap leading-tight">
+                            <span className="font-semibold text-sm">{song.danceName}</span>
+                            {song.artist && <span className="text-sm text-muted-foreground">· {song.artist}</span>}
+                            <StyleTag style={(song as any).style || "LINE"} styleCustom={(song as any).styleCustom} />
+                          </div>
+                          {song.songName && song.songName !== song.danceName && (
+                            <p className="text-xs text-muted-foreground leading-tight mt-0.5">{song.songName}</p>
+                          )}
+                        </div>
+
+                        {/* Qty controls if selected */}
+                        {isSelected && (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setQty(song.id, -1)}
+                              className="w-6 h-6 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"
+                              data-testid={`button-qty-minus-${song.id}`}
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                            <span className="w-5 text-center text-sm font-bold text-primary" data-testid={`text-qty-${song.id}`}>{qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => setQty(song.id, 1)}
+                              className="w-6 h-6 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"
+                              data-testid={`button-qty-plus-${song.id}`}
+                            >
+                              <Plus className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-2 px-4 pb-4">
               {existingSession && (
-                <Button type="button" variant="destructive" className="rounded-xl" onClick={handleDelete}
-                  disabled={deleteSession.isPending} data-testid="button-delete-session">
+                <Button
+                  type="button" variant="destructive"
+                  className="rounded-xl h-11 px-3"
+                  onClick={handleDelete} disabled={deleteSession.isPending}
+                  data-testid="button-delete-session"
+                >
                   <Trash2 className="w-4 h-4" />
                 </Button>
               )}
-              <Button type="submit" className="flex-1 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/25"
-                disabled={isSubmitting} data-testid="button-save-session">
+              <Button
+                type="submit"
+                className="flex-1 rounded-xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base shadow-lg shadow-primary/20"
+                disabled={isSubmitting}
+                data-testid="button-save-session"
+              >
                 {isSubmitting ? "Saving…" : existingSession ? "Update Session" : "Create Session"}
               </Button>
             </div>

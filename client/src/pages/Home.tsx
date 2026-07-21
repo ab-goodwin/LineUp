@@ -48,6 +48,8 @@ const ALL_STAT_KEYS: { key: string; label: string; description: string; type: Ca
   { key: "swingDancesThisYear",    label: "Swing (This Year)",     description: "Swing dances logged this year.", type: "quickStat" },
   { key: "lineDancesThisMonth",    label: "Line Dances (This Month)", description: "Line dances logged this month.", type: "quickStat" },
   { key: "swingDancesThisMonth",   label: "Swing (This Month)",    description: "Swing dances logged this month.", type: "quickStat" },
+  { key: "uniqueDancesThisMonth",  label: "Unique Dances (This Month)", description: "Number of distinct dances you've done this month.", type: "quickStat" },
+  { key: "uniqueDancesThisYear",   label: "Unique Dances (This Year)",  description: "Number of distinct dances you've done this year.", type: "quickStat" },
   { key: "top3Dances",             label: "Top 3 Line Dances",     description: "Your 3 most-danced line dances.", type: "feature" },
   { key: "top3SwingSongs",         label: "Top 3 Swing Songs",     description: "Your 3 most-danced swing songs.", type: "feature" },
 ];
@@ -63,7 +65,8 @@ const DEFAULT_ORDER = [
   "totalDaysDancing", "uniqueLocations", "avgDancesPerSession",
   "totalLineDancesAllTime", "totalSwingDancesAllTime", "totalDancesThisYear",
   "lineDancesThisYear", "swingDancesThisYear", "lineDancesThisMonth",
-  "swingDancesThisMonth", "top3Dances", "top3SwingSongs",
+  "swingDancesThisMonth", "uniqueDancesThisMonth", "uniqueDancesThisYear",
+  "top3Dances", "top3SwingSongs",
 ];
 
 const TYPE_LABELS: Record<CardType, string> = {
@@ -416,6 +419,10 @@ export default function Home() {
         return <StatCard label="Line Dances (This Month)" value={stats?.lineDancesThisMonth ?? 0} icon={TrendingUp} className={quickStatClass} />;
       case "swingDancesThisMonth":
         return <StatCard label="Swing (This Month)" value={stats?.swingDancesThisMonth ?? 0} icon={TrendingUp} className={quickStatClass} />;
+      case "uniqueDancesThisMonth":
+        return <StatCard label="Unique Dances (This Month)" value={stats?.uniqueDancesThisMonth ?? 0} icon={Footprints} className={quickStatClass} />;
+      case "uniqueDancesThisYear":
+        return <StatCard label="Unique Dances (This Year)" value={stats?.uniqueDancesThisYear ?? 0} icon={Footprints} className={quickStatClass} />;
 
       // --- Feature cards: full-width, richer layout ---
       case "mostRecentDance":

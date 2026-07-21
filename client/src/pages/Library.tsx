@@ -12,6 +12,7 @@ import { z } from "zod";
 import { insertSongSchema, STYLE_INFO, STYLE_OPTIONS, type StyleOption } from "@shared/schema";
 import { RatingStars } from "@/components/RatingStars";
 import { SpotifySearch } from "@/components/SpotifySearch";
+import { LibraryItemDialog } from "@/components/LibraryItemDialog";
 import { Search, Plus, Music, Edit2, Trash2, MapPin, Footprints, Heart, Star, Clock3 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -423,6 +424,7 @@ export default function Library() {
   const [sortBy, setSortBy] = useState<"song" | "dance">("song");
   const [editingSong, setEditingSong] = useState<any>(null);
   const [isSongDialogOpen, setIsSongDialogOpen] = useState(false);
+  const [isLibDialogOpen, setIsLibDialogOpen] = useState(false);
   const [isLocationsDialogOpen, setIsLocationsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("linedance");
 
@@ -437,6 +439,8 @@ export default function Library() {
     s.danceName.toLowerCase().includes(search.toLowerCase()) ||
     s.songName.toLowerCase().includes(search.toLowerCase()) ||
     (s.artist && s.artist.toLowerCase().includes(search.toLowerCase()));
+
+  const allSongs = songs.filter(searchFilter).sort(sortFn);
 
   const lineSongs = songs
     .filter(s => (s as any).style === 'LINE' || !(s as any).style)
@@ -464,21 +468,23 @@ export default function Library() {
           <Button variant="outline" className="rounded-xl border-2" onClick={() => setIsLocationsDialogOpen(true)} data-testid="button-manage-locations">
             <MapPin className="w-4 h-4 mr-2" />Locations
           </Button>
+          <Button
+            className="rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={() => setIsLibDialogOpen(true)}
+            data-testid="button-add-song"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            {activeTab === "swing" ? "Add Swing Song" : "Add Song"}
+          </Button>
+          {/* Edit dialog — only for editing existing songs */}
           <Dialog open={isSongDialogOpen} onOpenChange={setIsSongDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="rounded-xl shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground"
-                onClick={() => setEditingSong(null)} data-testid="button-add-song">
-                <Plus className="w-5 h-5 mr-2" />
-                {activeTab === "swing" ? "Add Swing Song" : "Add Song"}
-              </Button>
-            </DialogTrigger>
             <DialogContent className="rounded-2xl bg-card">
               <DialogHeader>
                 <DialogTitle className="font-display text-xl text-primary">
-                  {editingSong ? "Edit Song" : activeTab === "swing" ? "Add Swing Song" : "Add Line Dance"}
+                  {isSwingEditing ? "Edit Swing Song" : "Edit Line Dance"}
                 </DialogTitle>
               </DialogHeader>
-              {isSwingEditing || (!editingSong && activeTab === "swing")
+              {isSwingEditing
                 ? <SwingSongForm initialData={editingSong} onClose={() => setIsSongDialogOpen(false)} />
                 : <LineSongForm initialData={editingSong} onClose={() => setIsSongDialogOpen(false)} />
               }
@@ -513,13 +519,37 @@ export default function Library() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full bg-secondary/40 rounded-xl mb-6">
-          <TabsTrigger value="linedance" className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm">
+          <TabsTrigger value="all" className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm" data-testid="tab-all">
+            All <span className="ml-1.5 text-xs bg-secondary text-muted-foreground rounded-full px-1.5">{allSongs.length}</span>
+          </TabsTrigger>
+          <TabsTrigger value="linedance" className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm" data-testid="tab-line-dance">
             Line Dance <span className="ml-1.5 text-xs bg-primary/15 text-primary rounded-full px-1.5">{lineSongs.length}</span>
           </TabsTrigger>
-          <TabsTrigger value="swing" className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm">
+          <TabsTrigger value="swing" className="flex-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm" data-testid="tab-swing">
             Swing <span className="ml-1.5 text-xs bg-blue-500/15 text-blue-600 rounded-full px-1.5">{swingSongs.length}</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="all" className="space-y-3">
+          {isLoading ? (
+            <div className="text-center py-10 text-muted-foreground">Loading library...</div>
+          ) : allSongs.length === 0 ? (
+            <div className="text-center py-16 bg-secondary/20 rounded-2xl border-2 border-dashed border-border">
+              <Music className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="font-medium text-lg">Your library is empty</p>
+              <p className="text-muted-foreground text-sm">Add line dances and swing songs to get started!</p>
+            </div>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              {allSongs.map(song => (
+                <SongCard key={song.id} song={song} sessions={sessions} sortBy={sortBy}
+                  onFavorite={() => toggleFavorite.mutate(song.id)}
+                  onEdit={() => { setEditingSong(song); setIsSongDialogOpen(true); }}
+                  onDelete={() => handleDelete(song.id)} />
+              ))}
+            </AnimatePresence>
+          )}
+        </TabsContent>
 
         <TabsContent value="linedance" className="space-y-3">
           {isLoading ? (
@@ -565,6 +595,12 @@ export default function Library() {
       </Tabs>
 
       <LocationsDialog open={isLocationsDialogOpen} onOpenChange={setIsLocationsDialogOpen} />
+
+      <LibraryItemDialog
+        open={isLibDialogOpen}
+        onOpenChange={setIsLibDialogOpen}
+        initialMode={activeTab === "swing" ? "swing" : "line"}
+      />
     </div>
   );
 }

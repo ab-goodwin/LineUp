@@ -51,15 +51,11 @@ export const sessions = pgTable("sessions", {
   locationId: integer("location_id"),
 });
 
-// Locations — doubles as per-user saved location names (legacy) and structured
-// real-world places. Structured rows carry provider + placeId (deduped by the
-// partial unique index) plus geocoding fields for nearby-crew matching.
+// Locations
 export const locations = pgTable("locations", {
   id: serial("id").primaryKey(),
-
   name: text("name").notNull(),
   normalizedName: text("normalized_name").notNull(),
-
   formattedAddress: text("formatted_address"),
   city: text("city"),
   state: text("state"),
@@ -92,7 +88,7 @@ export const userSavedLocations = pgTable("user_saved_locations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Buddy connections (friend requests)
+// Buddy connections
 export const buddies = pgTable("buddies", {
   id: serial("id").primaryKey(),
   requesterId: integer("requester_id").notNull(),
@@ -101,7 +97,6 @@ export const buddies = pgTable("buddies", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Streak challenges between buddies (legacy)
 export const streakChallenges = pgTable("streak_challenges", {
   id: serial("id").primaryKey(),
   challengerId: integer("challenger_id").notNull(),
@@ -112,7 +107,7 @@ export const streakChallenges = pgTable("streak_challenges", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Dance-Off Challenges (h2h or showdown)
+// Dance-Off Challenges
 export const danceOffs = pgTable("dance_offs", {
   id: serial("id").primaryKey(),
   creatorId: integer("creator_id").notNull(),
@@ -126,7 +121,6 @@ export const danceOffs = pgTable("dance_offs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Dance-Off Participants
 export const danceOffParticipants = pgTable("dance_off_participants", {
   id: serial("id").primaryKey(),
   danceOffId: integer("dance_off_id").notNull(),
@@ -144,11 +138,12 @@ export const userAchievements = pgTable("user_achievements", {
   seenAt: timestamp("seen_at"),
 });
 
-// Many-to-Many link between Sessions and Songs
+// Many-to-Many link between Sessions and Songs — quantity tracks repeats
 export const sessionDances = pgTable("session_dances", {
   id: serial("id").primaryKey(),
   sessionId: integer("session_id").notNull(),
   songId: integer("song_id").notNull(),
+  quantity: integer("quantity").notNull().default(1),
 });
 
 // === SCHEMAS ===
@@ -193,7 +188,6 @@ export const insertUserSavedLocationSchema = createInsertSchema(userSavedLocatio
   createdAt: true,
 });
 
-
 export const insertSongSchema = createInsertSchema(songs).omit({ id: true, userId: true });
 export const insertSessionSchema = createInsertSchema(sessions).omit({ id: true, userId: true });
 export const insertSessionDanceSchema = createInsertSchema(sessionDances).omit({ id: true });
@@ -225,14 +219,16 @@ export type DanceOff = typeof danceOffs.$inferSelect;
 export type DanceOffParticipant = typeof danceOffParticipants.$inferSelect;
 
 // Request Types
-export type CreateSongRequest = Omit<InsertSong, 'publicId'>;
+export type CreateSongRequest = Omit<InsertSong, 'publicId'> & { confirmCreate?: boolean };
 export type UpdateSongRequest = Partial<Omit<InsertSong, 'publicId'>>;
 
+export type SessionDanceInput = { songId: number; quantity: number };
+
 export type CreateSessionRequest = InsertSession & {
-  danceIds: number[];
+  dances: SessionDanceInput[];
 };
 export type UpdateSessionRequest = Partial<InsertSession> & {
-  danceIds?: number[];
+  dances?: SessionDanceInput[];
 };
 
 // Structured location detail attached to a session response when locationId is set
@@ -268,10 +264,13 @@ export type SavedLocationResponse = LocationSearchResult & {
   usageCount: number;
 };
 
+// Dance item in a session response — Song + how many times it was danced
+export type SessionDanceItem = Song & { quantity: number };
+
 // Response Types
 export type SongResponse = Song;
 export type SessionResponse = Session & {
-  dances: Song[];
+  dances: SessionDanceItem[];
   locationDetail?: SessionLocationDetail | null;
 };
 export type StatsResponse = {
@@ -299,6 +298,8 @@ export type StatsResponse = {
   totalLineDancesAllTime: number;
   totalSwingDancesAllTime: number;
   currentFavorite: string;
+  uniqueDancesThisMonth: number;
+  uniqueDancesThisYear: number;
 };
 
 export const STYLE_OPTIONS = ['LINE', 'WCS', 'ECS', 'CSW', 'TWO', 'OTHER'] as const;

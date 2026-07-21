@@ -34,7 +34,7 @@ export default function CalendarPage() {
   const sessionDates = sessions.map(s => parseISO(s.date as any));
 
   const hasSessionOnDate = (day: Date) =>
-  sessionDates.some((sessionDate) => isSameDay(sessionDate, day));
+    sessionDates.some((sessionDate) => isSameDay(sessionDate, day));
 
   const openEdit = (session: any) => {
     setEditingSession(session);
@@ -53,21 +53,21 @@ export default function CalendarPage() {
         {/* Calendar Card */}
         <div className="bg-card rounded-2xl p-4 shadow-lg border border-border">
           <DayPicker
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              disabled={{ after: new Date() }}
-              modifiers={{
-                hasSession: sessionDates,
-                selectedHasSession: (day) =>
-                  isSameDay(day, selectedDate) && hasSessionOnDate(day),
-              }}
-              modifiersClassNames={{
-                hasSession: "calendar-has-session",
-                selectedHasSession: "calendar-selected-has-session",
-              }}
-              className="lineup-calendar m-0 w-full flex justify-center"
-            />
+            mode="single"
+            selected={selectedDate}
+            onSelect={(date) => date && setSelectedDate(date)}
+            disabled={{ after: new Date() }}
+            modifiers={{
+              hasSession: sessionDates,
+              selectedHasSession: (day) =>
+                isSameDay(day, selectedDate) && hasSessionOnDate(day),
+            }}
+            modifiersClassNames={{
+              hasSession: "calendar-has-session",
+              selectedHasSession: "calendar-selected-has-session",
+            }}
+            className="lineup-calendar m-0 w-full flex justify-center"
+          />
         </div>
 
         {/* Selected Day Details */}
@@ -84,68 +84,79 @@ export default function CalendarPage() {
 
             {selectedSessions.length > 0 ? (
               <div className="space-y-4">
-                {selectedSessions.map((session, idx) => (
-                  <div key={session.id} className="bg-background rounded-xl p-4 border border-border/50">
-                    {selectedSessions.length > 1 && (
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                        Session {idx + 1}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-2 text-foreground/80 min-w-0">
-                        <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
-                        <div className="min-w-0">
-                          <span className="font-medium truncate block" data-testid={`text-session-location-${session.id}`}>
-                            {(session as any).locationDetail?.name || session.location}
-                          </span>
-                          {(session as any).locationDetail?.formattedAddress && (
-                            <span className="text-xs text-muted-foreground truncate block">
-                              {(session as any).locationDetail.formattedAddress}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => openEdit(session)}
-                        className="rounded-lg flex-shrink-0"
-                        variant="outline"
-                        size="sm"
-                        data-testid={`button-edit-session-${session.id}`}
-                      >
-                        Edit Session
-                      </Button>
-                    </div>
+                {selectedSessions.map((session, idx) => {
+                  const totalQty = session.dances.reduce((sum: number, d: any) => sum + (d.quantity ?? 1), 0);
+                  const uniqueCount = session.dances.length;
+                  const countLabel = `${totalQty} dance${totalQty !== 1 ? "s" : ""} · ${uniqueCount} unique`;
 
-                    <div className="bg-secondary/30 rounded-xl p-3 border border-border/30">
-                      <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground uppercase tracking-wide font-semibold">
-                        <Music className="w-3 h-3" />
-                        <span>Dances ({session.dances.length})</span>
+                  return (
+                    <div key={session.id} className="bg-background rounded-xl p-4 border border-border/50">
+                      {selectedSessions.length > 1 && (
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                          Session {idx + 1}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2 text-foreground/80 min-w-0">
+                          <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
+                          <div className="min-w-0">
+                            <span className="font-medium truncate block" data-testid={`text-session-location-${session.id}`}>
+                              {(session as any).locationDetail?.name || session.location}
+                            </span>
+                            {(session as any).locationDetail?.formattedAddress && (
+                              <span className="text-xs text-muted-foreground truncate block">
+                                {(session as any).locationDetail.formattedAddress}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => openEdit(session)}
+                          className="rounded-lg flex-shrink-0"
+                          variant="outline"
+                          size="sm"
+                          data-testid={`button-edit-session-${session.id}`}
+                        >
+                          Edit Session
+                        </Button>
                       </div>
-                      <ul
-                        className="space-y-1.5"
-                        style={
-                          session.dances.length > 10
-                            ? {
-                                maxHeight: "17rem",
-                                overflowY: "auto",
-                                WebkitOverflowScrolling: "touch",
-                                touchAction: "pan-y",
-                              }
-                            : undefined
-                        }
-                        data-testid={`list-session-dances-${session.id}`}
-                      >
-                        {session.dances.map((dance) => (
-                          <li key={dance.id} className="text-sm font-medium flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
-                            <span className="flex-1">{(dance as any).songName || dance.danceName}</span>
-                            <StyleTag style={(dance as any).style || 'LINE'} styleCustom={(dance as any).styleCustom} />
-                          </li>
-                        ))}
-                      </ul>
+
+                      <div className="bg-secondary/30 rounded-xl p-3 border border-border/30">
+                        <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground uppercase tracking-wide font-semibold">
+                          <Music className="w-3 h-3" />
+                          <span data-testid={`text-dance-count-${session.id}`}>Dances ({countLabel})</span>
+                        </div>
+                        <ul
+                          className="space-y-1.5"
+                          style={
+                            session.dances.length > 10
+                              ? {
+                                  maxHeight: "17rem",
+                                  overflowY: "auto",
+                                  WebkitOverflowScrolling: "touch",
+                                  touchAction: "pan-y",
+                                }
+                              : undefined
+                          }
+                          data-testid={`list-session-dances-${session.id}`}
+                        >
+                          {session.dances.map((dance) => (
+                            <li key={dance.id} className="text-sm font-medium flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+                              <span className="flex-1">{(dance as any).songName || dance.danceName}</span>
+                              {((dance as any).quantity ?? 1) > 1 && (
+                                <span className="text-xs font-semibold text-muted-foreground flex-shrink-0" data-testid={`text-dance-qty-${dance.id}`}>
+                                  ×{(dance as any).quantity}
+                                </span>
+                              )}
+                              <StyleTag style={(dance as any).style || "LINE"} styleCustom={(dance as any).styleCustom} />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {!isFuture && (
                   <Button
@@ -205,7 +216,7 @@ export default function CalendarPage() {
             font-weight: 700;
           }
         `}
-        </style>
+      </style>
 
       <SessionDialog
         date={selectedDate}

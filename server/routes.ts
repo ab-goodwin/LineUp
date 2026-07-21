@@ -410,7 +410,15 @@ export async function registerRoutes(
   app.post(api.songs.create.path, requireAuth, async (req, res) => {
     try {
       const input = api.songs.create.input.parse(req.body);
-      const song = await storage.createSong(req.user!.id, input);
+      const { confirmCreate, ...songData } = input;
+      if (!confirmCreate) {
+        const duplicate = await storage.findDuplicateSong(req.user!.id, songData);
+        if (duplicate) {
+          res.status(409).json({ message: "Song already exists in your library", duplicate });
+          return;
+        }
+      }
+      const song = await storage.createSong(req.user!.id, songData);
       res.status(201).json(song);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -691,10 +699,10 @@ export async function registerRoutes(
     const created = await Promise.all(seedSongs.map(s => storage.createSong(userId, s)));
     const [boot, watermelon, tush, cswing, wcs, two] = created.map(s => s.id);
     const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return d; };
-    await storage.createSession(userId, { date: daysAgo(0), location: "Cowboys Orlando", danceIds: [boot, boot, watermelon, cswing] });
-    await storage.createSession(userId, { date: daysAgo(1), location: "The Barn",         danceIds: [boot, tush, wcs] });
-    await storage.createSession(userId, { date: daysAgo(3), location: "Cowboys Orlando", danceIds: [watermelon, two, cswing] });
-    await storage.createSession(userId, { date: daysAgo(5), location: "The Barn",         danceIds: [boot, tush] });
+    await storage.createSession(userId, { date: daysAgo(0), location: "Cowboys Orlando", dances: [{ songId: boot, quantity: 2 }, { songId: watermelon, quantity: 1 }, { songId: cswing, quantity: 1 }] });
+    await storage.createSession(userId, { date: daysAgo(1), location: "The Barn",         dances: [{ songId: boot, quantity: 1 }, { songId: tush, quantity: 1 }, { songId: wcs, quantity: 1 }] });
+    await storage.createSession(userId, { date: daysAgo(3), location: "Cowboys Orlando", dances: [{ songId: watermelon, quantity: 1 }, { songId: two, quantity: 1 }, { songId: cswing, quantity: 1 }] });
+    await storage.createSession(userId, { date: daysAgo(5), location: "The Barn",         dances: [{ songId: boot, quantity: 1 }, { songId: tush, quantity: 1 }] });
 
     // Create (or reuse) a mock opponent user, then insert a completed challenge
     let challengeCreated = false;

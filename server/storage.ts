@@ -50,6 +50,7 @@ export interface IStorage {
   getUserById(id: number): Promise<User | undefined>;
   getUserBySupabaseAuthId(supabaseAuthId: string): Promise<User | undefined>;
   createAuthUser(input: { username: string; email: string; supabaseAuthId: string; firstName?: string; lastName?: string }): Promise<User>;
+  findDuplicateSong(userId: number, song: CreateSongRequest): Promise<Song | null>;
 
   // User Profile (scoped to userId)
   getUser(userId: number): Promise<User>;
@@ -602,6 +603,7 @@ export class DatabaseStorage implements IStorage {
           style: songs.style,
           styleCustom: songs.styleCustom,
           isFavorite: songs.isFavorite,
+          quantity: sessionDances.quantity,
         })
         .from(sessionDances)
         .innerJoin(songs, eq(sessionDances.songId, songs.id))
@@ -638,6 +640,7 @@ export class DatabaseStorage implements IStorage {
         style: songs.style,
         styleCustom: songs.styleCustom,
         isFavorite: songs.isFavorite,
+        quantity: sessionDances.quantity,
       })
       .from(sessionDances)
       .innerJoin(songs, eq(sessionDances.songId, songs.id))
@@ -646,8 +649,31 @@ export class DatabaseStorage implements IStorage {
     return { ...session, dances, locationDetail: await this.getLocationDetail(session.locationId) };
   }
 
+  async findDuplicateSong(userId: number, song: CreateSongRequest): Promise<Song | null> {
+    const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const existing = await db.select().from(songs).where(eq(songs.userId, userId));
+    for (const s of existing) {
+      if (song.style === 'LINE') {
+        if (s.style === 'LINE'
+          && norm(s.danceName) === norm(song.danceName)
+          && norm(s.songName) === norm(song.songName)
+          && norm(s.artist) === norm(song.artist)) {
+          return s;
+        }
+      } else {
+        if (s.style === song.style
+          && norm(s.songName) === norm(song.songName)
+          && norm(s.artist) === norm(song.artist)
+          && norm(s.styleCustom) === norm(song.styleCustom)) {
+          return s;
+        }
+      }
+    }
+    return null;
+  }
+
   async createSession(userId: number, req: CreateSessionRequest): Promise<SessionResponse> {
-    const { danceIds, ...sessionData } = req;
+    const { dances, ...sessionData } = req;
 
     const [session] = await db.insert(sessions).values({ ...sessionData, userId }).returning();
 
@@ -658,10 +684,18 @@ export class DatabaseStorage implements IStorage {
         .where(eq(locations.id, session.locationId));
     }
     
-    if (danceIds && danceIds.length > 0) {
-      await db.insert(sessionDances).values(
-        danceIds.map(songId => ({ sessionId: session.id, songId }))
-      );
+    if (dances && dances.length > 0) {
+      // Merge duplicate songIds
+      const merged = new Map<number, number>();
+      for (const { songId, quantity } of dances) {
+        merged.set(songId, (merged.get(songId) || 0) + quantity);
+      }
+      const rows = Array.from(merged.entries())
+        .filter(([, qty]) => qty > 0)
+        .map(([songId, quantity]) => ({ sessionId: session.id, songId, quantity }));
+      if (rows.length > 0) {
+        await db.insert(sessionDances).values(rows);
+      }
     }
     
     return this.getSession(session.id, userId) as Promise<SessionResponse>;
@@ -672,7 +706,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
     if (!before) throw new Error("Session not found");
 
-    const { danceIds, ...sessionData } = req;
+    const { dances, ...sessionData } = req;
     
     if (Object.keys(sessionData).length > 0) {
       await db.update(sessions)
@@ -680,12 +714,19 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
     }
 
-    if (danceIds) {
+    if (dances !== undefined) {
       await db.delete(sessionDances).where(eq(sessionDances.sessionId, id));
-      if (danceIds.length > 0) {
-        await db.insert(sessionDances).values(
-          danceIds.map(songId => ({ sessionId: id, songId }))
-        );
+      if (dances.length > 0) {
+        const merged = new Map<number, number>();
+        for (const { songId, quantity } of dances) {
+          merged.set(songId, (merged.get(songId) || 0) + quantity);
+        }
+        const rows = Array.from(merged.entries())
+          .filter(([, qty]) => qty > 0)
+          .map(([songId, quantity]) => ({ sessionId: id, songId, quantity }));
+        if (rows.length > 0) {
+          await db.insert(sessionDances).values(rows);
+        }
       }
     }
 
@@ -740,7 +781,7 @@ export class DatabaseStorage implements IStorage {
     let longestStreak = 0;
 
     if (sessionIds.length > 0) {
-      const [totalDancesResult] = await db.select({ count: sql<number>`count(*)` })
+      const [totalDancesResult] = await db.select({ count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)` })
         .from(sessionDances)
         .where(sql`${sessionDances.sessionId} = ANY(${sql`ARRAY[${sql.join(sessionIds.map(id => sql`${id}`), sql`, `)}]::int[]`})`);
       totalDances = Number(totalDancesResult?.count || 0);
@@ -769,14 +810,14 @@ export class DatabaseStorage implements IStorage {
       const [danceResult] = await db.select({
         songName: sql<string>`COALESCE(NULLIF(${songs.songName}, ''), ${songs.danceName})`,
         danceName: songs.danceName,
-        count: sql<number>`count(*)`
+        count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)`
       })
       .from(sessionDances)
       .innerJoin(songs, eq(sessionDances.songId, songs.id))
       .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
       .where(eq(sessions.userId, userId))
       .groupBy(songs.songName, songs.danceName)
-      .orderBy(desc(sql`count(*)`))
+      .orderBy(desc(sql`COALESCE(sum(${sessionDances.quantity}), 0)`))
       .limit(1);
       if (danceResult) mostFreqDance = { songName: danceResult.songName, danceName: danceResult.danceName, count: Number(danceResult.count) };
 
@@ -821,6 +862,8 @@ export class DatabaseStorage implements IStorage {
     let totalLineDancesAllTime = 0;
     let totalSwingDancesAllTime = 0;
     let currentFavorite = "N/A";
+    let uniqueDancesThisMonth = 0;
+    let uniqueDancesThisYear = 0;
 
     // Most recently added song (by id, not by session date)
     const [recentSong] = await db.select({ songName: songs.songName, danceName: songs.danceName, style: songs.style })
@@ -834,7 +877,7 @@ export class DatabaseStorage implements IStorage {
     if (sessionIds.length > 0) {
       // Dances this month
       const now = new Date();
-      const [thisMonthResult] = await db.select({ count: sql<number>`count(*)` })
+      const [thisMonthResult] = await db.select({ count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)` })
         .from(sessionDances)
         .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
         .where(and(
@@ -847,13 +890,13 @@ export class DatabaseStorage implements IStorage {
       // Most danced day
       const [topDayResult] = await db.select({
         date: sessions.date,
-        count: sql<number>`count(*)`
+        count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)`
       })
       .from(sessionDances)
       .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
       .where(eq(sessions.userId, userId))
       .groupBy(sessions.date)
-      .orderBy(desc(sql`count(*)`))
+      .orderBy(desc(sql`COALESCE(sum(${sessionDances.quantity}), 0)`))
       .limit(1);
       if (topDayResult) {
         mostDancedDay = {
@@ -872,14 +915,14 @@ export class DatabaseStorage implements IStorage {
       const top3 = await db.select({
         danceName: songs.danceName,
         songName: songs.songName,
-        count: sql<number>`count(*)`
+        count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)`
       })
       .from(sessionDances)
       .innerJoin(songs, eq(sessionDances.songId, songs.id))
       .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
       .where(and(eq(sessions.userId, userId), eq(songs.style, 'LINE')))
       .groupBy(songs.danceName, songs.songName)
-      .orderBy(desc(sql`count(*)`))
+      .orderBy(desc(sql`COALESCE(sum(${sessionDances.quantity}), 0)`))
       .limit(3);
       top3Dances = top3.map(r => ({ danceName: r.danceName, songName: r.songName, count: Number(r.count) }));
 
@@ -888,19 +931,19 @@ export class DatabaseStorage implements IStorage {
         songName: songs.songName,
         danceName: songs.danceName,
         style: songs.style,
-        count: sql<number>`count(*)`
+        count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)`
       })
       .from(sessionDances)
       .innerJoin(songs, eq(sessionDances.songId, songs.id))
       .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
       .where(and(eq(sessions.userId, userId), ne(songs.style, 'LINE')))
       .groupBy(songs.songName, songs.danceName, songs.style)
-      .orderBy(desc(sql`count(*)`))
+      .orderBy(desc(sql`COALESCE(sum(${sessionDances.quantity}), 0)`))
       .limit(3);
       top3SwingSongs = top3Swing.map(r => ({ songName: r.songName, danceName: r.danceName, style: r.style, count: Number(r.count) }));
 
       // Line dances this year
-      const [lineDancesYearResult] = await db.select({ count: sql<number>`count(*)` })
+      const [lineDancesYearResult] = await db.select({ count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)` })
         .from(sessionDances)
         .innerJoin(songs, eq(sessionDances.songId, songs.id))
         .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
@@ -908,7 +951,7 @@ export class DatabaseStorage implements IStorage {
       lineDancesThisYear = Number(lineDancesYearResult?.count || 0);
 
       // Swing dances this year
-      const [swingDancesYearResult] = await db.select({ count: sql<number>`count(*)` })
+      const [swingDancesYearResult] = await db.select({ count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)` })
         .from(sessionDances)
         .innerJoin(songs, eq(sessionDances.songId, songs.id))
         .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
@@ -917,7 +960,7 @@ export class DatabaseStorage implements IStorage {
       totalDancesThisYear = lineDancesThisYear + swingDancesThisYear;
 
       // Line dances this month
-      const [lineDancesMonthResult] = await db.select({ count: sql<number>`count(*)` })
+      const [lineDancesMonthResult] = await db.select({ count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)` })
         .from(sessionDances)
         .innerJoin(songs, eq(sessionDances.songId, songs.id))
         .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
@@ -929,7 +972,7 @@ export class DatabaseStorage implements IStorage {
       lineDancesThisMonth = Number(lineDancesMonthResult?.count || 0);
 
       // Swing dances this month
-      const [swingDancesMonthResult] = await db.select({ count: sql<number>`count(*)` })
+      const [swingDancesMonthResult] = await db.select({ count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)` })
         .from(sessionDances)
         .innerJoin(songs, eq(sessionDances.songId, songs.id))
         .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
@@ -940,15 +983,36 @@ export class DatabaseStorage implements IStorage {
         ));
       swingDancesThisMonth = Number(swingDancesMonthResult?.count || 0);
 
+      // Unique dances this month (distinct song IDs)
+      const [uniqueMonthResult] = await db.select({ count: sql<number>`COUNT(DISTINCT ${sessionDances.songId})` })
+        .from(sessionDances)
+        .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+        .where(and(
+          eq(sessions.userId, userId),
+          sql`EXTRACT(MONTH FROM ${sessions.date}) = ${now.getMonth() + 1}`,
+          sql`EXTRACT(YEAR FROM ${sessions.date}) = ${now.getFullYear()}`
+        ));
+      uniqueDancesThisMonth = Number(uniqueMonthResult?.count || 0);
+
+      // Unique dances this year (distinct song IDs)
+      const [uniqueYearResult] = await db.select({ count: sql<number>`COUNT(DISTINCT ${sessionDances.songId})` })
+        .from(sessionDances)
+        .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
+        .where(and(
+          eq(sessions.userId, userId),
+          sql`EXTRACT(YEAR FROM ${sessions.date}) = ${now.getFullYear()}`
+        ));
+      uniqueDancesThisYear = Number(uniqueYearResult?.count || 0);
+
       // All-time line / swing totals
-      const [lineTotalResult] = await db.select({ count: sql<number>`count(*)` })
+      const [lineTotalResult] = await db.select({ count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)` })
         .from(sessionDances)
         .innerJoin(songs, eq(sessionDances.songId, songs.id))
         .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
         .where(and(eq(sessions.userId, userId), eq(songs.style, 'LINE')));
       totalLineDancesAllTime = Number(lineTotalResult?.count || 0);
 
-      const [swingTotalResult] = await db.select({ count: sql<number>`count(*)` })
+      const [swingTotalResult] = await db.select({ count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)` })
         .from(sessionDances)
         .innerJoin(songs, eq(sessionDances.songId, songs.id))
         .innerJoin(sessions, eq(sessionDances.sessionId, sessions.id))
@@ -988,6 +1052,8 @@ export class DatabaseStorage implements IStorage {
       totalLineDancesAllTime,
       totalSwingDancesAllTime,
       currentFavorite,
+      uniqueDancesThisMonth,
+      uniqueDancesThisYear,
     };
   }
   // --- Buddies ---
@@ -1480,7 +1546,7 @@ export class DatabaseStorage implements IStorage {
     if (userSessions.length === 0) return [];
     const ids = userSessions.map(s => s.id);
     const rows = await db
-      .select({ style: songs.style, count: sql<number>`count(*)` })
+      .select({ style: songs.style, count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)` })
       .from(sessionDances)
       .innerJoin(songs, eq(sessionDances.songId, songs.id))
       .where(inArray(sessionDances.sessionId, ids))
@@ -1609,7 +1675,7 @@ export class DatabaseStorage implements IStorage {
       let finalCount = 0;
       if (userSessions.length > 0) {
         const ids = userSessions.map(s => s.id);
-        const [r] = await db.select({ count: sql<number>`count(*)` })
+        const [r] = await db.select({ count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)` })
           .from(sessionDances).where(inArray(sessionDances.sessionId, ids));
         finalCount = Number(r?.count || 0);
       }
@@ -1642,7 +1708,7 @@ export class DatabaseStorage implements IStorage {
   async getDanceOffs(userId: number): Promise<any[]> {
     const created = await db.select({ id: danceOffs.id }).from(danceOffs).where(eq(danceOffs.creatorId, userId));
     const joined = await db.select({ id: danceOffParticipants.danceOffId }).from(danceOffParticipants).where(eq(danceOffParticipants.userId, userId));
-    const allIds = [...new Set([...created.map(d => d.id), ...joined.map(p => p.id)])];
+    const allIds = Array.from(new Set([...created.map(d => d.id), ...joined.map(p => p.id)]));
     const results = await Promise.all(allIds.map(id => this.getDanceOffDetail(id)));
     return results.filter(Boolean).sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
   }
@@ -1670,7 +1736,7 @@ export class DatabaseStorage implements IStorage {
           ));
         if (userSessions.length > 0) {
           const ids = userSessions.map(s => s.id);
-          const [r] = await db.select({ count: sql<number>`count(*)` }).from(sessionDances).where(inArray(sessionDances.sessionId, ids));
+          const [r] = await db.select({ count: sql<number>`COALESCE(sum(${sessionDances.quantity}), 0)` }).from(sessionDances).where(inArray(sessionDances.sessionId, ids));
           liveDanceCount = Number(r?.count || 0);
         } else {
           liveDanceCount = 0;
@@ -1709,25 +1775,25 @@ export class DatabaseStorage implements IStorage {
 
     const sessionIds = userSessions.map(s => s.id);
 
-    let danceRows: { sessionId: number; danceName: string }[] = [];
+    let danceRows: { sessionId: number; danceName: string; quantity: number }[] = [];
     if (sessionIds.length > 0) {
       danceRows = await db.select({
         sessionId: sessionDances.sessionId,
         danceName: songs.danceName,
+        quantity: sessionDances.quantity,
       }).from(sessionDances)
         .innerJoin(songs, eq(sessionDances.songId, songs.id))
         .where(inArray(sessionDances.sessionId, sessionIds));
     }
 
-    const totalDances = danceRows.length;
+    const totalDances = danceRows.reduce((sum, r) => sum + r.quantity, 0);
 
-    const dancesBySession = new Map<number, string[]>();
+    const dancesBySession = new Map<number, number>();
     for (const row of danceRows) {
-      if (!dancesBySession.has(row.sessionId)) dancesBySession.set(row.sessionId, []);
-      dancesBySession.get(row.sessionId)!.push(row.danceName);
+      dancesBySession.set(row.sessionId, (dancesBySession.get(row.sessionId) || 0) + row.quantity);
     }
     const maxDancesInSession = dancesBySession.size > 0
-      ? Math.max(...[...dancesBySession.values()].map(d => d.length)) : 0;
+      ? Math.max(...Array.from(dancesBySession.values())) : 0;
 
     const lateNightSessions = userSessions.filter(s => {
       const h = s.date.getUTCHours();
@@ -1738,9 +1804,9 @@ export class DatabaseStorage implements IStorage {
 
     const danceFreq = new Map<string, number>();
     for (const row of danceRows) {
-      danceFreq.set(row.danceName, (danceFreq.get(row.danceName) || 0) + 1);
+      danceFreq.set(row.danceName, (danceFreq.get(row.danceName) || 0) + row.quantity);
     }
-    const maxDanceFreq = danceFreq.size > 0 ? Math.max(...danceFreq.values()) : 0;
+    const maxDanceFreq = danceFreq.size > 0 ? Math.max(...Array.from(danceFreq.values())) : 0;
 
     const danceSessionMap = new Map<string, Set<number>>();
     for (const row of danceRows) {
@@ -1748,7 +1814,7 @@ export class DatabaseStorage implements IStorage {
       danceSessionMap.get(row.danceName)!.add(row.sessionId);
     }
     const maxSessionsForOneDance = danceSessionMap.size > 0
-      ? Math.max(...[...danceSessionMap.values()].map(s => s.size)) : 0;
+      ? Math.max(...Array.from(danceSessionMap.values()).map(s => s.size)) : 0;
 
     const venueCounts = new Map<string, number>();
     for (const s of userSessions) {
@@ -1756,7 +1822,7 @@ export class DatabaseStorage implements IStorage {
       if (loc) venueCounts.set(loc, (venueCounts.get(loc) || 0) + 1);
     }
     const uniqueVenues = venueCounts.size;
-    const maxVenueCount = venueCounts.size > 0 ? Math.max(...venueCounts.values()) : 0;
+    const maxVenueCount = venueCounts.size > 0 ? Math.max(...Array.from(venueCounts.values())) : 0;
 
     let maxConsecutiveVenue = userSessions.length > 0 ? 1 : 0;
     let curConsecVenue = 1;
@@ -1768,7 +1834,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     const allDatesSet = new Set(userSessions.map(s => s.date.toISOString().split('T')[0]));
-    const allDates = [...allDatesSet].sort();
+    const allDates = Array.from(allDatesSet).sort();
 
     let longestStreak = allDates.length > 0 ? 1 : 0;
     let currentStrk = 1;
@@ -1784,7 +1850,7 @@ export class DatabaseStorage implements IStorage {
       if (!weekDayMap.has(week)) weekDayMap.set(week, new Set());
       weekDayMap.get(week)!.add(s.date.toISOString().split('T')[0]);
     }
-    const maxDaysInWeek = weekDayMap.size > 0 ? Math.max(...[...weekDayMap.values()].map(s => s.size)) : 0;
+    const maxDaysInWeek = weekDayMap.size > 0 ? Math.max(...Array.from(weekDayMap.values()).map(s => s.size)) : 0;
 
     let hasWeekendWarrior = false;
     const weekDayOfWeekMap = new Map<string, Set<number>>();
@@ -1793,7 +1859,7 @@ export class DatabaseStorage implements IStorage {
       if (!weekDayOfWeekMap.has(week)) weekDayOfWeekMap.set(week, new Set());
       weekDayOfWeekMap.get(week)!.add(s.date.getUTCDay());
     }
-    for (const days of weekDayOfWeekMap.values()) {
+    for (const days of Array.from(weekDayOfWeekMap.values())) {
       if (days.has(5) && days.has(6)) { hasWeekendWarrior = true; break; }
     }
 
@@ -1802,9 +1868,9 @@ export class DatabaseStorage implements IStorage {
       const sess = userSessions.find(s => s.id === row.sessionId);
       if (!sess) continue;
       const key = `${sess.date.getFullYear()}-${sess.date.getMonth()}`;
-      monthDances.set(key, (monthDances.get(key) || 0) + 1);
+      monthDances.set(key, (monthDances.get(key) || 0) + row.quantity);
     }
-    const maxDancesInMonth = monthDances.size > 0 ? Math.max(...monthDances.values()) : 0;
+    const maxDancesInMonth = monthDances.size > 0 ? Math.max(...Array.from(monthDances.values())) : 0;
 
     let hasFloorHopper = false;
     const weekVenueMap = new Map<string, Set<string>>();
@@ -1813,7 +1879,7 @@ export class DatabaseStorage implements IStorage {
       if (!weekVenueMap.has(week)) weekVenueMap.set(week, new Set());
       if (s.location) weekVenueMap.get(week)!.add(s.location);
     }
-    for (const venues of weekVenueMap.values()) {
+    for (const venues of Array.from(weekVenueMap.values())) {
       if (venues.size >= 3) { hasFloorHopper = true; break; }
     }
 
