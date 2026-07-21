@@ -6,15 +6,18 @@ import { installAuthFetch } from "./lib/authFetch";
 
 installAuthFetch();
 
-let isReloadingForUpdate = false;
-
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (isReloadingForUpdate) return;
+  let updateReloadStarted = false;
 
-    isReloadingForUpdate = true;
-    window.location.reload();
-  });
+  const reloadAfterUpdate = () => {
+    if (updateReloadStarted) return;
+
+    updateReloadStarted = true;
+
+    window.setTimeout(() => {
+      window.location.reload();
+    }, 250);
+  };
 
   const updateSW = registerSW({
     immediate: true,
@@ -28,7 +31,13 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
     },
 
     onNeedRefresh() {
-      updateSW(true);
+      updateSW(true)
+        .then(() => {
+          reloadAfterUpdate();
+        })
+        .catch((error) => {
+          console.error("PWA activation failed:", error);
+        });
     },
 
     onRegisterError(error) {
@@ -36,15 +45,36 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
     },
   });
 
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    reloadAfterUpdate();
+  });
 
-    navigator.serviceWorker
-      .getRegistration()
-      .then((registration) => registration?.update())
-      .catch((error) => {
-        console.error("PWA resume update check failed:", error);
-      });
+  const checkForUpdate = async () => {
+    try {
+      const registration =
+        await navigator.serviceWorker.getRegistration();
+
+      if (!registration) return;
+
+      await registration.update();
+
+      if (registration.waiting) {
+        await updateSW(true);
+        reloadAfterUpdate();
+      }
+    } catch (error) {
+      console.error("PWA update check failed:", error);
+    }
+  };
+
+  window.addEventListener("pageshow", () => {
+    void checkForUpdate();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void checkForUpdate();
+    }
   });
 }
 
