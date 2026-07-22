@@ -70,6 +70,8 @@ const CHANGELOG: ChangelogEntry[] = [
           "Improved the size and consistency of Library entries inside a session.",
           "Refined selected dance controls and quantity buttons.",
           "Updated colors, spacing, borders, and search fields.",
+          "Fixed an issue where the Session Library and Add Song sections did not update correctly when switching to dark mode.",
+          "Fixed a bug where Session Dialog colors did not match the selected light or dark theme.",
         ],
       },
       {
