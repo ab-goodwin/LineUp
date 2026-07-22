@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -6,6 +6,11 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { FadeImg } from "@/components/FadeImg";
+import {
+  useProfile,
+  useUpdateOnboardingPreference,
+} from "@/hooks/use-profile";
+import { useToast } from "@/hooks/use-toast";
 
 import recapImg from "@/assets/onboarding/onboarding-recap.png";
 import calendarImg from "@/assets/onboarding/onboarding-calendar.png";
@@ -13,7 +18,6 @@ import libraryImg from "@/assets/onboarding/onboarding-library.png";
 import crewImg from "@/assets/onboarding/onboarding-crew.png";
 import bucklesImg from "@/assets/onboarding/onboarding-buckles.png";
 
-const ONBOARDING_KEY = "lineup_onboarding_seen";
 export const WALKTHROUGH_EVENT = "lineup:show-walkthrough";
 
 const PAGES = [
@@ -54,43 +58,85 @@ interface Props {
 }
 
 export function OnboardingCarousel({ userId }: Props) {
-  const storageKey = `${ONBOARDING_KEY}_${userId}`;
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const updatePreference = useUpdateOnboardingPreference();
+  const { toast } = useToast();
+
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [dontShow, setDontShow] = useState(false);
   const [dir, setDir] = useState<1 | -1>(1);
+  const [manualOpen, setManualOpen] = useState(false);
+
+  // Prevent automatic onboarding from reopening repeatedly during one mounted
+  // app instance. The database remains the source of truth across launches.
+  const autoOpenHandledForUser = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!localStorage.getItem(storageKey)) {
+    if (profileLoading || !profile || profile.id !== userId) return;
+    if (autoOpenHandledForUser.current === userId) return;
+
+    autoOpenHandledForUser.current = userId;
+    setDontShow(profile.onboardingDontShow ?? false);
+
+    if (!profile.onboardingDontShow) {
+      setManualOpen(false);
+      setPage(0);
+      setDir(1);
       setOpen(true);
     }
-  }, [storageKey]);
+  }, [profileLoading, profile, profile?.onboardingDontShow, userId]);
 
   useEffect(() => {
     const handler = () => {
+      // Settings walkthrough always opens, regardless of the saved preference.
+      setManualOpen(true);
       setOpen(true);
       setPage(0);
-      setDontShow(false);
+      setDontShow(profile?.onboardingDontShow ?? false);
       setDir(1);
     };
+
     window.addEventListener(WALKTHROUGH_EVENT, handler);
     return () => window.removeEventListener(WALKTHROUGH_EVENT, handler);
-  }, []);
+  }, [profile?.onboardingDontShow]);
 
   const goTo = (next: number) => {
     setDir(next > page ? 1 : -1);
     setPage(next);
   };
 
-  const handleFinish = () => {
-    if (dontShow) localStorage.setItem(storageKey, "true");
+  const closeCarousel = () => {
     setOpen(false);
     setPage(0);
+    setDir(1);
+    setManualOpen(false);
+  };
+
+  const handleFinish = async () => {
+    const currentSavedValue = profile?.onboardingDontShow ?? false;
+
+    try {
+      // Option A: checkbox stays visible during a manual walkthrough.
+      // Save only when its value changed.
+      if (dontShow !== currentSavedValue) {
+        await updatePreference.mutateAsync(dontShow);
+      }
+
+      closeCarousel();
+    } catch (error) {
+      console.error("Failed to save onboarding preference:", error);
+      toast({
+        title: "Could not save walkthrough preference",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSkip = () => {
-    setOpen(false);
-    setPage(0);
+    // Skipping closes the carousel without changing the database preference.
+    closeCarousel();
   };
 
   const isFirst = page === 0;
@@ -101,27 +147,37 @@ export function OnboardingCarousel({ userId }: Props) {
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
         className="bg-transparent border-none shadow-none p-0 max-w-sm w-[92vw] gap-0 flex flex-col items-center"
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+        onEscapeKeyDown={(event) => event.preventDefault()}
         hideCloseButton
       >
         <DialogTitle className="sr-only">App Walkthrough</DialogTitle>
 
-        {/* Main card */}
-        <div className="w-full rounded-2xl overflow-hidden shadow-2xl"
-          style={{ background: "var(--card-default)", border: "1px solid var(--card-border)" }}>
-
-          {/* Image area — fixed height so modal doesn't jump */}
-          <div className="relative w-full h-44 overflow-hidden"
-            style={{ background: "var(--card-secondary)" }}>
+        <div
+          className="w-full rounded-2xl overflow-hidden shadow-2xl"
+          style={{
+            background: "var(--card-default)",
+            border: "1px solid var(--card-border)",
+          }}
+        >
+          <div
+            className="relative w-full h-44 overflow-hidden"
+            style={{ background: "var(--card-secondary)" }}
+          >
             <AnimatePresence initial={false} custom={dir} mode="wait">
               <motion.div
                 key={current.id}
                 custom={dir}
                 variants={{
-                  enter: (d: number) => ({ x: d * 80, opacity: 0 }),
+                  enter: (direction: number) => ({
+                    x: direction * 80,
+                    opacity: 0,
+                  }),
                   center: { x: 0, opacity: 1 },
-                  exit: (d: number) => ({ x: d * -80, opacity: 0 }),
+                  exit: (direction: number) => ({
+                    x: direction * -80,
+                    opacity: 0,
+                  }),
                 }}
                 initial="enter"
                 animate="center"
@@ -138,65 +194,83 @@ export function OnboardingCarousel({ userId }: Props) {
               </motion.div>
             </AnimatePresence>
 
-            {/* Page indicator pill */}
             <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/25 backdrop-blur-sm rounded-full px-3 py-1">
-              {PAGES.map((_, i) => (
+              {PAGES.map((_, index) => (
                 <button
-                  key={i}
-                  onClick={() => goTo(i)}
+                  key={index}
+                  type="button"
+                  onClick={() => goTo(index)}
                   className={cn(
                     "rounded-full transition-all duration-300",
-                    i === page ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/50 hover:bg-white/75"
+                    index === page
+                      ? "w-4 h-1.5 bg-white"
+                      : "w-1.5 h-1.5 bg-white/50 hover:bg-white/75",
                   )}
-                  aria-label={`Go to page ${i + 1}`}
+                  aria-label={`Go to page ${index + 1}`}
                 />
               ))}
             </div>
           </div>
 
-          {/* Text content */}
           <div className="px-6 pt-5 pb-2 min-h-[6.5rem]">
             <AnimatePresence initial={false} custom={dir} mode="wait">
               <motion.div
                 key={current.id}
                 custom={dir}
                 variants={{
-                  enter: (d: number) => ({ x: d * 30, opacity: 0 }),
+                  enter: (direction: number) => ({
+                    x: direction * 30,
+                    opacity: 0,
+                  }),
                   center: { x: 0, opacity: 1 },
-                  exit: (d: number) => ({ x: d * -30, opacity: 0 }),
+                  exit: (direction: number) => ({
+                    x: direction * -30,
+                    opacity: 0,
+                  }),
                 }}
                 initial="enter"
                 animate="center"
                 exit="exit"
                 transition={{ duration: 0.22, ease: "easeOut" }}
               >
-                <h2 className="text-xl font-display font-bold mb-2 leading-tight"
-                  style={{ color: "var(--text-main)" }}>
+                <h2
+                  className="text-xl font-display font-bold mb-2 leading-tight"
+                  style={{ color: "var(--text-main)" }}
+                >
                   {current.title}
                 </h2>
-                <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                <p
+                  className="text-sm leading-relaxed"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   {current.body}
                 </p>
               </motion.div>
             </AnimatePresence>
           </div>
 
-          {/* Navigation row */}
           <div className="px-6 pb-5 pt-3">
             {!isLast ? (
               <div className="flex items-center justify-between gap-3">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className={cn("rounded-xl gap-1 text-sm", isFirst && "invisible")}
+                  className={cn(
+                    "rounded-xl gap-1 text-sm",
+                    isFirst && "invisible",
+                  )}
                   onClick={() => goTo(page - 1)}
                   disabled={isFirst}
                   data-testid="button-onboarding-back"
                 >
-                  <ChevronLeft className="w-4 h-4" /> Back
+                  <ChevronLeft className="w-4 h-4" />
+                  Back
                 </Button>
 
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--text-muted)" }}
+                >
                   {page + 1} of {PAGES.length}
                 </span>
 
@@ -206,7 +280,8 @@ export function OnboardingCarousel({ userId }: Props) {
                   onClick={() => goTo(page + 1)}
                   data-testid="button-onboarding-next"
                 >
-                  Next <ChevronRight className="w-4 h-4" />
+                  Next
+                  <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
             ) : (
@@ -219,11 +294,17 @@ export function OnboardingCarousel({ userId }: Props) {
                     onClick={() => goTo(page - 1)}
                     data-testid="button-onboarding-back-last"
                   >
-                    <ChevronLeft className="w-4 h-4" /> Back
+                    <ChevronLeft className="w-4 h-4" />
+                    Back
                   </Button>
-                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+
+                  <span
+                    className="text-xs"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     {page + 1} of {PAGES.length}
                   </span>
+
                   <div className="w-16" />
                 </div>
 
@@ -231,16 +312,22 @@ export function OnboardingCarousel({ userId }: Props) {
                   className="w-full rounded-xl font-semibold text-base"
                   style={{ background: "var(--accent-orange)" }}
                   onClick={handleFinish}
+                  disabled={updatePreference.isPending}
                   data-testid="button-onboarding-start"
                 >
-                  Start Dancing
+                  {updatePreference.isPending
+                    ? "Saving..."
+                    : manualOpen
+                      ? "Close Walkthrough"
+                      : "Start Dancing"}
                 </Button>
 
                 <div className="flex items-center gap-2 justify-center">
                   <Checkbox
                     id="onboarding-dont-show"
                     checked={dontShow}
-                    onCheckedChange={(v) => setDontShow(!!v)}
+                    onCheckedChange={(value) => setDontShow(value === true)}
+                    disabled={updatePreference.isPending}
                     data-testid="checkbox-onboarding-dont-show"
                   />
                   <label
@@ -256,8 +343,8 @@ export function OnboardingCarousel({ userId }: Props) {
           </div>
         </div>
 
-        {/* Skip link — below the card */}
         <button
+          type="button"
           onClick={handleSkip}
           className="mt-4 text-sm text-white/70 hover:text-white transition-colors underline underline-offset-2"
           data-testid="button-onboarding-skip"

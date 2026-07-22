@@ -548,14 +548,14 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                     return (
                       <div
                         key={song.id}
-                        className={`flex items-center gap-2.5 px-3 py-2 transition-colors ${isSelected ? "bg-primary/[0.06]" : ""}`}
+                        className={`flex h-[72px] items-center gap-3 px-4 transition-colors ${isSelected ? "bg-primary/[0.06]" : ""}`}
                         data-testid={`session-song-item-${song.id}`}
                       >
                         {/* Checkbox */}
                         <button
                           type="button"
                           onClick={() => toggleSong(song.id)}
-                          className={`w-[18px] h-[18px] rounded-[4px] border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                          className={`w-5 h-5 rounded-[5px] border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                             isSelected
                               ? "border-primary bg-primary text-white"
                               : "border-muted-foreground/40 bg-transparent hover:border-primary/50"
@@ -571,13 +571,24 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
                         {/* Song info — matches reference: DanceName · Artist [tag] / SongName */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1 flex-wrap leading-tight">
-                            <span className="font-semibold text-sm">{song.danceName}</span>
-                            {song.artist && <span className="text-sm text-muted-foreground">· {song.artist}</span>}
-                            <StyleTag style={(song as any).style || "LINE"} styleCustom={(song as any).styleCustom} />
+                          <div className="flex min-w-0 items-center gap-1.5 leading-tight">
+                            <span className="truncate text-base font-semibold">{song.danceName}</span>
+                            {song.artist && (
+                              <span className="truncate text-sm text-muted-foreground">
+                                · {song.artist}
+                              </span>
+                            )}
+                            <div className="shrink-0">
+                              <StyleTag
+                                style={(song as any).style || "LINE"}
+                                styleCustom={(song as any).styleCustom}
+                              />
+                            </div>
                           </div>
                           {song.songName && song.songName !== song.danceName && (
-                            <p className="text-xs text-muted-foreground leading-tight mt-0.5">{song.songName}</p>
+                            <p className="mt-1 truncate text-sm leading-tight text-muted-foreground">
+                              {song.songName}
+                            </p>
                           )}
                         </div>
 
@@ -587,19 +598,19 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                             <button
                               type="button"
                               onClick={() => setQty(song.id, -1)}
-                              className="w-6 h-6 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"
+                              className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"
                               data-testid={`button-qty-minus-${song.id}`}
                             >
-                              <Minus className="w-2.5 h-2.5" />
+                              <Minus className="w-3.5 h-3.5" />
                             </button>
-                            <span className="w-5 text-center text-sm font-bold text-primary" data-testid={`text-qty-${song.id}`}>{qty}</span>
+                            <span className="w-6 text-center text-base font-bold text-primary" data-testid={`text-qty-${song.id}`}>{qty}</span>
                             <button
                               type="button"
                               onClick={() => setQty(song.id, 1)}
-                              className="w-6 h-6 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"
+                              className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"
                               data-testid={`button-qty-plus-${song.id}`}
                             >
-                              <Plus className="w-2.5 h-2.5" />
+                              <Plus className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         )}

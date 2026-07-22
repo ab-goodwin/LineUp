@@ -120,6 +120,10 @@ export interface IStorage {
   // Achievements
   computeAchievements(userId: number): Promise<AchievementStatus[]>;
   markAchievementsSeen(userId: number): Promise<void>;
+
+  // Onboarding Carousel
+  setOnboardingDontShow(userId: number, dontShow: boolean,): Promise<void>;
+
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2003,6 +2007,14 @@ export class DatabaseStorage implements IStorage {
       await db.insert(userAchievements).values(toInsert);
     }
   }
+
+  async setOnboardingDontShow(userId: number, dontShow: boolean,): Promise<void> {
+  await db
+    .update(users)
+    .set({ onboardingDontShow: dontShow })
+    .where(eq(users.id, userId));
+}
+
 }
 
 export const storage = new DatabaseStorage();

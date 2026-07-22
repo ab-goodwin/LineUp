@@ -173,6 +173,7 @@ export async function registerRoutes(
       location: user.location,
       phoneNumber: user.phoneNumber ?? undefined,
       avatar: user.avatar ?? undefined,
+      onboardingDontShow: user.onboardingDontShow,
     });
   });
 
@@ -685,6 +686,29 @@ export async function registerRoutes(
     await storage.grantAllAchievements(req.user!.id);
     res.json({ ok: true });
   });
+
+  app.put(
+  "/api/profile/onboarding-preference", requireAuth, async (req, res) => {
+    const { dontShow } = req.body;
+
+    if (typeof dontShow !== "boolean") {
+      res.status(400).json({
+        message: "dontShow must be a boolean",
+      });
+      return;
+    }
+
+    await storage.setOnboardingDontShow(
+      req.user!.id,
+      dontShow,
+    );
+
+    res.json({
+      ok: true,
+      onboardingDontShow: dontShow,
+    });
+  },
+);
 
   app.post("/api/dev/seed", requireAuth, async (req, res) => {
     const userId = req.user!.id;

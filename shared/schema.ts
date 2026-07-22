@@ -16,6 +16,7 @@ export const users = pgTable("users", {
   avatar: text("avatar"),
   homepageStats: text("homepage_stats"),
   appearInSuggestions: boolean("appear_in_suggestions").default(true).notNull(),
+  onboardingDontShow: boolean("onboarding_dont_show").default(false).notNull(),
 });
 
 export const verificationCodes = pgTable("verification_codes", {

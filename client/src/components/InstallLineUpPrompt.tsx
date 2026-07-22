@@ -1,5 +1,13 @@
-import { useEffect, useState } from "react";
-import { Share, X, Smartphone, Download, MoreVertical } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  CalendarPlus,
+  Download,
+  MoreVertical,
+  RefreshCw,
+  Share,
+  Smartphone,
+  X,
+} from "lucide-react";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -23,7 +31,12 @@ function isIOS() {
 
 function isSafari() {
   const ua = window.navigator.userAgent.toLowerCase();
-  return ua.includes("safari") && !ua.includes("crios") && !ua.includes("fxios");
+  return (
+    ua.includes("safari") &&
+    !ua.includes("crios") &&
+    !ua.includes("fxios") &&
+    !ua.includes("edgios")
+  );
 }
 
 function isAndroid() {
@@ -32,13 +45,16 @@ function isAndroid() {
 
 function isChromeLike() {
   const ua = window.navigator.userAgent.toLowerCase();
-  return ua.includes("chrome") || ua.includes("crios");
+  return (
+    ua.includes("chrome") ||
+    ua.includes("crios") ||
+    ua.includes("edga")
+  );
 }
 
 export function InstallLineUpPrompt() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
-
   const [showPrompt, setShowPrompt] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
 
@@ -56,10 +72,7 @@ export function InstallLineUpPrompt() {
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-    // iPhone Safari usually does not fire beforeinstallprompt,
-    // so we show manual instructions after the app has loaded.
     const shouldShowManualPrompt = isIOS() || !isAndroid();
-
     let timer: number | undefined;
 
     if (shouldShowManualPrompt) {
@@ -69,8 +82,14 @@ export function InstallLineUpPrompt() {
     }
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-      if (timer) window.clearTimeout(timer);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt,
+      );
+
+      if (timer) {
+        window.clearTimeout(timer);
+      }
     };
   }, []);
 
@@ -87,11 +106,20 @@ export function InstallLineUpPrompt() {
       return;
     }
 
+    if (showInstructions) {
+      setShowPrompt(false);
+      return;
+    }
+
     setShowInstructions(true);
   }
 
   function dismissPrompt() {
     localStorage.setItem("lineup-install-dismissed", "true");
+    setShowPrompt(false);
+  }
+
+  function closeForNow() {
     setShowPrompt(false);
   }
 
@@ -101,98 +129,175 @@ export function InstallLineUpPrompt() {
   const androidChrome = isAndroid() && isChromeLike();
 
   return (
-    <div className="fixed inset-x-4 bottom-[92px] z-[80] md:hidden">
-      <div className="overflow-hidden rounded-[28px] border border-[#D39A72] bg-[#FFF9F1] shadow-[0_10px_30px_rgba(83,52,34,0.18)]">
-        <div className="h-2 bg-[#E45524]" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6 md:hidden">
+      <button
+        type="button"
+        aria-label="Close install prompt"
+        onClick={closeForNow}
+        className="absolute inset-0 bg-[#2B211C]/35 backdrop-blur-[2px]"
+      />
 
-        <div className="p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#E4C7A8] bg-[#F3D2B6] text-[#E45524]">
-              <Smartphone className="h-6 w-6" />
-            </div>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="install-lineup-title"
+        className="relative z-10 flex max-h-[calc(100dvh-2rem)] w-full max-w-[390px] flex-col overflow-hidden rounded-[28px] border border-[#D99869] bg-[#FFF9F1] shadow-[0_24px_70px_rgba(65,40,25,0.28)]"
+      >
+        <div className="h-2 shrink-0 bg-[#ED4D19]" />
 
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#8A5637]">
-                    LineUp App
-                  </p>
-                  <h2 className="mt-1 text-xl font-extrabold leading-tight text-[#241814]">
-                    Add LineUp to your Home Screen
-                  </h2>
-                </div>
+        <div className="relative shrink-0 border-b border-[#D99869] px-6 pb-4 pt-6 text-center">
+          <button
+            type="button"
+            onClick={closeForNow}
+            aria-label="Close install prompt"
+            className="absolute right-5 top-5 rounded-full p-2 text-[#8C5536] transition hover:bg-[#F4E6D7]"
+          >
+            <X className="h-6 w-6" />
+          </button>
 
-                <button
-                  type="button"
-                  onClick={dismissPrompt}
-                  aria-label="Dismiss install prompt"
-                  className="rounded-full p-1.5 text-[#8A5637] hover:bg-[#F6E8D3]"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <p className="mt-2 text-sm leading-5 text-[#7A5A46]">
-                Open LineUp like an app, without going through the app store.
-              </p>
-            </div>
+          <div
+            className="font-display text-[56px] font-black leading-none tracking-[-0.045em] text-[#432214]"
+            aria-label="LineUp"
+          >
+            Line<span className="text-[#E84C1C]">Up</span>
+            <span className="ml-1 inline-block align-top text-[27px] leading-none text-[#D99B3D]">
+              ✦
+            </span>
           </div>
 
-          {showInstructions && (
-            <div className="mt-4 rounded-2xl border border-[#E4C7A8] bg-[#F8F1E8] p-4 text-sm text-[#5F4434]">
+          <p className="mt-1 text-sm font-bold text-[#D79A3D]">
+            Your Dances. Your Stats.
+          </p>
+        </div>
+
+        <div className="overflow-y-auto px-5 pb-5 pt-5">
+          <h2
+            id="install-lineup-title"
+            className="text-center font-display text-[26px] font-bold leading-tight text-[#201A16]"
+          >
+            Add LineUp to your Home Screen
+          </h2>
+
+          <p className="mx-auto mt-2 max-w-[320px] text-center text-sm leading-5 text-[#8D593A]">
+            Open LineUp as an app without going through the app store.
+          </p>
+
+          {!showInstructions ? (
+            <div className="mt-6 space-y-4">
+              <BenefitRow
+                icon={<CalendarPlus className="h-7 w-7" />}
+                text="Log Dances/Sessions Faster"
+              />
+              <BenefitRow
+                icon={<Smartphone className="h-7 w-7" />}
+                text="Get The Full App Experience"
+              />
+              <BenefitRow
+                icon={<RefreshCw className="h-7 w-7" />}
+                text="No Updates or Ads Required"
+              />
+            </div>
+          ) : (
+            <div className="mt-6 rounded-[22px] border border-[#E0B183] bg-[#FBF4EA] px-5 py-5 text-[#5E4435]">
               {iosSafari ? (
                 <>
-                  <div className="mb-3 flex items-center gap-2 font-bold text-[#241814]">
-                    <Share className="h-4 w-4 text-[#E45524]" />
-                    iPhone Safari
+                  <div className="mb-4 flex items-center gap-3">
+                    <Share className="h-6 w-6 text-[#EB4D1B]" />
+                    <h3 className="text-lg font-extrabold text-[#251B16]">
+                      iPhone Safari
+                    </h3>
                   </div>
-                  <ol className="list-decimal space-y-2 pl-5">
-                    <li>Tap the Share icon at the bottom of Safari.</li>
-                    <li>Scroll down and tap Add to Home Screen.</li>
-                    <li>Tap Add.</li>
+
+                  <ol className="space-y-3 text-[17px] leading-6">
+                    <li className="flex gap-3">
+                      <span className="font-semibold">1.</span>
+                      <span>Tap the Share icon at the bottom of Safari.</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="font-semibold">2.</span>
+                      <span>Scroll down and tap Add to Home Screen.</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="font-semibold">3.</span>
+                      <span>Tap Add.</span>
+                    </li>
                   </ol>
                 </>
               ) : androidChrome ? (
                 <>
-                  <div className="mb-3 flex items-center gap-2 font-bold text-[#241814]">
-                    <Download className="h-4 w-4 text-[#E45524]" />
-                    Android Chrome
+                  <div className="mb-4 flex items-center gap-3">
+                    <Download className="h-6 w-6 text-[#EB4D1B]" />
+                    <h3 className="text-lg font-extrabold text-[#251B16]">
+                      Android Chrome
+                    </h3>
                   </div>
-                  <ol className="list-decimal space-y-2 pl-5">
-                    <li>Tap Install LineUp.</li>
-                    <li>Confirm Install.</li>
-                    <li>Open LineUp from your Home Screen.</li>
+
+                  <ol className="space-y-3 text-[17px] leading-6">
+                    <li className="flex gap-3">
+                      <span className="font-semibold">1.</span>
+                      <span>Tap Install LineUp.</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="font-semibold">2.</span>
+                      <span>Confirm Install.</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="font-semibold">3.</span>
+                      <span>Open LineUp from your Home Screen.</span>
+                    </li>
                   </ol>
                 </>
               ) : (
                 <>
-                  <div className="mb-3 flex items-center gap-2 font-bold text-[#241814]">
-                    <MoreVertical className="h-4 w-4 text-[#E45524]" />
-                    Mobile browser
+                  <div className="mb-4 flex items-center gap-3">
+                    <MoreVertical className="h-6 w-6 text-[#EB4D1B]" />
+                    <h3 className="text-lg font-extrabold text-[#251B16]">
+                      Mobile Browser
+                    </h3>
                   </div>
-                  <ol className="list-decimal space-y-2 pl-5">
-                    <li>Open your browser menu.</li>
-                    <li>Choose Add to Home Screen or Install App.</li>
-                    <li>Confirm the install.</li>
+
+                  <ol className="space-y-3 text-[17px] leading-6">
+                    <li className="flex gap-3">
+                      <span className="font-semibold">1.</span>
+                      <span>Open your browser menu.</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="font-semibold">2.</span>
+                      <span>Choose Add to Home Screen or Install App.</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="font-semibold">3.</span>
+                      <span>Confirm the install.</span>
+                    </li>
                   </ol>
                 </>
               )}
             </div>
           )}
 
-          <div className="mt-5 flex gap-2">
+          <p className="mx-auto mt-6 max-w-[300px] text-center text-sm font-semibold leading-5 text-[#8B5638]">
+            Built to stay free. No ads. No subscriptions.
+            <br />
+            Just your LineUp.
+          </p>
+
+          <div className="mt-6 grid grid-cols-[1fr_auto] gap-3">
             <button
               type="button"
               onClick={handlePrimaryAction}
-              className="flex-1 rounded-2xl bg-[#E45524] px-4 py-3 text-sm font-extrabold uppercase tracking-[0.08em] text-white shadow-sm hover:bg-[#B83E18]"
+              className="rounded-[18px] bg-[#ED4D19] px-4 py-4 text-base font-black uppercase tracking-[0.08em] text-white shadow-sm transition hover:bg-[#C83E13] active:scale-[0.99]"
             >
-              {deferredPrompt ? "Install LineUp" : "Show Me How"}
+              {deferredPrompt
+                ? "Install LineUp"
+                : showInstructions
+                  ? "Got It"
+                  : "Show Me How"}
             </button>
 
             <button
               type="button"
               onClick={dismissPrompt}
-              className="rounded-2xl border border-[#D39A72] bg-[#FFF9F1] px-4 py-3 text-sm font-bold text-[#8A5637] hover:bg-[#F6E8D3]"
+              className="rounded-[18px] border-2 border-[#D99B6D] bg-[#FFF9F1] px-5 py-4 text-base font-extrabold text-[#7A4A31] transition hover:bg-[#F7EBDD]"
             >
               Not Now
             </button>
@@ -200,13 +305,33 @@ export function InstallLineUpPrompt() {
 
           <button
             type="button"
-            onClick={() => setShowPrompt(false)}
-            className="mt-3 w-full text-center text-xs font-semibold text-[#8A5637] underline-offset-4 hover:underline"
+            onClick={closeForNow}
+            className="mt-4 w-full text-center text-sm font-extrabold text-[#7D4E34] transition hover:text-[#E84C1C]"
           >
             Continue to LineUp
           </button>
         </div>
+      </section>
+    </div>
+  );
+}
+
+function BenefitRow({
+  icon,
+  text,
+}: {
+  icon: ReactNode;
+  text: string;
+}) {
+  return (
+    <div className="flex items-center gap-4">
+      <div className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-[20px] border border-[#EDC59F] bg-[#F2D2B5] text-[#EB4D1B] shadow-[inset_0_-3px_0_rgba(194,126,76,0.12)]">
+        {icon}
       </div>
+
+      <p className="text-[19px] font-semibold leading-tight text-[#8A5537]">
+        {text}
+      </p>
     </div>
   );
 }
