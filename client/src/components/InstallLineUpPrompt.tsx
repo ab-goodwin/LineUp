@@ -9,6 +9,8 @@ import {
   X,
 } from "lucide-react";
 
+import lineupTagline from "@assets/LineUp_tagline_1778180551921.png";
+
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -155,19 +157,11 @@ export function InstallLineUpPrompt() {
             <X className="h-6 w-6" />
           </button>
 
-          <div
-            className="font-display text-[56px] font-black leading-none tracking-[-0.045em] text-[#432214]"
-            aria-label="LineUp"
-          >
-            Line<span className="text-[#E84C1C]">Up</span>
-            <span className="ml-1 inline-block align-top text-[27px] leading-none text-[#D99B3D]">
-              ✦
-            </span>
-          </div>
-
-          <p className="mt-1 text-sm font-bold text-[#D79A3D]">
-            Your Dances. Your Stats.
-          </p>
+          <img
+            src={lineupTagline}
+            alt="LineUp — Your Dances. Your Stats."
+            className="mx-auto h-auto w-[230px] max-w-[72%] object-contain"
+          />
         </div>
 
         <div className="overflow-y-auto px-5 pb-5 pt-5">
@@ -275,7 +269,7 @@ export function InstallLineUpPrompt() {
             </div>
           )}
 
-          <p className="mx-auto mt-6 max-w-[300px] text-center text-sm font-semibold leading-5 text-[#8B5638]">
+          <p className="mx-auto mt-6 max-w-[320px] text-center text-sm font-normal leading-5 text-[#8D593A]">
             Built to stay free. No ads. No subscriptions.
             <br />
             Just your LineUp.
@@ -297,7 +291,7 @@ export function InstallLineUpPrompt() {
             <button
               type="button"
               onClick={dismissPrompt}
-              className="rounded-[18px] border-2 border-[#D99B6D] bg-[#FFF9F1] px-5 py-4 text-base font-extrabold text-[#7A4A31] transition hover:bg-[#F7EBDD]"
+              className="rounded-[18px] border-2 border-[#D99B6D] bg-[#FFF9F1] px-5 py-4 text-base font-medium text-[#7A4A31] transition hover:bg-[#F7EBDD]"
             >
               Not Now
             </button>
@@ -306,7 +300,7 @@ export function InstallLineUpPrompt() {
           <button
             type="button"
             onClick={closeForNow}
-            className="mt-4 w-full text-center text-sm font-extrabold text-[#7D4E34] transition hover:text-[#E84C1C]"
+            className="mt-4 w-full text-center text-sm font-normal leading-5 text-[#8D593A] transition hover:text-[#E84C1C]"
           >
             Continue to LineUp
           </button>

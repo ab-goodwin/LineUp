@@ -243,8 +243,8 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
   // Color theming based on active tab (or add form mode)
   const isSwing = libTab === "swing";
   const accentColor = isSwing ? "#3B82F6" : "#D85C31";
-  const accentBorder = isSwing ? "border-blue-400" : "border-primary/60";
-  const accentBg = isSwing ? "bg-blue-50 dark:bg-blue-950/20" : "bg-primary/5";
+  const accentBorder = isSwing ? "border-blue-300" : "border-[#F0B7A1]";
+  const accentBg = isSwing ? "bg-blue-50 dark:bg-blue-950/20" : "bg-[#FFF7F1]";
 
   const tabPill = (tab: "line" | "swing" | "all", label: string) => {
     const active = libTab === tab;
@@ -254,7 +254,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
         key={tab}
         type="button"
         onClick={() => setLibTab(tab)}
-        className={`px-3 py-0.5 rounded-full text-xs font-semibold border transition-colors ${
+        className={`px-4 py-1.5 rounded-xl text-sm font-semibold border transition-colors ${
           active
             ? "text-white border-transparent"
             : "bg-transparent text-foreground border-border hover:border-foreground/40"
@@ -269,24 +269,24 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[420px] w-full bg-card rounded-2xl sm:rounded-2xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-hidden">
+      <DialogContent className="max-w-[420px] w-full bg-[#FFF9F4] dark:bg-card rounded-2xl sm:rounded-2xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-hidden border border-[#E9D6C4]">
         {/* Header */}
         <div className="px-4 pt-4 pb-2 text-center">
-          <h2 className="font-display text-2xl text-primary leading-tight">
+          <h2 className="font-display text-3xl font-black text-primary leading-tight tracking-tight">
             {existingSession ? "Edit Session" : "New Session"}
           </h2>
-          <p className="text-muted-foreground text-sm mt-0.5">{format(date, "MMMM do, yyyy")}</p>
+          <p className="text-[#8A5D43] dark:text-muted-foreground text-base mt-1">{format(date, "MMMM do, yyyy")}</p>
         </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-            <div className="px-5 pt-1 space-y-2">
+            <div className="px-5 pt-2 space-y-4">
               {/* Search bar */}
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8A614A]" />
                 <Input
                   placeholder="Search Your Library..."
-                  className="h-9 pl-8 rounded-xl border-border/60 bg-background text-sm"
+                  className="h-12 pl-10 rounded-xl border-[#E2BE98] bg-[#FFF9F4] dark:bg-background text-base text-[#7C543C] placeholder:text-[#9A7158]"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   data-testid="input-song-search"
@@ -323,7 +323,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
               {/* Inline add-song form */}
               {addFormOpen && (
-                <div className={`border-2 rounded-xl p-3 space-y-2 ${accentBorder} ${accentBg}`}>
+                <div className={`border-2 rounded-2xl p-4 space-y-3 ${accentBorder} ${accentBg}`}>
                   {/* Line / Swing toggle inside form */}
                   <div className="flex gap-1 p-0.5 bg-secondary/60 rounded-lg text-xs">
                     <button
@@ -476,7 +476,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
               {/* Dances label + tab pills + count */}
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold flex-shrink-0">Dances</span>
+                <span className="text-base font-bold flex-shrink-0 text-[#241914]">Dances</span>
                 <div className="flex items-center gap-1">
                   {tabPill("line", "Line")}
                   {tabPill("swing", "Swing")}
@@ -492,7 +492,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
             {/* Scrollable library list */}
             <div
-              className="flex-1 min-h-0 overflow-y-auto mx-4 mt-1 mb-2 rounded-xl border border-border/40 bg-secondary/10"
+              className="flex-1 min-h-0 overflow-y-auto mx-5 mt-3 mb-3 rounded-2xl border-2 border-[#E7D2B8] bg-[#FFF8EF] p-3"
               style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
               data-testid="list-song-library"
             >
@@ -541,21 +541,25 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                   )}
                 </div>
               ) : (
-                <div className="divide-y divide-border/30">
+                <div className="space-y-2.5">
                   {filteredSongs.map(song => {
                     const qty = quantities.get(song.id) ?? 0;
                     const isSelected = qty > 0;
                     return (
                       <div
                         key={song.id}
-                        className={`flex h-[72px] items-center gap-3 px-4 transition-colors ${isSelected ? "bg-primary/[0.06]" : ""}`}
+                        className={`flex min-h-[86px] items-center gap-3 rounded-xl border px-3.5 py-3 transition-colors ${
+                          isSelected
+                            ? "border-[#D7E0EA] bg-[#FFF9F1]"
+                            : "border-[#DCE4EC] bg-[#FFF9F1]"
+                        }`}
                         data-testid={`session-song-item-${song.id}`}
                       >
                         {/* Checkbox */}
                         <button
                           type="button"
                           onClick={() => toggleSong(song.id)}
-                          className={`w-5 h-5 rounded-[5px] border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                          className={`w-6 h-6 rounded-[5px] border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                             isSelected
                               ? "border-primary bg-primary text-white"
                               : "border-muted-foreground/40 bg-transparent hover:border-primary/50"
@@ -571,10 +575,10 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
                         {/* Song info — matches reference: DanceName · Artist [tag] / SongName */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex min-w-0 items-center gap-1.5 leading-tight">
-                            <span className="truncate text-base font-semibold">{song.danceName}</span>
+                          <div className="flex min-w-0 items-center gap-1.5 leading-tight flex-wrap">
+                            <span className="truncate text-[17px] font-extrabold text-[#211814]">{song.danceName}</span>
                             {song.artist && (
-                              <span className="truncate text-sm text-muted-foreground">
+                              <span className="truncate text-[16px] text-[#8A624A]">
                                 · {song.artist}
                               </span>
                             )}
@@ -586,7 +590,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                             </div>
                           </div>
                           {song.songName && song.songName !== song.danceName && (
-                            <p className="mt-1 truncate text-sm leading-tight text-muted-foreground">
+                            <p className="mt-2 truncate text-[15px] leading-tight text-[#8A624A]">
                               {song.songName}
                             </p>
                           )}
@@ -598,16 +602,16 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                             <button
                               type="button"
                               onClick={() => setQty(song.id, -1)}
-                              className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"
+                              className="w-8 h-8 rounded-full border-2 border-[#F2C9B7] bg-[#FFF9F1] flex items-center justify-center text-[#5F4638] hover:bg-[#FCEBDD] transition-colors"
                               data-testid={`button-qty-minus-${song.id}`}
                             >
                               <Minus className="w-3.5 h-3.5" />
                             </button>
-                            <span className="w-6 text-center text-base font-bold text-primary" data-testid={`text-qty-${song.id}`}>{qty}</span>
+                            <span className="w-6 text-center text-base font-extrabold text-primary" data-testid={`text-qty-${song.id}`}>{qty}</span>
                             <button
                               type="button"
                               onClick={() => setQty(song.id, 1)}
-                              className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors"
+                              className="w-8 h-8 rounded-full border-2 border-[#F2C9B7] bg-[#FFF9F1] flex items-center justify-center text-[#5F4638] hover:bg-[#FCEBDD] transition-colors"
                               data-testid={`button-qty-plus-${song.id}`}
                             >
                               <Plus className="w-3.5 h-3.5" />
@@ -622,7 +626,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
             </div>
 
             {/* Footer */}
-            <div className="flex gap-2 px-4 pb-4">
+            <div className="flex gap-2 px-5 pb-5 pt-1">
               {existingSession && (
                 <Button
                   type="button" variant="destructive"
@@ -635,7 +639,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
               )}
               <Button
                 type="submit"
-                className="flex-1 rounded-xl h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base shadow-lg shadow-primary/20"
+                className="flex-1 rounded-xl h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg shadow-lg shadow-primary/20"
                 disabled={isSubmitting}
                 data-testid="button-save-session"
               >
