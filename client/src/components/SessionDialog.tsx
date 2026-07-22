@@ -244,7 +244,9 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
   const isSwing = libTab === "swing";
   const accentColor = isSwing ? "#3B82F6" : "#D85C31";
   const accentBorder = isSwing ? "border-blue-300" : "border-[#F0B7A1]";
-  const accentBg = isSwing ? "bg-blue-50 dark:bg-blue-950/20" : "bg-[#FFF7F1]";
+  const accentBg = isSwing
+    ? "bg-blue-50 dark:bg-blue-950/20"
+    : "bg-[#FFF7F1] dark:bg-primary/10";
 
   const tabPill = (tab: "line" | "swing" | "all", label: string) => {
     const active = libTab === tab;
@@ -269,7 +271,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[420px] w-full bg-[#FFF9F4] dark:bg-card rounded-2xl sm:rounded-2xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-hidden border border-[#E9D6C4]">
+      <DialogContent className="max-w-[420px] w-full bg-[#FFF9F4] dark:bg-card rounded-2xl sm:rounded-2xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-hidden border border-[#E9D6C4] dark:border-border">
         {/* Header */}
         <div className="px-4 pt-4 pb-2 text-center">
           <h2 className="font-display text-[2rem] font-extrabold text-primary leading-tight tracking-tight">
@@ -283,10 +285,10 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
             <div className="px-5 pt-2 space-y-4">
               {/* Search bar */}
               <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8A614A]" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8A614A] dark:text-muted-foreground" />
                 <Input
                   placeholder="Search Your Library..."
-                  className="h-11 pl-10 rounded-xl border-[#E2BE98] bg-[#FFF9F4] dark:bg-background text-[15px] text-[#7C543C] placeholder:text-[#9A7158]"
+                  className="h-11 pl-10 rounded-xl border-[#E2BE98] dark:border-border bg-[#FFF9F4] dark:bg-background text-[15px] text-[#7C543C] dark:text-foreground placeholder:text-[#9A7158] dark:placeholder:text-muted-foreground"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   data-testid="input-song-search"
@@ -476,7 +478,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
               {/* Dances label + tab pills + count */}
               <div className="flex items-center gap-2">
-                <span className="text-[15px] font-bold flex-shrink-0 text-[#241914]">Dances</span>
+                <span className="text-[15px] font-bold flex-shrink-0 text-[#241914] dark:text-foreground">Dances</span>
                 <div className="flex items-center gap-1">
                   {tabPill("line", "Line")}
                   {tabPill("swing", "Swing")}
@@ -492,7 +494,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
 
             {/* Scrollable library list */}
             <div
-              className="flex-1 min-h-0 overflow-y-auto mx-5 mt-3 mb-3 rounded-2xl border border-[#E7D2B8] bg-[#FFF8EF] p-2.5"
+              className="flex-1 min-h-0 overflow-y-auto mx-5 mt-3 mb-3 rounded-2xl border border-[#E7D2B8] dark:border-border bg-[#FFF8EF] dark:bg-background/40 p-2.5"
               style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
               data-testid="list-song-library"
             >
@@ -550,8 +552,8 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                         key={song.id}
                         className={`flex min-h-[72px] items-center gap-2.5 rounded-xl border px-3 py-2.5 transition-colors ${
                           isSelected
-                            ? "border-[#D7E0EA] bg-[#FFF9F1]"
-                            : "border-[#DCE4EC] bg-[#FFF9F1]"
+                            ? "border-[#D7E0EA] dark:border-primary/40 bg-[#FFF9F1] dark:bg-primary/10"
+                            : "border-[#DCE4EC] dark:border-border bg-[#FFF9F1] dark:bg-card"
                         }`}
                         data-testid={`session-song-item-${song.id}`}
                       >
@@ -576,9 +578,9 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                         {/* Song info — matches reference: DanceName · Artist [tag] / SongName */}
                         <div className="flex-1 min-w-0">
                           <div className="flex min-w-0 items-center gap-1.5 leading-tight flex-wrap">
-                            <span className="truncate text-[15px] font-bold text-[#211814]">{song.danceName}</span>
+                            <span className="truncate text-[15px] font-bold text-[#211814] dark:text-foreground">{song.danceName}</span>
                             {song.artist && (
-                              <span className="truncate text-[14px] text-[#8A624A]">
+                              <span className="truncate text-[14px] text-[#8A624A] dark:text-muted-foreground">
                                 · {song.artist}
                               </span>
                             )}
@@ -590,7 +592,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                             </div>
                           </div>
                           {song.songName && song.songName !== song.danceName && (
-                            <p className="mt-1 truncate text-[13px] leading-tight text-[#8A624A]">
+                            <p className="mt-1 truncate text-[13px] leading-tight text-[#8A624A] dark:text-muted-foreground">
                               {song.songName}
                             </p>
                           )}
@@ -602,7 +604,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                             <button
                               type="button"
                               onClick={() => setQty(song.id, -1)}
-                              className="w-7 h-7 rounded-full border border-[#F2C9B7] bg-[#FFF9F1] flex items-center justify-center text-[#5F4638] hover:bg-[#FCEBDD] transition-colors"
+                              className="w-7 h-7 rounded-full border border-[#F2C9B7] dark:border-border bg-[#FFF9F1] dark:bg-background flex items-center justify-center text-[#5F4638] dark:text-foreground hover:bg-[#FCEBDD] dark:hover:bg-secondary transition-colors"
                               data-testid={`button-qty-minus-${song.id}`}
                             >
                               <Minus className="w-3.5 h-3.5" />
@@ -611,7 +613,7 @@ export function SessionDialog({ date, existingSession, isOpen, onOpenChange }: S
                             <button
                               type="button"
                               onClick={() => setQty(song.id, 1)}
-                              className="w-7 h-7 rounded-full border border-[#F2C9B7] bg-[#FFF9F1] flex items-center justify-center text-[#5F4638] hover:bg-[#FCEBDD] transition-colors"
+                              className="w-7 h-7 rounded-full border border-[#F2C9B7] dark:border-border bg-[#FFF9F1] dark:bg-background flex items-center justify-center text-[#5F4638] dark:text-foreground hover:bg-[#FCEBDD] dark:hover:bg-secondary transition-colors"
                               data-testid={`button-qty-plus-${song.id}`}
                             >
                               <Plus className="w-3.5 h-3.5" />
