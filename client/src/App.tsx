@@ -22,6 +22,7 @@ import Settings, {
   TemplateSettings,
   ThemeSettings,
   WalkthroughSettings,
+  ChangelogSettings,
 } from "@/pages/Settings";
 import AuthPage from "@/pages/AuthPage";
 import ResetPassword from "@/pages/ResetPassword";
@@ -46,6 +47,7 @@ function AnimatedRoutes() {
       <Route path="/settings/walkthrough" component={WalkthroughSettings} />
       <Route path="/settings/developer" component={DeveloperSettings} />
       <Route path="/settings/danger" component={DangerZoneSettings} />
+      <Route path="/settings/changelog"component={ChangelogSettings} />
       <Route path="/settings" component={Settings} />
 
       <Route component={NotFound} />

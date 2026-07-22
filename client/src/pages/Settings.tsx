@@ -11,6 +11,7 @@ import {
   FileDown,
   FileUp,
   FlaskConical,
+  History,
   Loader2,
   MapPin,
   Moon,
@@ -23,6 +24,12 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -241,6 +248,40 @@ function parseCSV(text: string): { headers: string[]; rows: string[][] } {
   return { headers, rows };
 }
 
+
+type ChangelogEntry = {
+  version: string;
+  date: string;
+  changes: string[];
+};
+
+const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.0.0",
+    date: "July 21, 2026",
+    changes: [
+      "Added a new changelog page in Settings.",
+      "Improved the session Library layout.",
+      "Updated the mobile installation prompt.",
+    ],
+  },
+
+  /*
+   * Copy and paste this block above the previous version whenever you release
+   * an update:
+   *
+   * {
+   *   version: "1.0.1",
+   *   date: "Month Day, Year",
+   *   changes: [
+   *     "First change.",
+   *     "Second change.",
+   *     "Third change.",
+   *   ],
+   * },
+   */
+];
+
 export default function Settings() {
   const { data: profile } = useProfile();
   const { theme } = useTheme();
@@ -303,6 +344,15 @@ export default function Settings() {
           icon={BookOpen}
           title="App Walkthrough"
           description="Replay the LineUp introduction"
+        />
+      </SettingsSection>
+
+      <SettingsSection title="About">
+        <SettingsRow
+          href="/settings/changelog"
+          icon={History}
+          title="Changelog"
+          description="See what’s new in LineUp"
         />
       </SettingsSection>
 
@@ -703,6 +753,62 @@ export function WalkthroughSettings() {
           View App Walkthrough
         </Button>
       </section>
+    </SettingsPage>
+  );
+}
+
+
+export function ChangelogSettings() {
+  return (
+    <SettingsPage title="Changelog">
+      <div className="mb-5 flex items-start gap-3 rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <History className="h-5 w-5" />
+        </div>
+
+        <div>
+          <h2 className="font-semibold text-foreground">What’s New in LineUp</h2>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+            Open a version below to view the updates included in that release.
+          </p>
+        </div>
+      </div>
+
+      <Accordion type="multiple" className="space-y-3">
+        {CHANGELOG.map((entry, index) => (
+          <AccordionItem
+            key={`${entry.version}-${entry.date}`}
+            value={`changelog-${index}`}
+            className="overflow-hidden rounded-2xl border border-border bg-card px-0 shadow-sm"
+          >
+            <AccordionTrigger
+              className="px-5 py-4 text-left hover:no-underline"
+              data-testid={`changelog-trigger-${entry.version}`}
+            >
+              <span className="pr-3 font-semibold text-foreground">
+                {entry.version} - {entry.date}
+              </span>
+            </AccordionTrigger>
+
+            <AccordionContent className="px-5 pb-5">
+              <ul className="space-y-3">
+                {entry.changes.map((change, changeIndex) => (
+                  <li
+                    key={`${entry.version}-${changeIndex}`}
+                    className="flex gap-3 text-sm leading-6 text-muted-foreground"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                    />
+                    <span>{change}</span>
+                  </li>
+                ))}
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
     </SettingsPage>
   );
 }
